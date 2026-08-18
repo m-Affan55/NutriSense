@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../navigation/main_navigation_screen.dart';
+import '../../core/api_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class OnboardingWizardScreen extends StatefulWidget {
   const OnboardingWizardScreen({super.key});
@@ -12,6 +16,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   final int _totalPages = 6;
+  bool _isLoading = false;
 
   // Data
   String? _goal;
@@ -67,18 +72,79 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     'Flexible / No strict limit',
   ];
 
-  void _nextPage() {
+  Future<void> _nextPage() async {
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );
     } else {
-      // Done, navigate to dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-      );
+      // Done, send to backend
+      setState(() => _isLoading = true);
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user == null) throw Exception('User not logged in');
+
+        final payload = {
+          "user_id": user.id,
+          "age": _age.toInt(),
+          "gender": _gender ?? 'Male',
+          "weight_kg": _weightKg,
+          "height_cm": _heightCm,
+          "goal": _mapGoal(_goal),
+          "activity_level": _mapActivity(_activityLevel),
+          "medical_conditions": _healthConditions,
+          "dietary_restrictions": _dietaryPreference == 'No restriction' || _dietaryPreference == null ? [] : [_dietaryPreference!],
+          "daily_budget_pkr": _mapBudget(_budget),
+        };
+
+        final url = Uri.parse('${ApiClient.getBaseUrl()}/profile/onboarding');
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+        } else {
+          throw Exception('Failed to save profile: ${response.body}');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
+  }
+
+  String _mapGoal(String? goal) {
+    if (goal == null) return 'fat_loss';
+    if (goal.contains('Fat loss')) return 'fat_loss';
+    if (goal.contains('muscle')) return 'muscle_gain';
+    return 'maintenance';
+  }
+
+  String _mapActivity(String? activity) {
+    if (activity == null) return 'sedentary';
+    if (activity.contains('Lightly')) return 'lightly_active';
+    if (activity.contains('Moderately')) return 'moderately_active';
+    if (activity.contains('Very active')) return 'very_active';
+    return 'sedentary';
+  }
+
+  int _mapBudget(String? budget) {
+    if (budget == null) return 1500;
+    if (budget.contains('Under 1500')) return 1500;
+    if (budget.contains('1500 – 3000')) return 3000;
+    if (budget.contains('3000 – 5000')) return 5000;
+    return 10000; // flexible
   }
 
   @override
@@ -156,16 +222,18 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: canProceed ? _nextPage : null,
+          onPressed: canProceed && !_isLoading ? _nextPage : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
             disabledBackgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: Text(
-            _currentPage == _totalPages - 1 ? 'Finish' : 'Next',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+          child: _isLoading 
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                _currentPage == _totalPages - 1 ? 'Finish' : 'Next',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
         ),
       ),
     );

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../onboarding/onboarding_view.dart';
-
+import '../navigation/main_navigation_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -17,7 +18,10 @@ class _AuthScreenState extends State<AuthScreen> {
   String _tagline = "AI-Powered Personal Nutritionist";
 
   final _formKey = GlobalKey<FormState>();
-
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  bool _isLoading = false;
   @override
   void initState() {
     super.initState();
@@ -34,7 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       if (!isLogin && !_acceptedTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -42,10 +46,61 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         return;
       }
-      // Success! Navigate to onboarding
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
-      );
+      
+      setState(() => _isLoading = true);
+      
+      try {
+        final supabase = Supabase.instance.client;
+        
+        if (isLogin) {
+          await supabase.auth.signInWithPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+          
+          if (!mounted) return;
+          
+          // Check if they have a profile
+          final user = supabase.auth.currentUser;
+          if (user != null) {
+            final profileResponse = await supabase
+                .from('health_profiles')
+                .select()
+                .eq('user_id', user.id)
+                .maybeSingle();
+                
+            if (profileResponse != null) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+              );
+              return;
+            }
+          }
+          
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+          );
+          
+        } else {
+          await supabase.auth.signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            data: {'full_name': _nameController.text.trim()},
+          );
+          
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authentication failed: ${e.toString()}')),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -157,6 +212,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   // Form Fields
                   if (!isLogin)
                     _buildTextField(
+                      controller: _nameController,
                       label: 'Full Name',
                       icon: Icons.person_outline,
                       validator: (v) => v!.isEmpty ? 'Please enter your name' : null,
@@ -164,6 +220,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (!isLogin) const SizedBox(height: 16),
                   
                   _buildTextField(
+                    controller: _emailController,
                     label: 'Email',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
@@ -172,6 +229,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 16),
                   
                   _buildTextField(
+                    controller: _passwordController,
                     label: 'Password',
                     icon: Icons.lock_outline,
                     obscureText: _obscurePassword,
@@ -233,16 +291,18 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed: _isLoading ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: Text(
-                        isLogin ? 'Login' : 'Create Account',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
+                      child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            isLogin ? 'Login' : 'Create Account',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
                     ),
                   ),
 
@@ -280,6 +340,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildTextField({
+    TextEditingController? controller,
     required String label,
     required IconData icon,
     bool obscureText = false,
@@ -288,6 +349,7 @@ class _AuthScreenState extends State<AuthScreen> {
     String? Function(String?)? validator,
   }) {
     return TextFormField(
+      controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
