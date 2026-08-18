@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../navigation/main_navigation_screen.dart';
-import '../../core/api_client.dart';
+import '../../../core/api_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
