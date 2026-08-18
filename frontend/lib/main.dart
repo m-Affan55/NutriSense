@@ -17,7 +17,7 @@ class NutriSenseApp extends StatefulWidget {
 }
 
 class NutriSenseAppState extends State<NutriSenseApp> {
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   ThemeMode get themeMode => _themeMode;
 
