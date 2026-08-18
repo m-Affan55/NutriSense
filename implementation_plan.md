@@ -1,113 +1,56 @@
-# Project Structure Design for NutriSense
+# Refactoring main.dart to Modular Structure
 
-This plan details the folder structure and architecture for the NutriSense project (Frontend: Flutter, Backend: FastAPI) and addresses whether any existing files should be deleted.
+This plan details the process of refactoring the single 760+ line `lib/main.dart` into modular, domain-aligned files in the project structure we established.
 
 ## User Review Required
 
 > [!NOTE]
-> - **Frontend (Flutter)** is currently missing a `lib/` directory entirely (which contains `lib/main.dart`). We will create it.
-> - **No files need to be deleted** from either the frontend or backend. The existing boilerplate files are standard configuration files (`pubspec.yaml`, `requirements.txt`, config templates) that we will build upon.
+> We will split `main.dart` into 7 separate files:
+> 1. `lib/ui/core/theme.dart` (Theme configuration)
+> 2. `lib/ui/features/splash/splash_screen.dart` (Initial loading splash screen)
+> 3. `lib/ui/features/navigation/main_navigation_screen.dart` (Base navigation bar layout)
+> 4. `lib/ui/features/dashboard/dashboard_screen.dart` (User daily metrics)
+> 5. `lib/ui/features/meal_scan/scan_meal_screen.dart` (Camera scanner placeholder)
+> 6. `lib/ui/features/chat/ai_coach_screen.dart` (Chatbot placeholder)
+> 7. `lib/ui/features/weekly_report/weekly_report_screen.dart` (AI Weekly report display)
+>
+> `lib/main.dart` will be reduced to only containing the `main()` function and the root `NutriSenseApp` wrapper.
 
 ---
 
-## Proposed Project Structure
+## Proposed Changes
 
-### 1. Frontend (Flutter) Structure
-We will adopt the **layered MVVM (Model-View-ViewModel)** architectural pattern. This keeps data-fetching and business logic decoupled from the UI.
+### [Component] Core UI Configuration
+#### [NEW] [theme.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/core/theme.dart)
+Contains `buildLightTheme()` and `buildDarkTheme()` matching the branding colors from `Logo.svg`.
 
-```text
-frontend/
-├── android/
-├── ios/
-├── web/
-├── windows/ (and other desktop folders)
-├── test/
-│   └── widget_test.dart
-├── pubspec.yaml
-├── analysis_options.yaml
-└── lib/                        # [NEW] Main Dart application folder
-    ├── main.dart               # [NEW] Entry point (initializes services, runs MyApp)
-    ├── data/                   # Data layer: interfaces with APIs and storage
-    │   ├── models/             # Serialization/deserialization classes
-    │   ├── repositories/       # Single sources of truth that combine services
-    │   └── services/           # HTTP clients, Supabase client wrappers
-    ├── domain/                 # Domain layer (business rules, models)
-    │   └── models/             # Clean domain data classes
-    └── ui/                     # Presentation layer (MVVM)
-        ├── core/               # Shared widgets, themes, styling, and typography
-        │   ├── theme.dart
-        │   └── constants.dart
-        └── features/           # Feature-sliced folders containing Views & ViewModels
-            ├── onboarding/     # Conversational profile builder
-            │   ├── views/
-            │   └── view_models/
-            ├── dashboard/      # Daily nutrition metrics (calories, water)
-            │   ├── views/
-            │   └── view_models/
-            ├── meal_scan/      # Camera interface & food recognition UI
-            │   ├── views/
-            │   └── view_models/
-            ├── chat/           # Personal AI nutrition coach chat interface
-            │   ├── views/
-            │   └── view_models/
-            └── weekly_report/  # AI-generated narrative progress reports
-                ├── views/
-                └── view_models/
-```
+### [Component] Navigation & Splash Features
+#### [NEW] [splash_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/splash/splash_screen.dart)
+Contains `SplashScreen` widget, animations, and timer loading to navigate to `MainNavigationScreen`.
 
-### 2. Backend (FastAPI) Structure
-We will structure the backend using a clean, scalable FastAPI folder setup.
+#### [NEW] [main_navigation_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/navigation/main_navigation_screen.dart)
+Contains the core bottom navigation bar setup routing to the 4 main feature screens.
 
-```text
-backend/
-├── app/
-│   ├── api/                    # API endpoints
-│   │   ├── deps.py             # Common dependency injections (DB, Auth)
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── auth.py         # Sign-up & Login
-│   │       │   ├── profile.py      # Onboarding info
-│   │       │   ├── meals.py        # Log & recognize meals
-│   │       │   ├── coach.py        # AI nutritional chat
-│   │       │   └── reports.py      # AI weekly summary reports
-│   │       └── api.py              # Main router assembly
-│   ├── core/                   # Project configurations and security
-│   │   ├── config.py           # Settings and credentials (modified)
-│   │   ├── security.py         # Password hashing, JWT generation
-│   │   └── database.py         # SQLAlchemy connection helper
-│   ├── models/                 # SQLAlchemy DB models (Supabase connection)
-│   │   ├── user.py
-│   │   ├── profile.py
-│   │   ├── meal.py
-│   │   └── chat.py
-│   ├── schemas/                # Pydantic schemas (Request/Response validation)
-│   │   ├── user.py
-│   │   ├── profile.py
-│   │   ├── meal.py
-│   │   └── chat.py
-│   ├── crud/                   # DB queries (Create, Read, Update, Delete)
-│   │   ├── crud_user.py
-│   │   ├── crud_meal.py
-│   │   └── ...
-│   ├── services/               # AI & External services
-│   │   ├── gemini_service.py   # Call Gemini API for vision & chat
-│   │   └── supabase_service.py # Direct Supabase queries if needed
-│   └── main.py                 # FastAPI application startup & settings
-├── requirements.txt            # Python dependencies (modified if needed)
-└── .env                        # Environment variables (credentials, API keys)
-```
+### [Component] Feature Views
+#### [NEW] [dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart)
+Contains `DashboardScreen` widget and the `_buildMacroIndicator` private helper.
+
+#### [NEW] [scan_meal_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/meal_scan/scan_meal_screen.dart)
+Contains `ScanMealScreen` view.
+
+#### [NEW] [ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart)
+Contains `AiCoachScreen` view and `_buildChatMessage` private helper.
+
+#### [NEW] [weekly_report_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/weekly_report_screen.dart)
+Contains `WeeklyReportScreen` view and `_buildReportHistoryItem` private helper.
+
+### [Component] App Entry point
+#### [MODIFY] [main.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/main.dart)
+Cleans up the file to only contain `main()`, `NutriSenseApp` (stateful widget holding `ThemeMode`), and imports referencing the separated files.
 
 ---
 
-## Deletions & Cleanup
+## Verification Plan
 
-* **Should we delete anything?** No.
-* All template/config files (`requirements.txt`, `backend/app/main.py`, `backend/app/core/config.py`, `frontend/pubspec.yaml`, platform configurations) are essential files to build on. We will modify them to suit the new structure, but no deletions are necessary.
-
----
-
-## Next Steps / Execution Plan
-
-1. **Backend Initialization**: Create all sub-folders and mock files under `backend/app`.
-2. **Frontend Initialization**: Create the `lib/` directory and configure the base directories and `lib/main.dart` with a simple container placeholder.
-3. **Verify**: Ensure the backend starts up, and the frontend builds.
+### Automated Tests
+- Run `flutter analyze` inside the `frontend` folder to guarantee imports are correctly resolved and there are no compile-time errors.

@@ -70,27 +70,33 @@ NutriSense transforms daily health management by shifting from a passive calorie
 ai-nutrition-coach/
 ├── frontend/                         # Flutter Mobile Client
 │   ├── lib/
-│   │   ├── main.dart
-│   │   ├── app.dart                  # Root widget, theming, routing
-│   │   ├── config/                   # Env, Supabase client, and router setup
-│   │   ├── core/                     # Base themes, constants, network & error utilities
-│   │   ├── features/                 # Modular feature packages (Data, Domain, Presentation)
-│   │   │   ├── onboarding/
-│   │   │   ├── auth/
-│   │   │   ├── dashboard/
-│   │   │   ├── meal_scan/
-│   │   │   ├── diet_plan/
-│   │   │   ├── coach_chat/
-│   │   │   ├── weekly_report/
-│   │   │   ├── predictive_coaching/
-│   │   │   ├── grocery_list/
-│   │   │   ├── health_sync/
-│   │   │   ├── family_profiles/
-│   │   │   ├── subscription/
-│   │   │   ├── settings/
-│   │   │   └── notifications/
-│   │   ├── shared/                   # Reusable UI widgets and local caching services
-│   │   └── l10n/                     # Internationalization & localization assets
+│   │   ├── main.dart                 # Entry point (initializes app & runs NutriSenseApp)
+│   │   ├── data/                     # Data layer: API clients, repositories, Supabase
+│   │   │   ├── models/               # API & serialization models
+│   │   │   ├── repositories/         # Repo implementations (caching, offline sync)
+│   │   │   └── services/             # Remote API services (Supabase client wrappers)
+│   │   ├── domain/                   # Domain layer: pure business rules
+│   │   │   └── models/               # Clean domain data entities
+│   │   ├── shared/                   # Reusable assets shared across layers
+│   │   │   ├── services/             # Local database, logging, shared utility services
+│   │   │   └── widgets/              # Reusable UI widgets (custom buttons, cards)
+│   │   └── ui/                       # Presentation layer (MVVM)
+│   │       ├── core/                 # Shared UI elements, global themes, constants
+│   │       └── features/             # Feature-sliced folders containing Views & ViewModels
+│   │           ├── onboarding/       # Conversational profile builder
+│   │           ├── auth/             # Authentication screens
+│   │           ├── dashboard/        # Daily nutrition metrics & progress tracking
+│   │           ├── meal_scan/        # Meal photo scanning & food recognition UI
+│   │           ├── diet_plan/        # Customized diet and hydration scheduler
+│   │           ├── coach_chat/       # Personal AI nutrition coach conversation
+│   │           ├── weekly_report/    # AI-generated weekly behavioral trends
+│   │           ├── predictive_coaching/ # Habit forecasting and alerts
+│   │           ├── grocery_list/     # Smart grocery shopping organizer
+│   │           ├── health_sync/      # Apple Health & Google Fit integrations
+│   │           ├── family_profiles/  # Multi-profile dependent configuration
+│   │           ├── subscription/     # Subscription tiers & paywall
+│   │           ├── settings/         # App settings & privacy controls
+│   │           └── notifications/    # Push notifications handler
 │   ├── assets/                       # Static images, icons, and logo assets
 │   └── pubspec.yaml
 │
