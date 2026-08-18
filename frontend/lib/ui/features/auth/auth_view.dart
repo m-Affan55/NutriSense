@@ -44,7 +44,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       // Success! Navigate to onboarding
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingChatScreen()),
+        MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
       );
     }
   }

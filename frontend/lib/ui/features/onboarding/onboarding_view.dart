@@ -9,310 +9,369 @@ class OnboardingChatScreen extends StatefulWidget {
 }
 
 class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
-  final List<Map<String, dynamic>> _messages = [];
-  final Map<String, dynamic> _healthProfile = {};
-  
-  int _currentQuestionIndex = 0;
-  bool _isTyping = false;
-  final TextEditingController _textController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  final int _totalPages = 6;
 
-  final List<Map<String, dynamic>> _questions = [
-    {"key": "full_name", "type": "text", "text": "Assalam-o-Alaikum! I'm Zara, your personal nutrition guide 🌿 Let's set up your profile. What's your name?"},
-    {"key": "age", "type": "number", "text": "Nice to meet you, {name}! How old are you?"},
-    {"key": "gender", "type": "choice", "text": "What's your gender?", "options": ["Male", "Female", "Other"]},
-    {"key": "weight_kg", "type": "number", "text": "What's your current weight in kilograms? (e.g. 70)"},
-    {"key": "height_cm", "type": "number", "text": "And your height in centimeters? (e.g. 170)"},
-    {"key": "goal", "type": "choice", "text": "Great! What's your main health goal?", "options": ["🔥 Lose Fat", "💪 Gain Muscle", "⚖️ Maintenance"]},
-    {"key": "activity_level", "type": "choice", "text": "How active are you on a typical day?", "options": ["🛋️ Sedentary", "🚶 Lightly Active", "🏃 Moderately Active", "🏋️ Very Active"]},
-    {"key": "medical_conditions", "type": "multi_select", "text": "Do you have any of these medical conditions? (Select all that apply)", "options": ["Diabetes", "Hypertension", "IBS", "Heart Disease", "None"]},
-    {"key": "dietary_restrictions", "type": "multi_select", "text": "Any dietary restrictions?", "options": ["Halal Only", "Vegetarian", "Lactose-Free", "Gluten-Free", "None"]},
-    {"key": "daily_budget_pkr", "type": "number", "text": "What's your daily food budget? (in PKR, e.g. 500)"},
-    {"key": "done", "type": "done", "text": "Perfect! I have everything I need to build your personalized plan. Let me calculate your targets now... ✨"},
+  // Data
+  String? _goal;
+  String? _gender;
+  double _age = 25;
+  double _heightCm = 170;
+  double _weightKg = 70;
+  double _targetWeightKg = 65;
+  String? _activityLevel;
+  List<String> _healthConditions = [];
+  String? _dietaryPreference;
+  String? _budget;
+
+  // Constants based on user prompt
+  final List<String> _goals = [
+    'Lose weight / Fat loss',
+    'Gain muscle / Bulk',
+    'Maintain weight & stay healthy',
+    'Manage diabetes / blood sugar',
+    'General wellness / Just eat better',
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _askNextQuestion();
-  }
+  final List<String> _genders = ['Male', 'Female', 'Other'];
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
+  final List<String> _activityLevels = [
+    'Sedentary (mostly sitting)',
+    'Lightly active',
+    'Moderately active',
+    'Very active',
+  ];
 
-  Future<void> _askNextQuestion() async {
-    if (_currentQuestionIndex >= _questions.length) return;
+  final List<String> _conditionsOptions = [
+    'Diabetes / High blood sugar',
+    'High blood pressure',
+    'Heart-related issues',
+    'IBS or digestive problems',
+    'Food allergies',
+    'None',
+  ];
 
-    setState(() {
-      _isTyping = true;
-    });
-    
-    _scrollToBottom();
-    
-    // Simulate typing delay
-    await Future.delayed(const Duration(milliseconds: 800));
+  final List<String> _dietaryOptions = [
+    'No restriction',
+    'Vegetarian',
+    'Halal only',
+    'Vegan',
+    'Other',
+  ];
 
-    if (!mounted) return;
+  final List<String> _budgetOptions = [
+    'Under 1500 PKR',
+    '1500 – 3000 PKR',
+    '3000 – 5000 PKR',
+    'Flexible / No strict limit',
+  ];
 
-    final q = _questions[_currentQuestionIndex];
-    String text = q['text'];
-    
-    if (text.contains("{name}")) {
-      text = text.replaceAll("{name}", _healthProfile['full_name'] ?? '');
+  void _nextPage() {
+    if (_currentPage < _totalPages - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      // Done, navigate to dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
     }
-
-    setState(() {
-      _isTyping = false;
-      _messages.add({"role": "bot", "text": text});
-    });
-    
-    _scrollToBottom();
-
-    if (q['type'] == 'done') {
-      // Simulate loading and navigate
-      await Future.delayed(const Duration(seconds: 2));
-      print("Final Profile: $_healthProfile"); // For testing
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        );
-      }
-    }
-  }
-
-  void _handleUserResponse(dynamic response, String displayText) {
-    final currentQ = _questions[_currentQuestionIndex];
-    _healthProfile[currentQ['key']] = response;
-
-    setState(() {
-      _messages.add({"role": "user", "text": displayText});
-      _currentQuestionIndex++;
-      _textController.clear();
-    });
-
-    _askNextQuestion();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
+      body: SafeArea(
+        child: Column(
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.primary,
-              child: const Icon(Icons.smart_toy, size: 20, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            const Text('Zara — Your Nutrition Guide', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length && _isTyping) {
-                  return _buildTypingIndicator(theme);
-                }
-                final msg = _messages[index];
-                return _buildChatBubble(msg['text'], msg['role'] == 'user', theme);
-              },
-            ),
-          ),
-          _buildInputArea(theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator(ThemeData theme) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF161A22),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDot(theme, 0),
-            const SizedBox(width: 4),
-            _buildDot(theme, 200),
-            const SizedBox(width: 4),
-            _buildDot(theme, 400),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDot(ThemeData theme, int delay) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOutSine,
-      builder: (context, value, child) {
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withAlpha((value * 255).toInt()),
-            shape: BoxShape.circle,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildChatBubble(String text, bool isUser, ThemeData theme) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isUser ? null : const Color(0xFF161A22),
-          gradient: isUser ? LinearGradient(
-            colors: [theme.colorScheme.primary, const Color(0xFF00BCD4)],
-          ) : null,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 0),
-            bottomRight: Radius.circular(isUser ? 0 : 20),
-          ),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputArea(ThemeData theme) {
-    if (_currentQuestionIndex >= _questions.length || _isTyping) {
-      return const SizedBox.shrink();
-    }
-
-    final currentQ = _questions[_currentQuestionIndex];
-    final type = currentQ['type'];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161A22),
-        border: Border(top: BorderSide(color: Colors.white.withAlpha(20))),
-      ),
-      child: SafeArea(
-        child: _buildInputForType(type, currentQ, theme),
-      ),
-    );
-  }
-
-  Widget _buildInputForType(String type, Map<String, dynamic> q, ThemeData theme) {
-    if (type == 'text' || type == 'number') {
-      return Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              keyboardType: type == 'number' ? TextInputType.number : TextInputType.text,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Type your answer...',
-                hintStyle: TextStyle(color: Colors.grey.shade600),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: const Color(0xFF0D0F14),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            _buildProgressBar(),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(), // Disable manual swipe
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                children: [
+                  _buildGoalPage(),
+                  _buildGenderPage(),
+                  _buildBodyMetricsPage(),
+                  _buildActivityPage(),
+                  _buildHealthAndDietPage(),
+                  _buildBudgetPage(),
+                ],
               ),
-              onSubmitted: (val) {
-                if (val.trim().isNotEmpty) {
-                  _handleUserResponse(val.trim(), val.trim());
-                }
-              },
+            ),
+            _buildBottomNav(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _currentPage > 0
+                ? () => _pageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    )
+                : null,
+          ),
+          Expanded(
+            child: LinearProgressIndicator(
+              value: (_currentPage + 1) / _totalPages,
+              backgroundColor: Colors.white.withAlpha(20),
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
             ),
           ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.primary,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: () {
-                if (_textController.text.trim().isNotEmpty) {
-                  _handleUserResponse(_textController.text.trim(), _textController.text.trim());
-                }
-              },
-            ),
-          ),
+          const SizedBox(width: 48), // Balance for the back button
         ],
-      );
-    } else if (type == 'choice') {
-      final options = q['options'] as List<String>;
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: options.map((opt) {
-          return ActionChip(
-            label: Text(opt, style: const TextStyle(color: Colors.white)),
-            backgroundColor: const Color(0xFF0D0F14),
-            side: BorderSide(color: theme.colorScheme.primary.withAlpha(50)),
-            onPressed: () => _handleUserResponse(opt, opt),
-          );
-        }).toList(),
-      );
-    } else if (type == 'multi_select') {
-      final options = q['options'] as List<String>;
-      // For simplicity in this demo, just treat as single select that completes the step
-      // In real implementation, this would accumulate selections and have a "Done" button
-      return Column(
-        mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    bool canProceed = false;
+    if (_currentPage == 0 && _goal != null) canProceed = true;
+    if (_currentPage == 1 && _gender != null) canProceed = true;
+    if (_currentPage == 2) canProceed = true; // sliders always have values
+    if (_currentPage == 3 && _activityLevel != null) canProceed = true;
+    if (_currentPage == 4 && _healthConditions.isNotEmpty && _dietaryPreference != null) canProceed = true;
+    if (_currentPage == 5 && _budget != null) canProceed = true;
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: canProceed ? _nextPage : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            disabledBackgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          child: Text(
+            _currentPage == _totalPages - 1 ? 'Finish' : 'Next',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Pages ---
+
+  Widget _buildGoalPage() {
+    return _buildPageWrapper(
+      title: 'What is your main goal right now?',
+      child: Column(
+        children: _goals.map((g) => _buildSelectionCard(
+          text: g,
+          isSelected: _goal == g,
+          onTap: () => setState(() => _goal = g),
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildGenderPage() {
+    return _buildPageWrapper(
+      title: 'What is your gender?',
+      child: Column(
+        children: _genders.map((g) => _buildSelectionCard(
+          text: g,
+          isSelected: _gender == g,
+          onTap: () => setState(() => _gender = g),
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildBodyMetricsPage() {
+    return _buildPageWrapper(
+      title: 'Basic Body Info',
+      child: Column(
+        children: [
+          _buildSliderItem('Age', _age, 10, 100, 'years', (v) => setState(() => _age = v)),
+          _buildSliderItem('Height', _heightCm, 100, 250, 'cm', (v) => setState(() => _heightCm = v)),
+          _buildSliderItem('Current Weight', _weightKg, 30, 200, 'kg', (v) => setState(() => _weightKg = v)),
+          _buildSliderItem('Target Weight', _targetWeightKg, 30, 200, 'kg', (v) => setState(() => _targetWeightKg = v)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityPage() {
+    return _buildPageWrapper(
+      title: 'Activity Level',
+      child: Column(
+        children: _activityLevels.map((a) => _buildSelectionCard(
+          text: a,
+          isSelected: _activityLevel == a,
+          onTap: () => setState(() => _activityLevel = a),
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildHealthAndDietPage() {
+    return _buildPageWrapper(
+      title: 'Health Conditions & Allergies',
+      subtitle: 'Do you have any of these conditions or allergies?',
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: options.map((opt) {
-              return ActionChip(
-                label: Text(opt, style: const TextStyle(color: Colors.white)),
-                backgroundColor: const Color(0xFF0D0F14),
-                side: BorderSide(color: theme.colorScheme.primary.withAlpha(50)),
-                onPressed: () => _handleUserResponse([opt], opt), // Simplified
+            children: _conditionsOptions.map((c) {
+              final isSelected = _healthConditions.contains(c);
+              return ChoiceChip(
+                label: Text(c, style: TextStyle(color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface)),
+                selected: isSelected,
+                selectedColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                backgroundColor: const Color(0xFF161A22),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white.withAlpha(20),
+                  ),
+                ),
+                onSelected: (selected) {
+                  setState(() {
+                    if (c == 'None' && selected) {
+                      _healthConditions = ['None'];
+                    } else {
+                      if (selected) {
+                        _healthConditions.remove('None');
+                        _healthConditions.add(c);
+                      } else {
+                        _healthConditions.remove(c);
+                      }
+                    }
+                  });
+                },
               );
             }).toList(),
           ),
+          const SizedBox(height: 32),
+          Text('Dietary Preference', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          Column(
+            children: _dietaryOptions.map((d) => _buildSelectionCard(
+              text: d,
+              isSelected: _dietaryPreference == d,
+              onTap: () => setState(() => _dietaryPreference = d),
+            )).toList(),
+          ),
         ],
-      );
-    }
-    return const SizedBox.shrink();
+      ),
+    );
+  }
+
+  Widget _buildBudgetPage() {
+    return _buildPageWrapper(
+      title: 'Budget',
+      subtitle: 'What is your approximate weekly food budget?',
+      child: Column(
+        children: _budgetOptions.map((b) => _buildSelectionCard(
+          text: b,
+          isSelected: _budget == b,
+          onTap: () => setState(() => _budget = b),
+        )).toList(),
+      ),
+    );
+  }
+
+  // --- Helpers ---
+
+  Widget _buildPageWrapper({required String title, String? subtitle, required Widget child}) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 16),
+          Text(title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+          if (subtitle != null) ...[
+            const SizedBox(height: 8),
+            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          const SizedBox(height: 32),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionCard({required String text, required bool isSelected, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primary.withAlpha(20) : const Color(0xFF161A22),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white.withAlpha(20),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (isSelected) Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliderItem(String label, double value, double min, double max, String unit, ValueChanged<double> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('${value.toInt()} $unit', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            activeColor: Theme.of(context).colorScheme.primary,
+            inactiveColor: const Color(0xFF161A22),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
   }
 }
