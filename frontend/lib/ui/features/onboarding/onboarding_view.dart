@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../navigation/main_navigation_screen.dart';
 
-class OnboardingChatScreen extends StatefulWidget {
-  const OnboardingChatScreen({super.key});
+class OnboardingWizardScreen extends StatefulWidget {
+  const OnboardingWizardScreen({super.key});
 
   @override
-  State<OnboardingChatScreen> createState() => _OnboardingChatScreenState();
+  State<OnboardingWizardScreen> createState() => _OnboardingWizardScreenState();
 }
 
-class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
+class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   final int _totalPages = 6;
