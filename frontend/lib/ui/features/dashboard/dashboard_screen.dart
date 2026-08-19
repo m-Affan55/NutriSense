@@ -211,6 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             elevation: 0,
             icon: const Icon(Icons.camera_alt, color: Colors.white),
             label: const Text('Scan Meal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
         ),
       ),
       ),

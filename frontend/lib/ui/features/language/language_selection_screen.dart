@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_view.dart';
 
-import '../widgets/animated_particles_background.dart';
+import '../../widgets/animated_particles_background.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key});
@@ -121,6 +121,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               const SizedBox(height: 16),
             ],
         ),
+      ),
       ),
       ),
     );
