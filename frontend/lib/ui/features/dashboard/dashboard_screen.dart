@@ -187,8 +187,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           ),
         ),
       ),
-      floatingActionButton: ScaleTransition(
-        scale: _fabAnimation,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 92.0),
+        child: ScaleTransition(
+          scale: _fabAnimation,
         child: Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -209,8 +211,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             elevation: 0,
             icon: const Icon(Icons.camera_alt, color: Colors.white),
             label: const Text('Scan Meal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
         ),
+      ),
       ),
     );
   }

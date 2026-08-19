@@ -272,10 +272,10 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       title: 'Basic Body Info',
       child: Column(
         children: [
-          _buildSliderItem('Age', _age, 10, 100, 'years', (v) => setState(() => _age = v)),
-          _buildSliderItem('Height', _heightCm, 100, 250, 'cm', (v) => setState(() => _heightCm = v)),
-          _buildSliderItem('Current Weight', _weightKg, 30, 200, 'kg', (v) => setState(() => _weightKg = v)),
-          _buildSliderItem('Target Weight', _targetWeightKg, 30, 200, 'kg', (v) => setState(() => _targetWeightKg = v)),
+          _buildNumberInputItem('Age', _age, 'years', (v) => setState(() => _age = v)),
+          _buildNumberInputItem('Height', _heightCm, 'cm', (v) => setState(() => _heightCm = v)),
+          _buildNumberInputItem('Current Weight', _weightKg, 'kg', (v) => setState(() => _weightKg = v)),
+          _buildNumberInputItem('Target Weight', _targetWeightKg, 'kg', (v) => setState(() => _targetWeightKg = v)),
         ],
       ),
     );
@@ -418,27 +418,39 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     );
   }
 
-  Widget _buildSliderItem(String label, double value, double min, double max, String unit, ValueChanged<double> onChanged) {
+  Widget _buildNumberInputItem(String label, double value, String unit, ValueChanged<double> onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('${value.toInt()} $unit', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
+      child: TextFormField(
+        initialValue: value.toInt().toString(),
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey.shade500),
+          suffixText: unit,
+          suffixStyle: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+          filled: true,
+          fillColor: const Color(0xFF161A22),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withAlpha(20)),
           ),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            activeColor: Theme.of(context).colorScheme.primary,
-            inactiveColor: const Color(0xFF161A22),
-            onChanged: onChanged,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withAlpha(20)),
           ),
-        ],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF00E676)),
+          ),
+        ),
+        onChanged: (val) {
+          final doubleVal = double.tryParse(val);
+          if (doubleVal != null) {
+            onChanged(doubleVal);
+          }
+        },
       ),
     );
   }

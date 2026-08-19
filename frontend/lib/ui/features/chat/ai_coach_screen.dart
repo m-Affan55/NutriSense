@@ -27,7 +27,7 @@ class AiCoachScreen extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.only(left: 12, right: 12, top: 12, bottom: 92),
             decoration: BoxDecoration(
               color: theme.cardColor,
               border: Border(top: BorderSide(color: theme.dividerColor)),

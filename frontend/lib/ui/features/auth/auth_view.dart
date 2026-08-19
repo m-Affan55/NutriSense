@@ -109,8 +109,10 @@ class _AuthScreenState extends State<AuthScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Container(
+          decoration: BoxDecoration(
           color: const Color(0xFF0D0F14),
           gradient: RadialGradient(
             center: const Alignment(0, -0.8),
@@ -335,6 +337,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

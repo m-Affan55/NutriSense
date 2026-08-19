@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_view.dart';
 
+import '../widgets/animated_particles_background.dart';
+
 class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key});
 
@@ -30,7 +32,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      body: SafeArea(
+      body: AnimatedParticlesBackground(
+        child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -117,8 +120,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               ),
               const SizedBox(height: 16),
             ],
-          ),
         ),
+      ),
       ),
     );
   }
