@@ -62,7 +62,7 @@ def create_health_profile(data: OnboardingData):
         db_payload = {
             "user_id": data.user_id,
             "age": data.age,
-            "gender": data.gender,
+            "gender": data.gender.lower(),
             "weight_kg": data.weight_kg,
             "height_cm": data.height_cm,
             "goal": data.goal,
