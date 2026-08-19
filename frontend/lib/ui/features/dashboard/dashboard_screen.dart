@@ -54,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -182,38 +182,49 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ],
                 ),
               ),
-              const SizedBox(height: 80), // Space for FAB
+              const SizedBox(height: 24),
+
+              // Section E: Quick Log Button
+              ScaleTransition(
+                scale: _fabAnimation,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00E676).withAlpha(50),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.camera_alt, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text('Scan Meal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 92.0),
-        child: ScaleTransition(
-          scale: _fabAnimation,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00E676).withAlpha(50),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          child: FloatingActionButton.extended(
-            onPressed: () {},
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            icon: const Icon(Icons.camera_alt, color: Colors.white),
-            label: const Text('Scan Meal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ),
       ),
     );
   }
