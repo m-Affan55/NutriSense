@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 
-void main() {
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
   runApp(const NutriSenseApp());
 }
 
@@ -17,7 +28,7 @@ class NutriSenseApp extends StatefulWidget {
 }
 
 class NutriSenseAppState extends State<NutriSenseApp> {
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   ThemeMode get themeMode => _themeMode;
 
