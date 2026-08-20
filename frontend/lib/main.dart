@@ -17,9 +17,15 @@ Future<void> main() async {
   );
 
   // Initialize and schedule local notifications
-  await ReminderManager.init();
-  await ReminderManager.requestPermissions();
-  await ReminderManager.scheduleAllReminders();
+  // Wrapped in try/catch: a notification permission denial must never crash the app.
+  try {
+    await ReminderManager.init();
+    await ReminderManager.requestPermissions();
+    await ReminderManager.scheduleAllReminders();
+  } catch (e) {
+    // Notification setup failed silently - app continues normally
+    debugPrint('[ReminderManager] Notification init failed: $e');
+  }
 
   runApp(const NutriSenseApp());
 }

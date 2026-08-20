@@ -151,6 +151,46 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                     ),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20, color: Colors.grey),
+                    onPressed: () {
+                      final controller = TextEditingController(text: data['meal_name'] ?? '');
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: const Color(0xFF1E232E),
+                          title: const Text('Correct Food Name', style: TextStyle(color: Colors.white)),
+                          content: TextField(
+                            controller: controller,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'e.g. Beef Siri Paye',
+                              hintStyle: TextStyle(color: Colors.white54),
+                              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (controller.text.isNotEmpty) {
+                                  setDialogState(() {
+                                    data['meal_name'] = controller.text;
+                                    data['recognition_confidence'] = 'high'; // Clear the warning if it exists
+                                  });
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: const Text('Save'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -187,15 +227,8 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                               const Icon(Icons.info_outline, color: Colors.orange),
                               const SizedBox(width: 8),
                               const Expanded(
-                                child: Text('AI is unsure about this food.', style: TextStyle(fontSize: 12)),
+                                child: Text('AI is unsure about this food. Tap the pencil icon above to correct it.', style: TextStyle(fontSize: 12)),
                               ),
-                              TextButton.icon(
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Correct this'),
-                                onPressed: () {
-                                  CustomToast.show(context, 'Edit mode activated (Demo)', isError: false);
-                                },
-                              )
                             ],
                           ),
                         ),

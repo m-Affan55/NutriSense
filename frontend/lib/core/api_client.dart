@@ -8,8 +8,9 @@ class ApiClient {
     }
     
     if (Platform.isAndroid) {
-      // Android Emulator uses 10.0.2.2 to connect to host's localhost
-      return 'http://10.0.2.2:8000/api/v1';
+      // Changed to 127.0.0.1 for physical phone testing via `adb reverse`
+      // (Revert to 10.0.2.2 if you ever go back to using the Android Emulator)
+      return 'http://127.0.0.1:8000/api/v1';
     }
     
     // Desktop (Windows/macOS/Linux) or iOS Simulator
