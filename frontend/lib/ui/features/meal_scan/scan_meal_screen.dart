@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 
@@ -18,6 +19,20 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
   File? _selectedImage;
+  String _language = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _language = prefs.getString('language') ?? 'en';
+    });
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -157,6 +172,33 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           ),
                         ),
                       const SizedBox(height: 16),
+                      
+                      if (data['recognition_confidence'] == 'low')
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withAlpha(30),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.withAlpha(100)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.orange),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text('AI is unsure about this food.', style: TextStyle(fontSize: 12)),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.edit, size: 16),
+                                label: const Text('Correct this'),
+                                onPressed: () {
+                                  CustomToast.show(context, 'Edit mode activated (Demo)', isError: false);
+                                },
+                              )
+                            ],
+                          ),
+                        ),
 
                       // Meal Type Selector
                       const Text(
@@ -250,9 +292,13 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
+                          final displayName = _language == 'ur' && item['local_name'] != null 
+                              ? item['local_name'] 
+                              : item['name'] ?? 'Ingredient';
+
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: Text(item['name'] ?? 'Ingredient', style: const TextStyle(fontWeight: FontWeight.w500)),
+                            title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
                             subtitle: Text('${item['estimated_weight_g']}g • ${item['calories']} kcal'),
                             trailing: Text(
                               'P:${item['protein_g']}g F:${item['fat_g']}g C:${item['carbs_g']}g',

@@ -105,6 +105,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
       final data = jsonDecode(response.body);
       final reply = data['response'] ?? 'Sorry, I encountered an issue parsing the reply.';
+      final escalationAlert = data['escalation_alert'];
 
       if (mounted) {
         setState(() {
@@ -113,6 +114,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
             'text': reply,
             'isUser': false,
             'time': _formatTime(DateTime.now()),
+            'escalationAlert': escalationAlert,
           });
           _isTyping = false;
         });
@@ -240,6 +242,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                       time: msg['time'],
                       isUser: msg['isUser'],
                       theme: theme,
+                      escalationAlert: msg['escalationAlert'],
                     );
                   },
                 ),
@@ -314,6 +317,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
     required String time,
     required bool isUser,
     required ThemeData theme,
+    Map<String, dynamic>? escalationAlert,
   }) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -370,6 +374,72 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                 height: 1.4,
               ),
             ),
+            if (escalationAlert != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade900.withAlpha(50),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade600.withAlpha(100)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          escalationAlert['level'] == 'critical' 
+                              ? Icons.warning_rounded 
+                              : Icons.info_outline,
+                          color: Colors.amber.shade400,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Safety Alert',
+                          style: TextStyle(
+                            color: Colors.amber.shade400,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      escalationAlert['message'] ?? '',
+                      style: TextStyle(
+                        color: Colors.amber.shade100,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    if (escalationAlert['show_doctor_button'] == true) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: Icon(Icons.local_hospital, size: 16, color: Colors.amber.shade200),
+                          label: Text(
+                            'Find Affordable Care',
+                            style: TextStyle(color: Colors.amber.shade200, fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.amber.shade600.withAlpha(100)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () {
+                            CustomToast.show(context, 'Doctor Finder launching soon...', isError: false);
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

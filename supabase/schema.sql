@@ -131,3 +131,21 @@ CREATE POLICY "Users can manage their own water logs"
 CREATE POLICY "Users can manage their own chat history" 
     ON public.chat_history FOR ALL 
     USING (auth.uid() = user_id);
+
+-- 6. Risk Flags Table
+CREATE TABLE public.risk_flags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    level TEXT CHECK (level IN ('warning', 'critical')),
+    message TEXT,
+    coach_reply TEXT,
+    is_resolved BOOLEAN DEFAULT false
+);
+COMMENT ON TABLE public.risk_flags IS 'Stores AI-detected health risks needing escalation';
+
+ALTER TABLE public.risk_flags ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own risk flags" 
+    ON public.risk_flags FOR ALL 
+    USING (auth.uid() = user_id);
