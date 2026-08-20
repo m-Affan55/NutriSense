@@ -1,23 +1,28 @@
-# Update Password & Interactive Macro Charts Walkthrough
+# Advanced Hydration Selector & Local Push Reminders Walkthrough
 
-We have successfully implemented the password update flow and the daily nutritional trend charting widget:
+We have successfully implemented the advanced hydration logging dialog and automated local push notifications:
 
 ## What Was Added
 
-### 1. Update Password Screen ([update_password_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/auth/update_password_screen.dart))
-- **Interface**: Designed a password reset screen matching the radial dark green theme.
-- **Form validation**: Fields validating that passwords match and have a length of 8+ characters.
-- **Supabase Integration**: Calls `supabase.auth.updateUser()` with the new password.
-- **Settings integration**: Integrated a **Change Password** option inside the profile settings panel ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart)) with Urdu localization strings.
+### 1. Advanced Hydration Selector ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- **Options sheet**: Upgraded the quick-add water button to present a bottom sheet selection with standard icons:
+  - Glass (250 ml)
+  - Small Bottle (500 ml)
+  - Large Bottle (750 ml)
+  - Container (1 Liter)
+  - Custom amount entry field (allows entering a custom numerical value in ml).
+- **Localization**: Localized the titles, choices, and input actions for English and Urdu (اردو).
+- **Supabase logging**: Inserts the selected water amount log directly to Supabase and instantly updates progress rings on the dashboard.
 
-### 2. Interactive Macro Trend Chart ([macro_trend_chart.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/macro_trend_chart.dart))
-- **Custom Painting**: Created a custom-painted bar chart matching the dark-mode theme to draw daily consumed statistics for the last 7 days.
-- **Toggles**: Users can toggle between **Calories** and **Macros** views.
-- **Target indicators**:
-  - Calorie view displays a dashed horizontal line indicating the daily calorie target limit.
-  - Macros view renders grouped, color-coded bars side-by-side (Red for Protein, Blue for Carbs, Amber for Fats).
-- **Interactivity**: Built touch-coordinate hit testing to highlight selected days and display a bottom drawer container with exact numeric values (e.g. `120g / 150g` protein intake).
-- **Integration**: Placed the chart container above the AI summary text card in the [WeeklyReportScreen](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/weekly_report_screen.dart).
+### 2. Local Push Reminders ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
+- **Notification channel**: Initialized `flutter_local_notifications` with channel attributes for Android and iOS systems.
+- **Auto-scheduling**: Set up automated timezone-aware daily recurring notifications for:
+  - *Breakfast Reminder* at 9:00 AM.
+  - *Lunch Reminder* at 1:30 PM.
+  - *Dinner Reminder* at 8:30 PM.
+  - *Hydration Reminders* recurring at intervals throughout the day (11:00 AM, 3:00 PM, 6:00 PM, 9:00 PM).
+- **Permission triggers**: Integrated automated permission authorization requests upon app launch inside the entry hook ([main.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/main.dart)).
+- **v22 API Alignment**: Restructured `zonedSchedule` arguments to named parameters and removed deprecated options to comply with the latest package updates.
 
 ---
 

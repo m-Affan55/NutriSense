@@ -152,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     }
   }
 
-  Future<void> _logWater250ml() async {
+  Future<void> _logWater(int ml) async {
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -160,13 +160,130 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
       await supabase.from('water_logs').insert({
         'user_id': user.id,
-        'amount_ml': 250,
+        'amount_ml': ml,
       });
 
       await _loadData();
     } catch (e) {
       debugPrint('Error logging water: $e');
     }
+  }
+
+  void _showHydrationSelector() {
+    final theme = Theme.of(context);
+    final customController = TextEditingController();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161A22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        final title = _language == 'ur' ? 'پانی کی مقدار لاگ کریں' : 'Log Water Intake';
+        final glass = _language == 'ur' ? 'گلاس (250 ملی لیٹر)' : 'Glass (250 ml)';
+        final sBottle = _language == 'ur' ? 'چھوٹی بوتل (500 ملی لیٹر)' : 'Small Bottle (500 ml)';
+        final lBottle = _language == 'ur' ? 'بڑی بوتل (750 ملی لیٹر)' : 'Large Bottle (750 ml)';
+        final container = _language == 'ur' ? 'کنٹینر (1 لیٹر)' : 'Container (1 Liter)';
+        final custom = _language == 'ur' ? 'کسٹم مقدار (ملی لیٹر)' : 'Custom Amount (ml)';
+        final logBtn = _language == 'ur' ? 'لاگ کریں' : 'Log';
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                  top: 20.0,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        leading: const Icon(Icons.local_drink, color: Color(0xFF26C6DA)),
+                        title: Text(glass, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _logWater(250);
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.water_drop, color: Color(0xFF0288D1)),
+                        title: Text(sBottle, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _logWater(500);
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.water_drop_outlined, color: Colors.blueAccent),
+                        title: Text(lBottle, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _logWater(750);
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.opacity, color: Colors.indigoAccent),
+                        title: Text(container, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _logWater(1000);
+                        },
+                      ),
+                      const Divider(color: Colors.white10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: customController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: custom,
+                                hintStyle: const TextStyle(color: Colors.white30),
+                                border: const UnderlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              final amount = int.tryParse(customController.text);
+                              if (amount != null && amount > 0) {
+                                Navigator.pop(sheetContext);
+                                _logWater(amount);
+                              }
+                            },
+                            child: Text(logBtn),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showAddMealOptions() {
@@ -504,7 +621,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                 const SizedBox(width: 8),
                                 IconButton(
                                   icon: const Icon(Icons.add_circle, color: Color(0xFF0288D1), size: 28),
-                                  onPressed: _logWater250ml,
+                                  onPressed: _showHydrationSelector,
                                 ),
                               ],
                             ),
