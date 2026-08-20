@@ -70,6 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 .maybeSingle();
                 
             if (profileResponse != null) {
+              if (!mounted) return;
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
               );
@@ -77,6 +78,7 @@ class _AuthScreenState extends State<AuthScreen> {
             }
           }
           
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
           );

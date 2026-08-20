@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../../../main.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -147,36 +146,78 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               _buildMealCard(context, 'Lunch', 'Chicken Karahi', '520 kcal', Icons.wb_sunny),
               const SizedBox(height: 32),
 
-              // Section D: Hydration Strip
+              // Section D: Hydration Card
               Text("Hydration", style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Container(
-                height: 64,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF161A22),
-                  borderRadius: BorderRadius.circular(32),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withAlpha(15)),
                 ),
-                child: Stack(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FractionallySizedBox(
-                      widthFactor: 750 / 2500,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF0288D1), Color(0xFF26C6DA)],
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0288D1).withAlpha(30),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.water_drop, color: Color(0xFF26C6DA), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '750 ml logged',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Goal: 2,500 ml',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white.withAlpha(150),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
+                        Text(
+                          '30%',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF26C6DA),
+                          ),
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.water_drop, color: Colors.white),
-                          const SizedBox(width: 12),
-                          Text('750 ml · 2,500 ml goal', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ],
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        height: 10,
+                        width: double.infinity,
+                        color: Colors.white.withAlpha(15),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: 750 / 2500,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF0288D1), Color(0xFF26C6DA)],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],

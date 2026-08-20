@@ -88,7 +88,7 @@ class _AnimatedParticlesBackgroundState extends State<AnimatedParticlesBackgroun
       children: [
         ValueListenableBuilder<int>(
           valueListenable: _tickNotifier,
-          builder: (context, _, __) {
+          builder: (context, _, child) {
             return CustomPaint(
               size: Size.infinite,
               painter: ParticlePainter(particles: _particles),
@@ -110,7 +110,7 @@ class ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (var particle in particles) {
       final paint = Paint()
-        ..color = const Color(0xFF00E676).withOpacity(particle.opacity) // primary green
+        ..color = const Color(0xFF00E676).withAlpha((particle.opacity * 255).round()) // primary green
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20); // softly glowing bokeh effect
 
       canvas.drawCircle(Offset(particle.x, particle.y), particle.radius, paint);
