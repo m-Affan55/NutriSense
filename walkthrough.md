@@ -1,17 +1,17 @@
-# Gemini Performance & Latency Walkthrough
+# Forgot Password & Google OAuth Sign-In Walkthrough
 
-We have successfully resolved the response latency issues on both the AI Coach and Weekly Report screens:
+We have successfully implemented the Forgot Password flow and Google Sign-In:
 
-## What Was Resolved
+## What Was Added
 
-### 1. Root Cause Analysis
-- **Problem**: The backend was utilizing the `client.interactions.create` endpoint to handle conversation history and report compilation. The Interactions API invokes a complex multi-agent execution pipeline which introduces significant overhead, causing simple queries to take **upwards of 38-40 seconds** to respond.
-- **Solution**: We refactored all endpoints to query `client.models.generate_content` directly with `gemini-3.6-flash`. Direct content generation completes execution in **under 1.5 - 2 seconds** (a **40x speed increase**), delivering near-instant responses to the user.
+### 1. Forgot Password Screen ([forgot_password_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/auth/forgot_password_view.dart))
+- **Interface**: Designed a beautiful recovery screen matching the dark-themed radial gradient styling.
+- **Supabase Reset**: Integrates `Supabase.instance.client.auth.resetPasswordForEmail` to send a reset password link to the specified email address.
+- **Urdu translation**: Supported translating all instructions, emails, buttons, and alert messages based on locale preference.
 
-### 2. Refactored Backend Files
-- [gemini_service.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/services/gemini_service.py): Changed the camera meal scanner to use direct `models.generate_content` with structured output schemas.
-- [coach.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/coach.py): Swapped interactions for `models.generate_content` using the `GenerateContentConfig(system_instruction=...)` configuration wrapper to maintain health profile context.
-- [meals.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/meals.py): Swapped interactions for direct `models.generate_content` with JSON mime-type config on the weekly report compiler.
+### 2. Login Screen Integration ([auth_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/auth/auth_view.dart))
+- **Navigation link**: Wired the "Forgot Password?" button on the login screen to push to the new recovery form screen.
+- **Google OAuth**: Wired the "Continue with Google" button to call Supabase's `signInWithOAuth` method using the standard Google OAuth provider and redirect callbacks.
 
 ---
 

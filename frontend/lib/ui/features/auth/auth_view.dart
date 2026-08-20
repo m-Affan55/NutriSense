@@ -4,6 +4,7 @@ import '../onboarding/onboarding_view.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'forgot_password_view.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -99,6 +100,25 @@ class _AuthScreenState extends State<AuthScreen> {
         CustomToast.show(context, e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.nutrisense://login-callback/',
+      );
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -275,7 +295,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
                         child: Text('Forgot Password?', style: TextStyle(color: theme.colorScheme.primary)),
                       ),
                     ),
@@ -321,7 +345,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 32),
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: _signInWithGoogle,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(color: Colors.white.withAlpha(40)),
