@@ -210,7 +210,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   // Log meal to Supabase
                   try {
                     final user = Supabase.instance.client.auth.currentUser;
-                    await Supabase.instance.client.table('meals').insert({
+                    await Supabase.instance.client.from('meal_logs').insert({
                       'user_id': user!.id,
                       'meal_type': selectedMealType,
                       'name': product['product_name'] ?? 'Packaged Food',
