@@ -367,7 +367,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   String _t(String key) {
     final translations = {
       'en': {
-        'greeting': 'Good Morning, $_userName 👋',
+        'greeting': 'Good Morning, $_userName',
         'todayMeals': 'Today\'s Meals',
         'addMeal': 'Add Meal',
         'noMeals': 'No meals logged today. Use Scan Meal to log!',
@@ -382,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         'kcal': 'kcal',
       },
       'ur': {
-        'greeting': 'صبح بخیر، $_userName 👋',
+        'greeting': 'صبح بخیر، $_userName',
         'todayMeals': 'آج کی غذائیں',
         'addMeal': 'غذا شامل کریں',
         'noMeals': 'آج کوئی غذا شامل نہیں کی گئی۔ لاگ کرنے کے لیے غذا اسکین کریں!',
@@ -457,10 +457,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                 shape: BoxShape.circle,
                                 border: Border.all(color: theme.colorScheme.primary, width: 2),
                               ),
-                              child: const CircleAvatar(
+                              child: CircleAvatar(
                                 radius: 20,
-                                backgroundColor: Colors.grey,
-                                child: Icon(Icons.person, color: Colors.white),
+                                backgroundColor: theme.colorScheme.primary.withAlpha(30),
+                                child: Icon(Icons.person, color: theme.colorScheme.primary),
                               ),
                             ),
                           ),

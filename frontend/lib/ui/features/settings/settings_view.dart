@@ -159,61 +159,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final pdfDoc = pw.Document();
       
       pdfDoc.addPage(
-        pw.Page(
+        pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
           build: (pw.Context context) {
-            return pw.Container(
-              padding: const pw.EdgeInsets.all(24),
-              child: pw.Column(
+            pw.Widget pdfMetric(String label, String value) {
+              return pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Center(
-                    child: pw.Text('NUTRISENSE HEALTH RECEIPT', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                  ),
-                  pw.SizedBox(height: 12),
-                  pw.Divider(),
-                  pw.SizedBox(height: 12),
-                  pw.Text('Report Generated At: ${DateTime.now().toLocal()}'),
-                  pw.Text('User Account ID: ${user.id}'),
-                  pw.Text('User Email: ${user.email}'),
-                  pw.SizedBox(height: 20),
-                  pw.Text('HEALTH TARGETS', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 8),
-                  if (profile != null) ...[
-                    pw.Text('Age: ${profile['age']} years'),
-                    pw.Text('Weight: ${profile['weight_kg']} kg'),
-                    pw.Text('Height: ${profile['height_cm']} cm'),
-                    pw.Text('Goal: ${profile['goal'].toString().toUpperCase()}'),
-                    pw.Text('Daily Calorie Target: ${profile['daily_calorie_target']} kcal'),
-                    pw.Text('Daily Budget: ${profile['daily_budget_pkr']} PKR'),
-                    pw.Text('Medical Conditions: ${profile['medical_conditions'] ?? 'None'}'),
-                    pw.Text('Dietary Restrictions: ${profile['dietary_restrictions'] ?? 'None'}'),
+                  pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey400)),
+                  pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                ],
+              );
+            }
+
+            return [
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: const pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFF0D0F14),
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('NUTRISENSE', style: pw.TextStyle(fontSize: 22, color: PdfColor.fromInt(0xFF00E676), fontWeight: pw.FontWeight.bold)),
+                    pw.Text('HEALTH STATEMENT', style: pw.TextStyle(fontSize: 12, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
                   ],
-                  pw.SizedBox(height: 20),
-                  pw.Text('MEAL LOG DETAILS', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 8),
-                  pw.TableHelper.fromTextArray(
-                    headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
-                    data: meals.map((m) => [
-                      m['notes'] ?? 'Meal',
-                      m['meal_type'] ?? 'unknown',
-                      '${m['total_calories'] ?? 0}',
-                      m['logged_at'].toString().substring(0, 10),
-                    ]).toList(),
-                  ),
-                  pw.SizedBox(height: 20),
-                  pw.Text('HYDRATION LOG DETAILS', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 8),
-                  pw.TableHelper.fromTextArray(
-                    headers: ['Hydration Amount', 'Logged Date'],
-                    data: water.map((w) => [
-                      '${w['amount_ml']} ml',
-                      w['logged_at'].toString().substring(0, 10),
-                    ]).toList(),
-                  ),
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Generated At: ${DateTime.now().toLocal().toString().substring(0, 19)}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                  pw.Text('User Email: ${user.email}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                 ],
               ),
-            );
+              pw.SizedBox(height: 20),
+              
+              // Health targets card
+              pw.Container(
+                padding: const pw.EdgeInsets.all(16),
+                decoration: const pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFF161A22),
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('HEALTH TARGETS & PROFILE', style: pw.TextStyle(fontSize: 11, color: PdfColor.fromInt(0xFF00E676), fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 12),
+                    if (profile != null) ...[
+                      pw.GridView(
+                        crossAxisCount: 2,
+                        childAspectRatio: 6,
+                        children: [
+                          pdfMetric('Age', '${profile['age']} years'),
+                          pdfMetric('Weight', '${profile['weight_kg']} kg'),
+                          pdfMetric('Height', '${profile['height_cm']} cm'),
+                          pdfMetric('Goal', profile['goal'].toString().replaceAll('_', ' ').toUpperCase()),
+                          pdfMetric('Calorie Target', '${profile['daily_calorie_target']} kcal'),
+                          pdfMetric('Daily Food Budget', '${profile['daily_budget_pkr']} PKR'),
+                        ],
+                      ),
+                      pw.SizedBox(height: 10),
+                      pw.Divider(color: PdfColors.grey700),
+                      pw.SizedBox(height: 6),
+                      pw.Text('Medical Conditions: ${profile['medical_conditions'] != null ? (profile['medical_conditions'] as List).join(", ") : "None"}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.white)),
+                      pw.Text('Dietary Restrictions: ${profile['dietary_restrictions'] != null ? (profile['dietary_restrictions'] as List).join(", ") : "None"}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.white)),
+                    ],
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 24),
+              
+              // Meal log section
+              pw.Text('MEAL LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
+              pw.SizedBox(height: 8),
+              pw.TableHelper.fromTextArray(
+                headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
+                data: meals.map((m) => [
+                  m['notes'] ?? 'Meal',
+                  m['meal_type'] ?? 'unknown',
+                  '${m['total_calories'] ?? 0}',
+                  m['logged_at'].toString().substring(0, 10),
+                ]).toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                cellAlignment: pw.Alignment.centerLeft,
+                rowDecoration: const pw.BoxDecoration(
+                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                ),
+              ),
+              pw.SizedBox(height: 24),
+              
+              // Hydration log section
+              pw.Text('HYDRATION LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
+              pw.SizedBox(height: 8),
+              pw.TableHelper.fromTextArray(
+                headers: ['Hydration Amount', 'Logged Date'],
+                data: water.map((w) => [
+                  '${w['amount_ml']} ml',
+                  w['logged_at'].toString().substring(0, 10),
+                ]).toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                cellAlignment: pw.Alignment.centerLeft,
+                rowDecoration: const pw.BoxDecoration(
+                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                ),
+              ),
+            ];
           },
         ),
       );
@@ -375,11 +432,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_t('title')),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+      body: Container(
+        height: double.infinity,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D0F14),
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.8),
+            radius: 1.2,
+            colors: [
+              theme.colorScheme.primary.withAlpha(20),
+              const Color(0xFF0D0F14),
+            ],
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -507,21 +580,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: _isSaving ? null : _exportPdfReceipt,
                     ),
                     ListTile(
-                      leading: const Icon(Icons.delete_forever, color: Colors.red),
-                      title: Text(_t('delete'), style: const TextStyle(color: Colors.red)),
+                      leading: const Icon(Icons.delete_forever, color: Color(0xFFFFD700)),
+                      title: Text(_t('delete'), style: const TextStyle(color: Colors.white)),
                       subtitle: Text(_t('deleteSub')),
                       onTap: _isSaving ? null : _deleteAccount,
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: Colors.redAccent),
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        icon: const Icon(Icons.logout, color: Colors.redAccent),
-                        label: Text(_t('logout'), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.logout),
+                        label: Text(_t('logout'), style: const TextStyle(fontWeight: FontWeight.bold)),
                         onPressed: _isSaving ? null : _logout,
                       ),
                     ),
@@ -530,6 +605,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+      ),
     );
   }
 }

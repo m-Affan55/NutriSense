@@ -1,28 +1,22 @@
-# Advanced Hydration Selector & Local Push Reminders Walkthrough
+# Formatting & Polish Updates Walkthrough
 
-We have successfully implemented the advanced hydration logging dialog and automated local push notifications:
+We have successfully polished the greeting, settings trigger, and PDF receipt formatting:
 
-## What Was Added
+## What Was Updated
 
-### 1. Advanced Hydration Selector ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
-- **Options sheet**: Upgraded the quick-add water button to present a bottom sheet selection with standard icons:
-  - Glass (250 ml)
-  - Small Bottle (500 ml)
-  - Large Bottle (750 ml)
-  - Container (1 Liter)
-  - Custom amount entry field (allows entering a custom numerical value in ml).
-- **Localization**: Localized the titles, choices, and input actions for English and Urdu (اردو).
-- **Supabase logging**: Inserts the selected water amount log directly to Supabase and instantly updates progress rings on the dashboard.
+### 1. Dashboard Greeting Emoji Removal ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- Removed the waving hand emoji (`👋`) from both the English ("Good Morning, [Name]") and Urdu ("صبح بخیر، [Name]") greeting translations inside the locale mapper.
 
-### 2. Local Push Reminders ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
-- **Notification channel**: Initialized `flutter_local_notifications` with channel attributes for Android and iOS systems.
-- **Auto-scheduling**: Set up automated timezone-aware daily recurring notifications for:
-  - *Breakfast Reminder* at 9:00 AM.
-  - *Lunch Reminder* at 1:30 PM.
-  - *Dinner Reminder* at 8:30 PM.
-  - *Hydration Reminders* recurring at intervals throughout the day (11:00 AM, 3:00 PM, 6:00 PM, 9:00 PM).
-- **Permission triggers**: Integrated automated permission authorization requests upon app launch inside the entry hook ([main.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/main.dart)).
-- **v22 API Alignment**: Restructured `zonedSchedule` arguments to named parameters and removed deprecated options to comply with the latest package updates.
+### 2. Green Settings Profile Trigger ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- Styled the circular settings profile avatar at the top of the screen to use the app's brand green theme:
+  - Background color is now `theme.colorScheme.primary.withAlpha(30)`.
+  - Icon color is now `theme.colorScheme.primary` (brand green).
+
+### 3. Beautiful PDF Document Redesign ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart))
+- **Multi-Page Layout**: Replaced the static single `pw.Page` with `pw.MultiPage` to elegantly auto-generate page breaks if logged table data grows.
+- **Brand Colors**: Applied the app's dark background (`#0D0F14` & `#161A22`) and primary green (`#00E676`) accent details to all headers, targets, and grid fields.
+- **Metrics Card**: Enclosed the user's physiological goals and target logs inside a rounded card structure with mini label headings.
+- **Table Styling**: Structured logs into clean tables with dark headers, white text, and light grid underlines.
 
 ---
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -6,6 +8,11 @@ class ReminderManager {
   static final _notifications = FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
+    // Return early if not on a mobile platform (e.g., Windows desktop or Web)
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      return;
+    }
+
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -26,6 +33,10 @@ class ReminderManager {
   }
 
   static Future<void> requestPermissions() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      return;
+    }
+
     final androidImplementation =
         _notifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -149,10 +160,16 @@ class ReminderManager {
   }
 
   static Future<void> cancelAllReminders() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      return;
+    }
     await _notifications.cancelAll();
   }
 
   static Future<void> scheduleAllReminders() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      return;
+    }
     await cancelAllReminders();
     await scheduleDailyBreakfastReminder();
     await scheduleDailyLunchReminder();
