@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/custom_toast.dart';
 
 class ScanMealScreen extends StatefulWidget {
   const ScanMealScreen({super.key});
@@ -32,11 +33,10 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
           debugPrint('Camera not supported on this platform, falling back to gallery: $e');
           // Inform the user
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Camera capture not supported on this platform. Selecting from gallery instead.'),
-                duration: Duration(seconds: 3),
-              ),
+            CustomToast.show(
+              context,
+              'Camera capture not supported on this platform. Selecting from gallery instead.',
+              isError: false,
             );
           }
           image = await _picker.pickImage(
@@ -58,9 +58,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       await _uploadAndScanImage();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error selecting image: ${e.toString()}')),
-        );
+        CustomToast.show(context, 'Error selecting image: ${e.toString()}');
       }
     }
   }
@@ -100,9 +98,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Plate analysis failed: ${e.toString()}')),
-        );
+        CustomToast.show(context, 'Plate analysis failed: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -356,21 +352,11 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       await supabase.from('meal_logs').insert(payload);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meal logged successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        CustomToast.show(context, 'Meal logged successfully!', isError: false);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save meal: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomToast.show(context, 'Failed to save meal: ${e.toString()}');
       }
     } finally {
       if (mounted) {

@@ -1,6 +1,7 @@
 import base64
 import json
 from google import genai
+from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
 
@@ -31,25 +32,23 @@ class GeminiService:
         5. Provide helpful coaching suggestions matching their goal (e.g. fat loss, muscle gain).
         """
         
-        interaction = client.interactions.create(
-            model="gemini-3.6-flash",
-            input=[
-                prompt,
-                {
-                    "type": "image",
-                    "data": base64.b64encode(image_bytes).decode('utf-8'),
-                    "mime_type": mime_type
-                }
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=[
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=mime_type
+                ),
+                prompt
             ],
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": MealScanResponse.model_json_schema(),
-            },
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=MealScanResponse,
+            ),
         )
         
         try:
-            return json.loads(interaction.output_text)
+            return json.loads(response.text)
         except Exception as e:
             return {
                 "meal_name": "Scanned Meal",

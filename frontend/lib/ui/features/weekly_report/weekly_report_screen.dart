@@ -1,61 +1,206 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/api_client.dart';
+import '../../../shared/widgets/custom_toast.dart';
 
-class WeeklyReportScreen extends StatelessWidget {
+class WeeklyReportScreen extends StatefulWidget {
   const WeeklyReportScreen({super.key});
+
+  @override
+  State<WeeklyReportScreen> createState() => _WeeklyReportScreenState();
+}
+
+class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
+  bool _isLoading = true;
+  String _language = 'en';
+
+  String _summary = '';
+  int _healthScore = 0;
+  int _daysAdhered = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReport();
+  }
+
+  Future<void> _loadReport() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _language = prefs.getString('language') ?? 'en';
+
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/weekly-report?user_id=${user.id}');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _summary = data['weekly_summary'] ?? '';
+          _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
+          _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
+        });
+      } else {
+        throw Exception('Server error: ${response.body}');
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, 'Failed to fetch weekly report: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final title = _language == 'ur' ? 'اے آئی ہفتہ وار رپورٹ' : 'AI Weekly Report';
+    final headerTitle = _language == 'ur' ? 'ہفتہ وار رپورٹ کے تجزیات' : 'Weekly Summary Insights';
+    final historyTitle = _language == 'ur' ? 'سابقہ ہسٹری' : 'History';
+    
+    final scoreLabel = _language == 'ur' ? 'ہیلتھ سکور' : 'Health Score';
+    final adherenceLabel = _language == 'ur' ? 'اہداف کی تعمیل' : 'Goals Adherence';
+    final daysText = _language == 'ur' ? '$_daysAdhered میں سے 7 دن' : '$_daysAdhered out of 7 days';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Weekly Report'),
+        title: Text(title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadReport,
+          )
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              color: theme.colorScheme.primary.withAlpha(20),
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadReport,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Metrics Row
                     Row(
                       children: [
-                        Icon(Icons.star, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Weekly Summary Insights',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
+                        Expanded(
+                          child: Card(
+                            color: theme.colorScheme.primary.withAlpha(15),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  Text(scoreLabel, style: theme.textTheme.bodyMedium),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$_healthScore%',
+                                    style: theme.textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Card(
+                            color: const Color(0xFF161A22),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  Text(adherenceLabel, style: theme.textTheme.bodyMedium),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    daysText,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    Card(
+                      color: const Color(0xFF161A22),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.white.withAlpha(10)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.insights, color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  headerTitle,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _summary.isEmpty
+                                  ? (_language == 'ur'
+                                      ? 'رپورٹ تیار کرنے کے لیے براہ کرم کھانا لاگ کرنا جاری رکھیں۔'
+                                      : 'No insights available. Keep logging meals to construct a report.')
+                                  : _summary,
+                              style: TextStyle(
+                                fontSize: 14, 
+                                height: 1.6, 
+                                color: Colors.white.withAlpha(220),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // History Section
                     Text(
-                      'Great job this week! You met your protein target 5 out of 7 days, and stayed within your caloric limit for most days. However, your sodium intake trended slightly higher on the weekend. Consider substituting salt with herbs for upcoming dinners.',
-                      style: TextStyle(fontSize: 14, height: 1.5, color: theme.colorScheme.onSurface),
+                      historyTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildReportHistoryItem(
+                      context, 
+                      _language == 'ur' ? 'پچھلا ہفتہ' : 'Previous Week', 
+                      _language == 'ur' ? 'سکور: 85٪' : 'Score: 85%',
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'History',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildReportHistoryItem(context, 'Week of Aug 10 - Aug 16', 'Score: 92% (Excellent)'),
-            _buildReportHistoryItem(context, 'Week of Aug 3 - Aug 9', 'Score: 85% (Good)'),
-          ],
-        ),
-      ),
     );
   }
 
@@ -69,7 +214,7 @@ class WeeklyReportScreen extends StatelessWidget {
         subtitle: Text(score),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () {
-          // Open details
+          CustomToast.show(context, _language == 'ur' ? 'تاریخ کا ریکارڈ دستیاب نہیں ہے' : 'Archived logs unavailable', isError: false);
         },
       ),
     );

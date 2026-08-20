@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../onboarding/onboarding_view.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../shared/widgets/custom_toast.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -41,9 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       if (!isLogin && !_acceptedTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please accept the terms and privacy policy')),
-        );
+        CustomToast.show(context, 'Please accept the terms and privacy policy');
         return;
       }
       
@@ -97,9 +96,7 @@ class _AuthScreenState extends State<AuthScreen> {
         }
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication failed: ${e.toString()}')),
-        );
+        CustomToast.show(context, e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
