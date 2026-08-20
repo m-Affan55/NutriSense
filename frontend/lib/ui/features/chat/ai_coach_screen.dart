@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'clinic_finder_screen.dart';
 
 class AiCoachScreen extends StatefulWidget {
   const AiCoachScreen({super.key});
@@ -431,7 +432,14 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           onPressed: () {
-                            CustomToast.show(context, 'Doctor Finder launching soon...', isError: false);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ClinicFinderScreen(
+                                  riskLevel: escalationAlert['level'] ?? 'warning',
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ),
