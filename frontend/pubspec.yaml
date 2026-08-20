@@ -45,6 +45,10 @@ dependencies:
   timezone: ^0.11.1
   mobile_scanner: ^5.2.3
   url_launcher: ^6.3.0
+  sqflite: ^2.3.0
+  connectivity_plus: ^6.0.0
+  health: ^12.0.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

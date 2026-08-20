@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../navigation/main_navigation_screen.dart';
 import '../settings/settings_view.dart';
 import '../meal_scan/manual_log_screen.dart';
+import '../../../core/offline_cache.dart';
+import '../../../core/sync_service.dart';
+import '../../../core/health_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -38,6 +41,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   bool _isLoading = true;
   String _language = 'en';
 
+  // Offline sync badge
+  int _pendingSyncCount = 0;
+
+  // Health Connect / Google Fit activity
+  ActivityData _activity = ActivityData.empty;
+
   @override
   void initState() {
     super.initState();
@@ -62,12 +71,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? 'en';
+    final prefs = await SharedPreferences.getInstance();
+    _language = prefs.getString('language') ?? 'en';
 
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    try {
       if (user == null) return;
 
       // 1. Get name metadata
@@ -150,19 +160,59 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         setState(() => _isLoading = false);
       }
     }
+
+    // Merge offline pending meals (works even if Supabase fetch above threw)
+    if (user != null && mounted) {
+      try {
+        final pendingMeals = await OfflineCache.instance.getTodayPendingMeals(user.id);
+        final pendingWaterMl = await OfflineCache.instance.getTodayPendingWaterMl(user.id);
+        final pendingCount = await OfflineCache.instance.getTotalPendingCount(user.id);
+        if (mounted) {
+          setState(() {
+            for (final m in pendingMeals) {
+              _consumedCalories += (m['calories'] as int? ?? 0);
+              _consumedProtein  += (m['protein_g'] as int? ?? 0);
+              _consumedCarbs    += (m['carbs_g'] as int? ?? 0);
+              _consumedFat      += (m['fat_g'] as int? ?? 0);
+              _todayMeals.add({
+                'notes': m['notes'],
+                'meal_type': m['meal_type'],
+                'total_calories': m['calories'],
+                'pending': true,
+              });
+            }
+            _waterLogged += pendingWaterMl;
+            _pendingSyncCount = pendingCount;
+          });
+        }
+      } catch (e) {
+        debugPrint('Offline merge error: $e');
+      }
+    }
+
+    // Fetch health activity (non-blocking — silently fails if not available)
+    if (mounted) {
+      try {
+        final activity = await HealthService.instance.getTodayActivity();
+        if (mounted) setState(() => _activity = activity);
+      } catch (e) {
+        debugPrint('[Dashboard] Health fetch error: $e');
+      }
+    }
   }
 
   Future<void> _logWater(int ml) async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
     try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-      if (user == null) return;
-
-      await supabase.from('water_logs').insert({
-        'user_id': user.id,
-        'amount_ml': ml,
-      });
-
+      // 1. Write to local cache immediately (offline-first)
+      await OfflineCache.instance.insertPendingWater(
+        userId: user.id,
+        amountMl: ml,
+      );
+      // 2. Sync to Supabase in background
+      SyncService.instance.syncPending(user.id);
       await _loadData();
     } catch (e) {
       debugPrint('Error logging water: $e');
@@ -468,6 +518,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       ),
                       const SizedBox(height: 32),
 
+                      // Offline sync badge (only shown when there are pending rows)
+                      if (_pendingSyncCount > 0) _buildSyncBadge(theme),
+                      if (_pendingSyncCount > 0) const SizedBox(height: 12),
+
                       // Section B: Calorie Ring progress
                       Center(
                         child: SizedBox(
@@ -513,7 +567,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           _buildMacroPill(context, _t('fat'), '${_consumedFat}g / ${_targetFat}g', Colors.amber),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+
+                      // Activity Card (Health Connect / Google Fit)
+                      if (_activity != ActivityData.empty) ...[  
+                        _buildActivityCard(theme),
+                        const SizedBox(height: 24),
+                      ],
 
                       // Section C: Today's Log
                       Row(
@@ -760,7 +820,109 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       ),
     );
   }
+
+  /// Shows an amber banner when there are unsynced offline logs.
+  Widget _buildSyncBadge(ThemeData theme) {
+    return GestureDetector(
+      onTap: () {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          SyncService.instance.syncPending(user.id).then((_) => _loadData());
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade900.withAlpha(40),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.amber.shade700.withAlpha(80)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.sync, color: Colors.amber.shade400, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$_pendingSyncCount item(s) saved offline — tap to sync now',
+                style: TextStyle(color: Colors.amber.shade300, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Activity card showing Health Connect / Google Fit stats.
+  Widget _buildActivityCard(ThemeData theme) {
+    final netCalories = _consumedCalories - _activity.activeKcal;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161A22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withAlpha(15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.directions_run, color: theme.colorScheme.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Today\'s Activity',
+                style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              // Net calories chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: netCalories > 0 ? Colors.orange.withAlpha(30) : Colors.green.withAlpha(30),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Net: ${netCalories > 0 ? '+' : ''}$netCalories kcal',
+                  style: TextStyle(
+                    color: netCalories > 0 ? Colors.orange.shade300 : Colors.green.shade300,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActivityStat(Icons.directions_walk, '${_activity.steps}', 'Steps', Colors.blue.shade300),
+              _buildActivityStat(Icons.local_fire_department, '${_activity.activeKcal}', 'Burned', Colors.orange.shade300),
+              _buildActivityStat(Icons.bedtime, '${_activity.sleepHours}h', 'Sleep', Colors.purple.shade300),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityStat(IconData icon, String value, String label, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: color.withAlpha(25), shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
+      ],
+    );
+  }
 }
+
 
 class CalorieRingPainter extends CustomPainter {
   final double progress;

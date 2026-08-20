@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/api_client.dart';
+import '../../../core/offline_cache.dart';
+import '../../../core/sync_service.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -100,22 +102,31 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('No session found');
 
-      final payload = {
-        'user_id': user.id,
-        'meal_type': _selectedMealType,
-        'notes': _nameController.text.trim(),
-        'total_calories': int.parse(_caloriesController.text),
-        'total_protein_g': int.parse(_proteinController.text),
-        'total_carbs_g': int.parse(_carbsController.text),
-        'total_fat_g': int.parse(_fatController.text),
-      };
+      final calories = int.parse(_caloriesController.text);
+      final proteinG = int.parse(_proteinController.text);
+      final carbsG = int.parse(_carbsController.text);
+      final fatG = int.parse(_fatController.text);
+      final notes = _nameController.text.trim();
 
-      await supabase.from('meal_logs').insert(payload);
+      // 1. Write to local SQLite cache immediately (works offline)
+      await OfflineCache.instance.insertPendingMeal(
+        userId: user.id,
+        mealType: _selectedMealType,
+        notes: notes,
+        calories: calories,
+        proteinG: proteinG,
+        carbsG: carbsG,
+        fatG: fatG,
+      );
 
+      // Give user success immediately — no waiting for network
       if (mounted) {
         CustomToast.show(context, _t('success'), isError: false);
-        Navigator.pop(context, true); // Return true to trigger dashboard reload
+        Navigator.pop(context, true);
       }
+
+      // 2. Sync to Supabase in background (fire-and-forget)
+      SyncService.instance.syncPending(user.id);
     } catch (e) {
       if (mounted) {
         CustomToast.show(context, 'Failed to save meal: ${e.toString()}');

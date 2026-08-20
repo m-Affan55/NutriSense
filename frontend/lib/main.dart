@@ -4,8 +4,10 @@ import 'ui/features/splash/splash_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'core/reminder_manager.dart';
+import 'core/sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,18 +19,35 @@ Future<void> main() async {
   );
 
   // Initialize and schedule local notifications
-  // Wrapped in try/catch: a notification permission denial must never crash the app.
   try {
     await ReminderManager.init();
     await ReminderManager.requestPermissions();
     await ReminderManager.scheduleAllReminders();
   } catch (e) {
-    // Notification setup failed silently - app continues normally
     debugPrint('[ReminderManager] Notification init failed: $e');
   }
 
+  // Attempt to sync any offline-cached logs on startup
+  _triggerSyncIfLoggedIn();
+
+  // Re-sync whenever connectivity is restored
+  Connectivity().onConnectivityChanged.listen((results) {
+    final isOnline = results.any((r) => r != ConnectivityResult.none);
+    if (isOnline) _triggerSyncIfLoggedIn();
+  });
+
   runApp(const NutriSenseApp());
 }
+
+/// Triggers sync only when a user is authenticated.
+void _triggerSyncIfLoggedIn() {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user != null) {
+    SyncService.instance.syncPending(user.id);
+  }
+}
+
+
 
 class NutriSenseApp extends StatefulWidget {
   const NutriSenseApp({super.key});

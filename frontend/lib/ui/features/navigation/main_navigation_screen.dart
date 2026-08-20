@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../meal_scan/scan_meal_screen.dart';
 import '../chat/ai_coach_screen.dart';
-import '../weekly_report/weekly_report_screen.dart';
-
+import '../predictive_coaching/coaching_screen.dart';
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -28,7 +27,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     const DashboardScreen(),
     const ScanMealScreen(),
     const AiCoachScreen(),
-    const WeeklyReportScreen(),
+    const CoachingScreen(),
   ];
 
   @override
