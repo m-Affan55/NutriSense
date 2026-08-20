@@ -36,6 +36,9 @@ class BarcodeRequest(BaseModel):
     barcode: str
     user_id: str
 
+class SearchFoodRequest(BaseModel):
+    query: str
+
 @router.post("/scan-barcode")
 async def scan_barcode(req: BarcodeRequest):
     try:
@@ -137,5 +140,13 @@ def get_weekly_report(user_id: str):
         )
         
         return json.loads(response.text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/search-food")
+async def search_food(req: SearchFoodRequest):
+    try:
+        macros = GeminiService.estimate_food_macros(req.query)
+        return macros
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

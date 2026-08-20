@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../core/api_client.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -20,6 +23,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
   String _selectedMealType = 'breakfast';
   bool _isSaving = false;
+  bool _isSearching = false;
   String _language = 'en';
 
   final List<String> _mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -36,6 +40,54 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       setState(() {
         _language = prefs.getString('language') ?? 'en';
       });
+    }
+  }
+
+  Future<void> _searchFoodMacros() async {
+    final query = _nameController.text.trim();
+    if (query.isEmpty) {
+      CustomToast.show(context, 'Please enter a food name first');
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    
+    try {
+      final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'query': query}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          // Add the formatted name if we typed something brief
+          if (data['name'] != null && data['name'].toString().isNotEmpty) {
+            _nameController.text = data['name'].toString();
+          }
+          _caloriesController.text = data['calories'].toString();
+          _proteinController.text = data['protein_g'].toString();
+          _carbsController.text = data['carbs_g'].toString();
+          _fatController.text = data['fat_g'].toString();
+        });
+        if (mounted) {
+          CustomToast.show(context, 'AI filled macros successfully!', isError: false);
+        }
+      } else {
+        if (mounted) {
+          CustomToast.show(context, 'Failed to fetch macros: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, 'Network error: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
     }
   }
 
@@ -132,14 +184,36 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: _t('name'),
-                  border: const OutlineInputBorder(),
-                  hintText: _language == 'ur' ? 'مثال کے طور پر: انڈا اور روٹی' : 'e.g. Eggs and toast',
-                ),
-                validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: _t('name'),
+                        border: const OutlineInputBorder(),
+                        hintText: _language == 'ur' ? 'مثال کے طور پر: انڈا اور روٹی' : 'e.g. Eggs and toast',
+                      ),
+                      validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 56, // matches TextFormField default height roughly
+                    child: ElevatedButton.icon(
+                      onPressed: _isSearching ? null : _searchFoodMacros,
+                      icon: _isSearching
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.auto_awesome),
+                      label: Text(_language == 'ur' ? 'تلاش کریں' : 'AI Search'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary.withAlpha(50),
+                        foregroundColor: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

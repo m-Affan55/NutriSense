@@ -163,3 +163,41 @@ class GeminiService:
             return json.loads(response.text)
         except Exception:
             return []
+
+    @staticmethod
+    def estimate_food_macros(query: str) -> dict:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        
+        prompt = f"""
+        You are an expert nutritionist database. 
+        The user searched for the following food item: "{query}".
+        
+        Task:
+        Estimate the nutritional breakdown for a standard 1-serving portion of this food.
+        If the query is ambiguous, make a reasonable assumption for a standard serving.
+        
+        Return ONLY a JSON object with the following exact keys:
+        - "name": A standardized, clear name for the food (e.g., "White Rice (1 cup)").
+        - "calories": Integer
+        - "protein_g": Float
+        - "carbs_g": Float
+        - "fat_g": Float
+        """
+        
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            return {
+                "name": query,
+                "calories": 0,
+                "protein_g": 0.0,
+                "carbs_g": 0.0,
+                "fat_g": 0.0
+            }
