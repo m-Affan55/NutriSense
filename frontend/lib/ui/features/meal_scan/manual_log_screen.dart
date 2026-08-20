@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
@@ -108,25 +109,36 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final fatG = int.parse(_fatController.text);
       final notes = _nameController.text.trim();
 
-      // 1. Write to local SQLite cache immediately (works offline)
-      await OfflineCache.instance.insertPendingMeal(
-        userId: user.id,
-        mealType: _selectedMealType,
-        notes: notes,
-        calories: calories,
-        proteinG: proteinG,
-        carbsG: carbsG,
-        fatG: fatG,
-      );
+      if (kIsWeb) {
+        // SQLite sqflite is not supported on web, push directly
+        await supabase.from('meal_logs').insert({
+          'user_id': user.id,
+          'meal_type': _selectedMealType,
+          'notes': notes,
+          'total_calories': calories,
+          'total_protein_g': proteinG,
+          'total_carbs_g': carbsG,
+          'total_fat_g': fatG,
+        });
+      } else {
+        // 1. Write to local SQLite cache immediately (works offline)
+        await OfflineCache.instance.insertPendingMeal(
+          userId: user.id,
+          mealType: _selectedMealType,
+          notes: notes,
+          calories: calories,
+          proteinG: proteinG,
+          carbsG: carbsG,
+          fatG: fatG,
+        );
+        // 2. Sync to Supabase in background (fire-and-forget)
+        SyncService.instance.syncPending(user.id);
+      }
 
-      // Give user success immediately — no waiting for network
       if (mounted) {
         CustomToast.show(context, _t('success'), isError: false);
         Navigator.pop(context, true);
       }
-
-      // 2. Sync to Supabase in background (fire-and-forget)
-      SyncService.instance.syncPending(user.id);
     } catch (e) {
       if (mounted) {
         CustomToast.show(context, 'Failed to save meal: ${e.toString()}');

@@ -26,6 +26,7 @@ class SyncService {
   /// Push all pending local rows to Supabase for [userId].
   /// Safe to call multiple times — guards against concurrent runs.
   Future<void> syncPending(String userId) async {
+    if (kIsWeb) return;
     if (_isSyncing) return;
     _isSyncing = true;
 

@@ -185,20 +185,36 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                     Text('7-Day Consistency', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: 100,
+                      height: 130,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: _trend.map((val) {
-                          return Container(
-                            width: 20,
-                            height: 100 * val,
-                            decoration: BoxDecoration(
-                              color: val > 0.5 ? scoreColor : Colors.grey.shade800,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                        children: List.generate(_trend.length, (index) {
+                          final val = _trend[index];
+                          final daysAgo = (_trend.length - 1) - index;
+                          final d = DateTime.now().subtract(Duration(days: daysAgo));
+                          final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                          final label = dayLabels[d.weekday - 1];
+                          
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 100 * val,
+                                decoration: BoxDecoration(
+                                  color: val > 0.5 ? scoreColor : Colors.grey.shade800,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                label, 
+                                style: const TextStyle(color: Colors.grey, fontSize: 11)
+                              ),
+                            ],
                           );
-                        }).toList(),
+                        }),
                       ),
                     ),
                     const SizedBox(height: 40),

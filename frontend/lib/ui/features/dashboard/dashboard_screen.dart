@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../navigation/main_navigation_screen.dart';
@@ -99,13 +100,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       }
 
       // 3. Fetch today's meals
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999).toUtc().toIso8601String();
+      
       final mealsRes = await supabase
           .from('meal_logs')
           .select()
           .eq('user_id', user.id)
-          .gte('logged_at', '${todayStr}T00:00:00')
-          .lte('logged_at', '${todayStr}T23:59:59');
+          .gte('logged_at', startOfDay)
+          .lte('logged_at', endOfDay);
 
       int calSum = 0;
       int proteinSum = 0;
@@ -130,8 +134,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           .from('water_logs')
           .select()
           .eq('user_id', user.id)
-          .gte('logged_at', '${todayStr}T00:00:00')
-          .lte('logged_at', '${todayStr}T23:59:59');
+          .gte('logged_at', startOfDay)
+          .lte('logged_at', endOfDay);
 
       int waterSum = 0;
       for (var log in waterRes) {
@@ -164,9 +168,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     // Merge offline pending meals (works even if Supabase fetch above threw)
     if (user != null && mounted) {
       try {
-        final pendingMeals = await OfflineCache.instance.getTodayPendingMeals(user.id);
-        final pendingWaterMl = await OfflineCache.instance.getTodayPendingWaterMl(user.id);
-        final pendingCount = await OfflineCache.instance.getTotalPendingCount(user.id);
+        final pendingMeals = kIsWeb ? <Map<String, dynamic>>[] : await OfflineCache.instance.getTodayPendingMeals(user.id);
+        final pendingWaterMl = kIsWeb ? 0 : await OfflineCache.instance.getTodayPendingWaterMl(user.id);
+        final pendingCount = kIsWeb ? 0 : await OfflineCache.instance.getTotalPendingCount(user.id);
+        
         if (mounted) {
           setState(() {
             for (final m in pendingMeals) {
@@ -206,13 +211,20 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final user = supabase.auth.currentUser;
     if (user == null) return;
     try {
-      // 1. Write to local cache immediately (offline-first)
-      await OfflineCache.instance.insertPendingWater(
-        userId: user.id,
-        amountMl: ml,
-      );
-      // 2. Sync to Supabase in background
-      SyncService.instance.syncPending(user.id);
+      if (kIsWeb) {
+        await supabase.from('water_logs').insert({
+          'user_id': user.id,
+          'amount_ml': ml,
+        });
+      } else {
+        // 1. Write to local cache immediately (offline-first)
+        await OfflineCache.instance.insertPendingWater(
+          userId: user.id,
+          amountMl: ml,
+        );
+        // 2. Sync to Supabase in background
+        SyncService.instance.syncPending(user.id);
+      }
       await _loadData();
     } catch (e) {
       debugPrint('Error logging water: $e');
@@ -414,10 +426,25 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return '${weekdaysEn[now.weekday - 1]}, ${now.day} ${monthsEn[now.month - 1]} ${now.year}';
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return _language == 'ur' ? 'صبح بخیر' : 'Good Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return _language == 'ur' ? 'دوپہر بخیر' : 'Good Afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      return _language == 'ur' ? 'شام بخیر' : 'Good Evening';
+    } else {
+      return _language == 'ur' ? 'شب بخیر' : 'Good Night';
+    }
+  }
+
   String _t(String key) {
+    final greeting = _getGreeting();
+    
     final translations = {
       'en': {
-        'greeting': 'Good Morning, $_userName',
+        'greeting': '$greeting, $_userName',
         'todayMeals': 'Today\'s Meals',
         'addMeal': 'Add Meal',
         'noMeals': 'No meals logged today. Use Scan Meal to log!',
@@ -432,7 +459,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         'kcal': 'kcal',
       },
       'ur': {
-        'greeting': 'صبح بخیر، $_userName',
+        'greeting': '$greeting، $_userName',
         'todayMeals': 'آج کی غذائیں',
         'addMeal': 'غذا شامل کریں',
         'noMeals': 'آج کوئی غذا شامل نہیں کی گئی۔ لاگ کرنے کے لیے غذا اسکین کریں!',

@@ -142,3 +142,71 @@ class GeminiService:
                 "carbs_g": 0.0,
                 "fat_g": 0.0
             }
+
+    @staticmethod
+    def generate_coaching_summary(score: float, profile: dict = None) -> str:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        
+        profile_context = ""
+        if profile:
+            profile_context = f"""
+            The user's health profile:
+            - Goal: {profile.get('goal', 'N/A')}
+            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            """
+            
+        prompt = f"""
+        You are an AI nutrition coach. The user has a 30-day habit score of {score:.1f}/100.
+        {profile_context}
+        
+        Write a short, personalized, encouraging one-paragraph coaching message (max 3 sentences) 
+        reflecting on their score and giving one piece of actionable advice tailored to their profile.
+        """
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+            )
+            return response.text.strip()
+        except Exception:
+            return "Keep logging your meals to improve your habit score!"
+
+    @staticmethod
+    def generate_food_swaps(recent_meals: list[str], profile: dict = None) -> list[dict]:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        
+        profile_context = ""
+        if profile:
+            profile_context = f"""
+            The user's health profile:
+            - Goal: {profile.get('goal', 'N/A')}
+            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            """
+            
+        prompt = f"""
+        You are an expert nutritionist. The user recently ate these items:
+        {json.dumps(recent_meals)}
+        
+        {profile_context}
+        
+        Identify 3 items from their recent meals that could be swapped for a healthier alternative. 
+        The healthier alternative should align with their health goals and medical conditions. 
+        It does NOT need to be a Pakistani food; any healthier, realistic alternative is great.
+        
+        Return ONLY a JSON array of 3 objects with exact keys:
+        - "original_food": string (what they ate)
+        - "healthy_swap": string (what they should eat instead)
+        - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
+        """
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            return json.loads(response.text)
+        except Exception:
+            return []
+
