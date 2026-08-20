@@ -184,6 +184,32 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withAlpha(25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.primary.withAlpha(50)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _language == 'ur' 
+                          ? 'پرو ٹپ: کھانے کا نام لکھیں اور AI کو میکروز بھرنے کے لیے AI Search دبائیں!'
+                          : 'Pro tip: Type a food name and hit AI Search to magically fill the macros!',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -19,6 +19,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   );
   
   bool _isProcessing = false;
+  final Set<String> _failedBarcodes = {};
   
   @override
   void dispose() {
@@ -58,8 +59,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       }
     } catch (e) {
       if (mounted) {
-        CustomToast.show(context, 'Barcode error: ${e.toString()}');
-        controller.start();
+        _failedBarcodes.add(barcode);
+        CustomToast.show(context, 'Product not found. Please try "Log Manually" or the AI Text Search!');
       }
     } finally {
       if (mounted) {
@@ -289,8 +290,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                controller.stop();
-                _processBarcode(barcodes.first.rawValue!);
+                final scannedValue = barcodes.first.rawValue!;
+                if (!_failedBarcodes.contains(scannedValue)) {
+                  _processBarcode(scannedValue);
+                }
               }
             },
           ),
