@@ -82,7 +82,7 @@ class OfflineCache {
       'protein_g': proteinG,
       'carbs_g': carbsG,
       'fat_g': fatG,
-      'logged_at': DateTime.now().toIso8601String(),
+      'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
     });
   }
@@ -96,7 +96,7 @@ class OfflineCache {
   /// Get all unsynced meal rows for a specific user logged today.
   Future<List<Map<String, dynamic>>> getTodayPendingMeals(String userId) async {
     final db = await _database;
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     return db.query(
       _mealTable,
       where: 'user_id = ? AND synced = 0 AND logged_at LIKE ?',
@@ -138,7 +138,7 @@ class OfflineCache {
     return db.insert(_waterTable, {
       'user_id': userId,
       'amount_ml': amountMl,
-      'logged_at': DateTime.now().toIso8601String(),
+      'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
     });
   }
@@ -152,7 +152,7 @@ class OfflineCache {
   /// Get unsynced water totals for today (to merge with Supabase data).
   Future<int> getTodayPendingWaterMl(String userId) async {
     final db = await _database;
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
     final result = await db.rawQuery(
       'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND synced = 0 AND logged_at LIKE ?',
       [userId, '$today%'],

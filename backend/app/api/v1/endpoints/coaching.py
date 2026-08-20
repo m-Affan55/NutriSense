@@ -22,23 +22,17 @@ def get_habit_score(user_id: str):
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        # 2. Fetch last 30 days of meals
-        thirty_days_ago = (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat()
+        # 2. Fetch last 30 days of meals (Using UTC to match Supabase TIMESTAMPTZ correctly)
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        thirty_days_ago = (now_utc - datetime.timedelta(days=30)).isoformat()
         meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', thirty_days_ago).execute()
         meals = meals_res.data
 
         # 3. Compute habit score components
-        # (This is a simplified calculation for the hackathon)
-        days_logged = len(set([m['logged_at'][:10] for m in meals])) if meals else 0
-        consistency_score = min(days_logged / 30.0, 1.0) * 40.0
-        
         target_cal = profile.get('daily_calorie_target', 2000)
         target_pro = profile.get('daily_protein_g', 50)
         
-        cal_score = 0.0
-        pro_score = 0.0
-        
-        # Group meals by day to calculate daily totals
+        # Group meals by UTC day to calculate daily totals
         daily_totals = {}
         for m in meals:
             day = m['logged_at'][:10]
@@ -47,14 +41,18 @@ def get_habit_score(user_id: str):
             daily_totals[day]['cal'] += (m.get('total_calories') or 0)
             daily_totals[day]['pro'] += (m.get('total_protein_g') or 0)
             
+        days_logged = len(daily_totals)
+        consistency_score = min(days_logged / 30.0, 1.0) * 40.0
+        
+        cal_score = 0.0
+        pro_score = 0.0
+        
         if days_logged > 0:
             cal_accuracy_sum = 0
             pro_accuracy_sum = 0
             for day, totals in daily_totals.items():
-                # Calorie accuracy (within 20%)
                 if abs(totals['cal'] - target_cal) / max(target_cal, 1) <= 0.2:
                     cal_accuracy_sum += 1
-                # Protein met (>= 80%)
                 if totals['pro'] >= target_pro * 0.8:
                     pro_accuracy_sum += 1
                     
@@ -63,15 +61,19 @@ def get_habit_score(user_id: str):
 
         total_score = consistency_score + cal_score + pro_score
         
-        # Generate trend for the last 7 weeks (simplified to last 7 days for the UI bar chart)
+        # Generate trend for the last 7 days (Daily Adherence Score or -1.0 if missing)
         trend = []
         for i in range(7):
-            day_str = (datetime.datetime.now() - datetime.timedelta(days=i)).isoformat()[:10]
+            day_str = (now_utc - datetime.timedelta(days=i)).isoformat()[:10]
             if day_str in daily_totals:
-                # 1.0 if logged, else 0.2 (to show a tiny bar instead of completely empty)
-                trend.append(1.0)
+                totals = daily_totals[day_str]
+                day_cal_acc = 1.0 if abs(totals['cal'] - target_cal) / max(target_cal, 1) <= 0.2 else 0.0
+                day_pro_acc = 1.0 if totals['pro'] >= target_pro * 0.8 else 0.0
+                daily_adherence = (day_cal_acc * 0.58) + (day_pro_acc * 0.42)
+                # Ensure it's never 0.0 otherwise it might look empty when they did log, return at least 0.1
+                trend.append(max(daily_adherence, 0.1))
             else:
-                trend.append(0.2)
+                trend.append(-1.0)
         trend.reverse()
         
         # 4. Get Gemini coaching summary

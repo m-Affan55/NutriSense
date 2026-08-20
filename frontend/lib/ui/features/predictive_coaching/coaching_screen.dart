@@ -101,6 +101,12 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
     return Colors.red.shade400;
   }
 
+  String _getScoreLabel(int score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 50) return 'On Track';
+    return 'Needs Work';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -144,13 +150,23 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                                 );
                               },
                             ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('$_habitScore', style: theme.textTheme.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: scoreColor)),
-                                Text('Habit Score', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                              ],
-                            ),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('$_habitScore', style: theme.textTheme.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: scoreColor)),
+                                  Text('/100', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white54)),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: scoreColor.withAlpha(20),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: scoreColor.withAlpha(50)),
+                                    ),
+                                    child: Text(_getScoreLabel(_habitScore), style: theme.textTheme.labelMedium?.copyWith(color: scoreColor, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
@@ -201,10 +217,11 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                             children: [
                               Container(
                                 width: 20,
-                                height: 100 * val,
+                                height: val < 0 ? 100 : (100 * val).clamp(4.0, 100.0),
                                 decoration: BoxDecoration(
-                                  color: val > 0.5 ? scoreColor : Colors.grey.shade800,
+                                  color: val < 0 ? Colors.transparent : (val > 0.5 ? scoreColor : Colors.grey.shade600),
                                   borderRadius: BorderRadius.circular(4),
+                                  border: val < 0 ? Border.all(color: Colors.white24, width: 1.5) : null,
                                 ),
                               ),
                               const SizedBox(height: 8),

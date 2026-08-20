@@ -73,15 +73,16 @@ def get_weekly_report(user_id: str):
         profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
         profile = profile_res.data
         
-        # 2. Fetch past 7 days of logs
+        # 2. Fetch past 7 days of logs (using UTC bounds)
         import datetime
-        end_date = datetime.date.today()
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        end_date = now_utc.date()
         start_date = end_date - datetime.timedelta(days=7)
         
-        meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59").execute()
+        meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59+00:00").execute()
         meals = meals_res.data
         
-        water_res = supabase.table('water_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59").execute()
+        water_res = supabase.table('water_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59+00:00").execute()
         water = water_res.data
         
         # 3. Formulate prompts

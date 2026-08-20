@@ -22,11 +22,17 @@ class BarcodeService:
             
             nutriments = product.get("nutriments", {})
             
+            def safe_float(val) -> float:
+                try:
+                    return float(val) if val is not None else 0.0
+                except (ValueError, TypeError):
+                    return 0.0
+
             # Extract macros (preferably per 100g or serving)
-            calories = nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving") or 0
-            protein = nutriments.get("proteins_100g") or nutriments.get("proteins_serving") or 0
-            carbs = nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving") or 0
-            fat = nutriments.get("fat_100g") or nutriments.get("fat_serving") or 0
+            calories = safe_float(nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving"))
+            protein = safe_float(nutriments.get("proteins_100g") or nutriments.get("proteins_serving"))
+            carbs = safe_float(nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving"))
+            fat = safe_float(nutriments.get("fat_100g") or nutriments.get("fat_serving"))
             
             ingredients = product.get("ingredients_text_en") or product.get("ingredients_text") or "Ingredients not available"
             allergens = product.get("allergens") or "No allergens listed"
@@ -35,10 +41,10 @@ class BarcodeService:
             
             return {
                 "product_name": product_name,
-                "calories": round(float(calories)),
-                "protein_g": round(float(protein), 1),
-                "carbs_g": round(float(carbs), 1),
-                "fat_g": round(float(fat), 1),
+                "calories": round(calories),
+                "protein_g": round(protein, 1),
+                "carbs_g": round(carbs, 1),
+                "fat_g": round(fat, 1),
                 "ingredients": ingredients,
                 "allergens": allergens,
                 "image_url": image_url

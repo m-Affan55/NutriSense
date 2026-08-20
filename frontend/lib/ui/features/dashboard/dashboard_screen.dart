@@ -118,10 +118,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       List<Map<String, dynamic>> tempMeals = [];
 
       for (var meal in mealsRes) {
-        calSum += (meal['total_calories'] as num).toInt();
-        proteinSum += (meal['total_protein_g'] as num).toInt();
-        carbsSum += (meal['total_carbs_g'] as num).toInt();
-        fatSum += (meal['total_fat_g'] as num).toInt();
+        calSum += (meal['total_calories'] as num?)?.toInt() ?? 0;
+        proteinSum += (meal['total_protein_g'] as num?)?.toInt() ?? 0;
+        carbsSum += (meal['total_carbs_g'] as num?)?.toInt() ?? 0;
+        fatSum += (meal['total_fat_g'] as num?)?.toInt() ?? 0;
         tempMeals.add({
           'notes': meal['notes'] ?? 'Meal Logged',
           'meal_type': meal['meal_type'] ?? 'breakfast',
@@ -139,7 +139,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
       int waterSum = 0;
       for (var log in waterRes) {
-        waterSum += (log['amount_ml'] as num).toInt();
+        waterSum += (log['amount_ml'] as num?)?.toInt() ?? 0;
       }
 
       if (mounted) {
@@ -162,6 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       debugPrint('Dashboard data load error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
+        CustomToast.show(context, 'Failed to load dashboard data. Please pull down to refresh.', isError: true);
       }
     }
 
@@ -549,42 +550,57 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       if (_pendingSyncCount > 0) _buildSyncBadge(theme),
                       if (_pendingSyncCount > 0) const SizedBox(height: 12),
 
-                      // Section B: Calorie Ring progress
-                      Center(
-                        child: SizedBox(
-                          height: 220,
-                          width: 220,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              AnimatedBuilder(
-                                animation: _ringAnimation,
-                                builder: (context, child) {
-                                  return CustomPaint(
-                                    size: const Size(220, 220),
-                                    painter: CalorieRingPainter(
-                                      progress: calorieRatio * _ringAnimation.value,
-                                      backgroundColor: const Color(0xFF262626),
-                                      gradientStart: theme.colorScheme.primary,
-                                      gradientEnd: const Color(0xFF00BCD4),
+                    // Section B: Calorie Ring progress
+                    Builder(
+                      builder: (context) {
+                        int activeBurn = _activity?.activeKcal.toInt() ?? 0;
+                        int netCalories = _consumedCalories - activeBurn;
+                        if (netCalories < 0) netCalories = 0;
+                        double calorieRatio = _targetCalories > 0 ? (netCalories / _targetCalories) : 0.0;
+                        if (calorieRatio > 1.0) calorieRatio = 1.0;
+
+                        return Center(
+                          child: SizedBox(
+                            height: 220,
+                            width: 220,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                AnimatedBuilder(
+                                  animation: _ringAnimation,
+                                  builder: (context, child) {
+                                    return CustomPaint(
+                                      size: const Size(220, 220),
+                                      painter: CalorieRingPainter(
+                                        progress: calorieRatio * _ringAnimation.value,
+                                        backgroundColor: const Color(0xFF262626),
+                                        gradientStart: theme.colorScheme.primary,
+                                        gradientEnd: const Color(0xFF00BCD4),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('$netCalories', style: theme.textTheme.headlineLarge),
+                                    Text(
+                                      '${_t('of')} $_targetCalories ${_t('kcal')}', 
+                                      style: theme.textTheme.bodyMedium,
                                     ),
-                                  );
-                                },
-                              ),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('$_consumedCalories', style: theme.textTheme.headlineLarge),
-                                  Text(
-                                    '${_t('of')} $_targetCalories ${_t('kcal')}', 
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    if (activeBurn > 0)
+                                      Text(
+                                        '(-$activeBurn active)',
+                                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      }
+                    ),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -422,10 +422,10 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         'user_id': user.id,
         'meal_type': mealType,
         'food_items': data['items'],
-        'total_calories': (data['total_calories'] as num).toInt(),
-        'total_protein_g': (data['total_protein_g'] as num).toInt(),
-        'total_carbs_g': (data['total_carbs_g'] as num).toInt(),
-        'total_fat_g': (data['total_fat_g'] as num).toInt(),
+        'total_calories': (data['total_calories'] as num?)?.toInt() ?? 0,
+        'total_protein_g': (data['total_protein_g'] as num?)?.toInt() ?? 0,
+        'total_carbs_g': (data['total_carbs_g'] as num?)?.toInt() ?? 0,
+        'total_fat_g': (data['total_fat_g'] as num?)?.toInt() ?? 0,
         'notes': data['meal_name'],
       };
 

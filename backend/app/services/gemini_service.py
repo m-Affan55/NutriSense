@@ -51,17 +51,7 @@ class GeminiService:
         try:
             return json.loads(response.text)
         except Exception as e:
-            return {
-                "meal_name": "Scanned Meal",
-                "items": [],
-                "total_calories": 0,
-                "total_protein_g": 0.0,
-                "total_carbs_g": 0.0,
-                "total_fat_g": 0.0,
-                "recognition_confidence": "low",
-                "health_warnings": [f"Parsing error: {str(e)}"],
-                "suggestions": ["Could not parse structured nutrition details. Please try again."]
-            }
+            raise RuntimeError(f"Failed to parse meal scan results. Please try again. Detailed error: {str(e)}")
 
     @staticmethod
     def evaluate_ingredients(ingredients: str, allergens: str, profile: dict = None) -> list[str]:
@@ -169,7 +159,12 @@ class GeminiService:
             )
             return response.text.strip()
         except Exception:
-            return "Keep logging your meals to improve your habit score!"
+            if score >= 80:
+                return "Fantastic job! Your consistency is paying off. Keep up the great work!"
+            elif score >= 50:
+                return "You're making good progress. A little more consistency with your macro targets will boost your score!"
+            else:
+                return "Keep logging your meals! Consistency is key to improving your habit score."
 
     @staticmethod
     def generate_food_swaps(recent_meals: list[str], profile: dict = None) -> list[dict]:
@@ -189,11 +184,11 @@ class GeminiService:
         
         {profile_context}
         
-        Identify 3 items from their recent meals that could be swapped for a healthier alternative. 
+        Identify up to 3 items from their recent meals that could be swapped for a healthier alternative. 
         The healthier alternative should align with their health goals and medical conditions. 
         It does NOT need to be a Pakistani food; any healthier, realistic alternative is great.
         
-        Return ONLY a JSON array of 3 objects with exact keys:
+        Return ONLY a JSON array of objects with exact keys:
         - "original_food": string (what they ate)
         - "healthy_swap": string (what they should eat instead)
         - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")

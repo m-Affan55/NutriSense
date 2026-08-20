@@ -54,10 +54,10 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(0, Icons.home_filled, Icons.home_outlined),
+                  _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home'),
                   _buildScanTab(), // Central elevated button
-                  _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline),
-                  _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined),
+                  _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach'),
+                  _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats'),
                 ],
               ),
             ),
@@ -67,7 +67,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon) {
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () {
@@ -79,15 +79,29 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF00E676).withAlpha(30) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Icon(
-          isSelected ? activeIcon : inactiveIcon,
-          color: isSelected ? const Color(0xFF00E676) : const Color(0xFF8A94A6),
-          size: isSelected ? 28 : 24,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : inactiveIcon,
+              color: isSelected ? const Color(0xFF00E676) : const Color(0xFF8A94A6),
+              size: isSelected ? 24 : 22,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFF00E676) : const Color(0xFF8A94A6),
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );
