@@ -52,41 +52,27 @@ This document outlines the current state of NutriSense (what has been successful
   private clinic preference and see a list of nearby options with distance, contact 
   information, and one-tap calling or directions.
 
+### 7. Advanced Tracking & Offline Sync
+* **Offline Mode & Background Sync**: Users can now log meals and view their dashboards completely offline using SQLite. A background `SyncService` gracefully pushes all cached logs up to Supabase the moment an internet connection is reestablished, ensuring zero data loss.
+* **Health API Sync**: Integrated Apple Health & Google Fit (via Health Connect) to auto-ingest daily steps and active energy burn, overlaying this physical activity alongside food tracking on the Dashboard.
+
+### 8. Predictive Coaching & Habit Score
+* **Habit Score Engine**: Computes a dynamic 30-day "Habit Score" based on daily adherence to calorie and protein targets, visualized via a responsive UI gauge and 7-Day Consistency chart.
+* **Proactive Food Swaps**: Gemini analyzes the user's recent meals and cross-references their medical profile to recommend healthier, personalized food swaps (e.g., swapping a high-carb item for a high-protein equivalent), complete with clear rationales.
+
+### 9. Barcode Scanner & Allergy Alerts
+* **Mobile Barcode Scanning**: Integrated `mobile_scanner` to allow users to scan pre-packaged foods instantly.
+* **Nutrition API & Allergy Cross-check**: Connects to OpenFoodFacts on the backend to retrieve ingredients and allergens. Passes the ingredients through the Gemini Risk Evaluator to automatically cross-check against the user's specific dietary restrictions and medical conditions, surfacing critical warnings instantly.
+
 ---
 
 ## 🚀 What to Implement Next (Prioritized Backlog)
 
 The following backlog is prioritized by product value and developmental sequence:
 
-### Priority 1: Barcode Scanner & Allergy Alerts (High)
-* **Objective**: Enable logging for pre-packaged foods by scanning barcodes.
-* **Action Items**:
-  1. Integrate the `mobile_scanner` Flutter package.
-  2. Connect scans to USDA FoodData Central API on the backend.
-  3. Run barcode scan results through the existing Risk Evaluator for allergy cross-check.
-  4. Show fallback search if barcode lookup fails.
-
-### Priority 2: Smart Grocery List Generator (Medium)
+### Priority 1: Smart Grocery List Generator (Medium)
 * **Objective**: Convert weekly meal plans into organized, categorized shopping lists.
 * **Action Items**:
   1. Connect the existing `grocery_list` Flutter screen stub to a new backend endpoint.
   2. Use Gemini to extract ingredients from logged meals and group by category.
   3. Design interactive checklists where items can be marked off.
-
-### Priority 3: Offline Mode & Background Sync (Medium)
-* **Objective**: Log meals and view dashboards without internet connection.
-* **Action Items**:
-  1. Store logs locally using SQLite or Hive database caching.
-  2. Implement background sync service to push cached logs to Supabase on reconnection.
-
-### Priority 4: Apple Health & Google Fit Sync (Medium)
-* **Objective**: Auto-ingest steps, sleep duration, and active energy burn.
-* **Action Items**:
-  1. Integrate the `health` Flutter package for iOS/Android fitness API authorization.
-  2. Overlay physical activity metrics alongside food tracking on the dashboard.
-
-### Priority 5: Predictive Coaching & Habit Score (Low)
-* **Objective**: Forecast habit warnings and supply macro-equivalent food swaps.
-* **Action Items**:
-  1. Compute a cumulative "Habit Score" based on 30-day consistency.
-  2. Recommend healthy food swaps (e.g. paratha to roti) based on scanned meals.
