@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'barcode_scanner_screen.dart';
 
 class ScanMealScreen extends StatefulWidget {
   const ScanMealScreen({super.key});
@@ -213,7 +214,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         ),
                       const SizedBox(height: 16),
                       
-                      if (data['recognition_confidence'] == 'low')
+                      // Standard AI Disclaimer
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(12),
@@ -517,6 +518,23 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                       onPressed: () => _pickImage(ImageSource.gallery),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Scan Barcode'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        foregroundColor: Colors.tealAccent,
+                        side: const BorderSide(color: Colors.tealAccent),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),
