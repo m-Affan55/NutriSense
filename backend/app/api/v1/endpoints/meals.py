@@ -1,5 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from pydantic import BaseModel
 from app.services.gemini_service import GeminiService
+from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
 
 router = APIRouter()
@@ -27,6 +29,35 @@ async def scan_meal(
         )
         
         return scan_result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class BarcodeRequest(BaseModel):
+    barcode: str
+    user_id: str
+
+@router.post("/scan-barcode")
+async def scan_barcode(req: BarcodeRequest):
+    try:
+        # 1. Fetch user's health profile
+        supabase = get_supabase_admin_client()
+        profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        profile = profile_response.data
+        
+        # 2. Fetch product data from OpenFoodFacts
+        product_data = await BarcodeService.fetch_product_data(req.barcode)
+        
+        # 3. Check for allergies using Gemini
+        warnings = GeminiService.evaluate_ingredients(
+            ingredients=product_data["ingredients"],
+            allergens=product_data["allergens"],
+            profile=profile
+        )
+        
+        return {
+            "product": product_data,
+            "allergy_warnings": warnings
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
