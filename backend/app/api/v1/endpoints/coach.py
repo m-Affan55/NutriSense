@@ -1,1 +1,94 @@
-# TODO: Implement coach endpoints for AI nutritionist dialogue reasoning.
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List
+from app.core.config import settings
+from app.db.supabase_client import get_supabase_admin_client
+from google import genai
+from google.genai import types
+
+router = APIRouter()
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class CoachRequest(BaseModel):
+    user_id: str
+    message: str
+    history: List[ChatMessage]
+
+@router.post("/chat")
+def chat_with_coach(req: CoachRequest):
+    try:
+        supabase = get_supabase_admin_client()
+        
+        # 1. Fetch user health profile
+        profile_res = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        profile = profile_res.data
+        
+        # 2. Fetch user's meals logged today
+        import datetime
+        today_str = datetime.date.today().isoformat()
+        meals_res = supabase.table('meal_logs').select('*').eq('user_id', req.user_id).gte('logged_at', f"{today_str}T00:00:00").lte('logged_at', f"{today_str}T23:59:59").execute()
+        meals = meals_res.data
+        
+        # 3. Formulate the system instruction
+        profile_context = ""
+        if profile:
+            profile_context = f"""
+            User Profile:
+            - Age: {profile.get('age', 'N/A')}
+            - Goal: {profile.get('goal', 'N/A')}
+            - Daily Calorie Target: {profile.get('daily_calorie_target', 2000)} kcal
+            - Macros target: Protein {profile.get('daily_protein_g', 130)}g, Carbs {profile.get('daily_carbs_g', 220)}g, Fat {profile.get('daily_fat_g', 65)}g
+            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
+            """
+            
+        meals_context = ""
+        if meals:
+            meals_context = "\nMeals logged today:\n" + "\n".join([
+                f"- {m.get('notes', 'Unnamed meal')}: {m.get('total_calories', 0)} kcal (P: {m.get('total_protein_g', 0)}g, C: {m.get('total_carbs_g', 0)}g, F: {m.get('total_fat_g', 0)}g)"
+                for m in meals
+            ])
+            
+        system_instruction = f"""
+        You are an empathetic, professional, and expert AI Nutritionist & Health Coach for NutriSense.
+        Your goal is to guide the user towards their nutrition and physical health objectives based on their health profile and daily intake.
+        
+        {profile_context}
+        {meals_context}
+        
+        Be concise, supportive, actionable, and focus on practical recommendations. Respond in English or Urdu depending on the user's input language.
+        """
+        
+        # 4. Generate response using GenAI client
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        
+        # Convert history to format compatible with GenAI content list
+        contents = []
+        for msg in req.history:
+            contents.append({
+                "role": "user" if msg.role == "user" else "model",
+                "parts": [{"text": msg.content}]
+            })
+            
+        # Add the current user message
+        contents.append({
+            "role": "user",
+            "parts": [{"text": req.message}]
+        })
+        
+        # Call gemini-3.6-flash directly with system instruction config
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+            ),
+        )
+        
+        return {"response": response.text}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

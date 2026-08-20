@@ -8,12 +8,21 @@ import '../weekly_report/weekly_report_screen.dart';
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
+  static MainNavigationScreenState of(BuildContext context) =>
+      context.findAncestorStateOfType<MainNavigationScreenState>()!;
+
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainNavigationScreen> createState() => MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+
+  set currentIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   final List<Widget> _screens = [
     const DashboardScreen(),

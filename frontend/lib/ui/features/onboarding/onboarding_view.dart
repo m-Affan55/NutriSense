@@ -3,6 +3,7 @@ import '../navigation/main_navigation_screen.dart';
 import '../../../core/api_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../../../shared/widgets/custom_toast.dart';
 import 'dart:convert';
 
 class OnboardingWizardScreen extends StatefulWidget {
@@ -115,9 +116,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         }
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        CustomToast.show(context, e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }

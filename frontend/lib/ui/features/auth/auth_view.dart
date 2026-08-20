@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../onboarding/onboarding_view.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../shared/widgets/custom_toast.dart';
+import 'forgot_password_view.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -41,9 +43,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       if (!isLogin && !_acceptedTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please accept the terms and privacy policy')),
-        );
+        CustomToast.show(context, 'Please accept the terms and privacy policy');
         return;
       }
       
@@ -70,6 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 .maybeSingle();
                 
             if (profileResponse != null) {
+              if (!mounted) return;
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
               );
@@ -77,6 +78,7 @@ class _AuthScreenState extends State<AuthScreen> {
             }
           }
           
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
           );
@@ -95,11 +97,28 @@ class _AuthScreenState extends State<AuthScreen> {
         }
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication failed: ${e.toString()}')),
-        );
+        CustomToast.show(context, e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.nutrisense://login-callback/',
+      );
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -276,7 +295,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
                         child: Text('Forgot Password?', style: TextStyle(color: theme.colorScheme.primary)),
                       ),
                     ),
@@ -322,7 +345,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 32),
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: _signInWithGoogle,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(color: Colors.white.withAlpha(40)),

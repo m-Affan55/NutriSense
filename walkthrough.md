@@ -1,57 +1,22 @@
-# Project Structure Walkthrough
+# Formatting & Polish Updates Walkthrough
 
-We have successfully designed the project structure for NutriSense and created the entire codebase skeleton of files with placeholder comments, ready to be committed to Git.
+We have successfully polished the greeting, settings trigger, and PDF receipt formatting:
 
-## Changes Made
+## What Was Updated
 
-### Configuration & Assets
-- Registered the static assets folder in [pubspec.yaml](file:///d:/AI%20Hackathon/NutriSense/frontend/pubspec.yaml).
-- Inspected the brand colors directly from [Logo.svg](file:///d:/AI%20Hackathon/NutriSense/frontend/assets/Logo.svg).
+### 1. Dashboard Greeting Emoji Removal ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- Removed the waving hand emoji (`👋`) from both the English ("Good Morning, [Name]") and Urdu ("صبح بخیر، [Name]") greeting translations inside the locale mapper.
 
-### Frontend Modularization (Refactoring)
-Successfully broke down `main.dart` into modular feature files in the proper MVVM Clean Architecture layout:
-- `lib/ui/core/theme.dart` (Light and Dark Themes)
-- `lib/ui/features/splash/splash_screen.dart` (Animated Loading Screen)
-- `lib/ui/features/navigation/main_navigation_screen.dart` (Shell navigation)
-- `lib/ui/features/dashboard/dashboard_screen.dart` (Main metrics dashboard)
-- `lib/ui/features/meal_scan/scan_meal_screen.dart` (Meal scanning dashboard)
-- `lib/ui/features/chat/ai_coach_screen.dart` (AI coaching conversation panel)
-- `lib/ui/features/weekly_report/weekly_report_screen.dart` (Insight logs)
-- `lib/main.dart` (Concise entry point)
+### 2. Green Settings Profile Trigger ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- Styled the circular settings profile avatar at the top of the screen to use the app's brand green theme:
+  - Background color is now `theme.colorScheme.primary.withAlpha(30)`.
+  - Icon color is now `theme.colorScheme.primary` (brand green).
 
-### Complete Codebase Skeleton Generation
-We generated **56 structural files** across the frontend, backend, and Supabase database mapping out all core, recommended, and stretch features specified in the project proposal docx. Each file contains descriptive comments detailing the implementation target.
-
-#### 1. Frontend Files
-- **Data Layer Models**: `user_api_model.dart`, `meal_api_model.dart`, `chat_api_model.dart`, `report_api_model.dart`
-- **Data Layer Repositories**: `user_repository.dart`, `meal_repository.dart`, `chat_repository.dart`, `report_repository.dart`
-- **Data Layer Services**: `supabase_service.dart`, `api_service.dart`
-- **Domain Layer Entities**: `user_profile.dart`, `meal.dart`, `chat_message.dart`, `weekly_insight.dart`
-- **Shared Layer Helpers**: `local_storage_service.dart`, `logger_service.dart`, `custom_button.dart`, `loading_overlay.dart`
-- **Core Config**: `constants.dart`
-- **Feature Views & ViewModels**:
-  - `onboarding/`: `onboarding_view.dart`, `onboarding_viewmodel.dart`
-  - `auth/`: `auth_view.dart`, `auth_viewmodel.dart`
-  - `predictive_coaching/`: `coaching_view.dart`, `coaching_viewmodel.dart`
-  - `grocery_list/`: `grocery_view.dart`, `grocery_viewmodel.dart`
-  - `health_sync/`: `health_sync_view.dart`, `health_sync_viewmodel.dart`
-  - `family_profiles/`: `family_view.dart`, `family_viewmodel.dart`
-  - `subscription/`: `paywall_view.dart`, `paywall_viewmodel.dart`
-  - `settings/`: `settings_view.dart`, `settings_viewmodel.dart`
-  - `notifications/`: `notification_helper.dart`
-
-#### 2. Backend Files
-- **FastAPI Endpoint Routers**: `auth.py`, `profile.py`, `meals.py`, `coach.py`, `reports.py`, `coaching.py`
-- **Core Security & DB Engines**: `security.py`, `database.py`
-- **Supabase Client wrapper**: `supabase_client.py`
-- **Service Runners**: `gemini_service.py`, `usda_service.py`, `report_service.py`
-- **Persistance Model mapping**: `db_models.py`
-- **Input/Output Validation Schemas**: `user.py`, `meal.py`, `chat.py`, `report.py`
-- **Config Template**: `.env.example`
-
-#### 3. Supabase Database Files
-- **Base Persistence Table schema**: `schema.sql`
-- **First migration script**: `migrations/001_initial_schema.sql`
+### 3. Beautiful PDF Document Redesign ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart))
+- **Multi-Page Layout**: Replaced the static single `pw.Page` with `pw.MultiPage` to elegantly auto-generate page breaks if logged table data grows.
+- **Brand Colors**: Applied the app's dark background (`#0D0F14` & `#161A22`) and primary green (`#00E676`) accent details to all headers, targets, and grid fields.
+- **Metrics Card**: Enclosed the user's physiological goals and target logs inside a rounded card structure with mini label headings.
+- **Table Styling**: Structured logs into clean tables with dark headers, white text, and light grid underlines.
 
 ---
 
@@ -62,4 +27,4 @@ We generated **56 structural files** across the frontend, backend, and Supabase 
   ```bash
   flutter analyze
   ```
-  **Result**: `No issues found!` (Clean compilation across all 56 generated skeleton files).
+  **Result**: `No issues found!` (Clean compilation, zero errors/warnings across all files).

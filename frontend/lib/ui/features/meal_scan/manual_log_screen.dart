@@ -1,0 +1,254 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../shared/widgets/custom_toast.dart';
+
+class ManualLogScreen extends StatefulWidget {
+  const ManualLogScreen({super.key});
+
+  @override
+  State<ManualLogScreen> createState() => _ManualLogScreenState();
+}
+
+class _ManualLogScreenState extends State<ManualLogScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _caloriesController = TextEditingController();
+  final _proteinController = TextEditingController();
+  final _carbsController = TextEditingController();
+  final _fatController = TextEditingController();
+
+  String _selectedMealType = 'breakfast';
+  bool _isSaving = false;
+  String _language = 'en';
+
+  final List<String> _mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _language = prefs.getString('language') ?? 'en';
+      });
+    }
+  }
+
+  Future<void> _saveMeal() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('No session found');
+
+      final payload = {
+        'user_id': user.id,
+        'meal_type': _selectedMealType,
+        'notes': _nameController.text.trim(),
+        'total_calories': int.parse(_caloriesController.text),
+        'total_protein_g': int.parse(_proteinController.text),
+        'total_carbs_g': int.parse(_carbsController.text),
+        'total_fat_g': int.parse(_fatController.text),
+      };
+
+      await supabase.from('meal_logs').insert(payload);
+
+      if (mounted) {
+        CustomToast.show(context, _t('success'), isError: false);
+        Navigator.pop(context, true); // Return true to trigger dashboard reload
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, 'Failed to save meal: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  String _t(String key) {
+    final translations = {
+      'en': {
+        'title': 'Log Meal Manually',
+        'name': 'Meal Description / Items',
+        'type': 'Meal Category',
+        'calories': 'Calories (kcal)',
+        'protein': 'Protein (g)',
+        'carbs': 'Carbohydrates (g)',
+        'fat': 'Fat (g)',
+        'save': 'Save Meal Log',
+        'required': 'Required',
+        'numberRequired': 'Please enter a valid number',
+        'success': 'Meal logged successfully!',
+      },
+      'ur': {
+        'title': 'خود غذا لاگ کریں',
+        'name': 'غذا کی تفصیل / نام',
+        'type': 'غذا کی قسم',
+        'calories': 'کیلوریز',
+        'protein': 'پروٹین (گرام)',
+        'carbs': 'کاربوہائیڈریٹ (گرام)',
+        'fat': 'چربی (گرام)',
+        'save': 'غذا محفوظ کریں',
+        'required': 'لازمی',
+        'numberRequired': 'براہ کرم درست نمبر درج کریں',
+        'success': 'غذا کامیابی کے ساتھ لاگ ہو گئی!',
+      }
+    };
+    return translations[_language]?[key] ?? key;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _caloriesController.dispose();
+    _proteinController.dispose();
+    _carbsController.dispose();
+    _fatController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_t('title')),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: _t('name'),
+                  border: const OutlineInputBorder(),
+                  hintText: _language == 'ur' ? 'مثال کے طور پر: انڈا اور روٹی' : 'e.g. Eggs and toast',
+                ),
+                validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedMealType,
+                decoration: InputDecoration(
+                  labelText: _t('type'),
+                  border: const OutlineInputBorder(),
+                ),
+                items: _mealTypes.map((type) {
+                  String label = type.toUpperCase();
+                  if (_language == 'ur') {
+                    if (type == 'breakfast') label = 'ناشتہ';
+                    if (type == 'lunch') label = 'دوپہر کا کھانا';
+                    if (type == 'dinner') label = 'رات کا کھانا';
+                    if (type == 'snack') label = 'سنییک';
+                  }
+                  return DropdownMenuItem(value: type, child: Text(label));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedMealType = val;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _caloriesController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: _t('calories'),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (val) {
+                  if (val == null || val.isEmpty) return _t('required');
+                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _proteinController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: _t('protein'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return _t('required');
+                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _carbsController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: _t('carbs'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return _t('required');
+                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _fatController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: _t('fat'),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (val) {
+                  if (val == null || val.isEmpty) return _t('required');
+                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  onPressed: _isSaving ? null : _saveMeal,
+                  child: _isSaving
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(_t('save'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

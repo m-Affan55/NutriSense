@@ -80,7 +80,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     if (q['type'] == 'done') {
       // Simulate loading and navigate
       await Future.delayed(const Duration(seconds: 2));
-      print("Final Profile: $_healthProfile"); // For testing
+      debugPrint("Final Profile: $_healthProfile"); // For testing
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
