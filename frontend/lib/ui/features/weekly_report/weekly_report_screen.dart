@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'macro_trend_chart.dart';
 
 class WeeklyReportScreen extends StatefulWidget {
   const WeeklyReportScreen({super.key});
@@ -20,6 +21,12 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   String _summary = '';
   int _healthScore = 0;
   int _daysAdhered = 0;
+
+  int _targetCalories = 2000;
+  int _targetProtein = 150;
+  int _targetCarbs = 250;
+  int _targetFat = 70;
+  List<Map<String, dynamic>> _mealLogs = [];
 
   @override
   void initState() {
@@ -37,18 +44,47 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
+      // 1. Fetch weekly report from AI backend
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/weekly-report?user_id=${user.id}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          _summary = data['weekly_summary'] ?? '';
-          _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
-          _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
-        });
+        _summary = data['weekly_summary'] ?? '';
+        _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
+        _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
       } else {
         throw Exception('Server error: ${response.body}');
+      }
+
+      // 2. Fetch target metrics
+      final profileRes = await supabase
+          .from('health_profiles')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (profileRes != null) {
+        _targetCalories = profileRes['daily_calorie_target'] ?? 2000;
+        _targetProtein = profileRes['daily_protein_g'] ?? 150;
+        _targetCarbs = profileRes['daily_carbs_g'] ?? 250;
+        _targetFat = profileRes['daily_fat_g'] ?? 70;
+      }
+
+      // 3. Fetch past 7 days of meal logs for the trend chart
+      final now = DateTime.now();
+      final sevenDaysAgo = now.subtract(const Duration(days: 7)).toIso8601String();
+      final mealsResponse = await supabase
+          .from('meal_logs')
+          .select()
+          .eq('user_id', user.id)
+          .gte('logged_at', sevenDaysAgo)
+          .order('logged_at', ascending: true);
+
+      _mealLogs = List<Map<String, dynamic>>.from(mealsResponse);
+
+      if (mounted) {
+        setState(() {});
       }
     } catch (e) {
       if (mounted) {
@@ -140,6 +176,15 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    MacroTrendChart(
+                      mealLogs: _mealLogs,
+                      dailyCalorieTarget: _targetCalories,
+                      dailyProteinTarget: _targetProtein,
+                      dailyCarbsTarget: _targetCarbs,
+                      dailyFatTarget: _targetFat,
+                      language: _language,
                     ),
                     const SizedBox(height: 16),
                     Card(

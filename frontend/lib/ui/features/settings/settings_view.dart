@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../auth/auth_view.dart';
+import '../auth/update_password_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -330,6 +331,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delConfirmBtn': 'Delete Permanently',
         'delCancelBtn': 'Cancel',
         'delSuccess': 'Your account has been deleted.',
+        'changePassword': 'Change Password',
+        'changePasswordSub': 'Update your login password.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -358,6 +361,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delConfirmBtn': 'مستقل طور پر حذف کریں',
         'delCancelBtn': 'منسوخ کریں',
         'delSuccess': 'آپ کا اکاؤنٹ حذف کر دیا گیا ہے۔',
+        'changePassword': 'پاس ورڈ تبدیل کریں',
+        'changePasswordSub': 'اپنا لاگ ان پاس ورڈ تبدیل کریں۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -485,6 +490,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 16),
                     Text(_t('privacy'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline, color: Colors.blueAccent),
+                      title: Text(_t('changePassword')),
+                      subtitle: Text(_t('changePasswordSub')),
+                      onTap: _isSaving ? null : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
+                        );
+                      },
+                    ),
                     ListTile(
                       leading: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
                       title: Text(_t('export')),
