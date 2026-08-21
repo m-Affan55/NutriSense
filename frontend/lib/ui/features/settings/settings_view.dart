@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -346,14 +348,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-      // 3. Save to Windows Downloads directory
-      final userProfile = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '.';
-      final downloadsDir = Directory('$userProfile/Downloads');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
+      // 3. Save to safe documents directory across platforms
+      Directory saveDir;
+      if (kIsWeb) {
+        throw Exception('Web download not supported directly yet.');
+      } else {
+        saveDir = await getApplicationDocumentsDirectory();
       }
 
-      final file = File('${downloadsDir.path}/nutrisense_health_receipt.pdf');
+      final file = File('${saveDir.path}/nutrisense_health_receipt.pdf');
       await file.writeAsBytes(await pdfDoc.save());
 
       if (mounted) {
