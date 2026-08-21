@@ -14,7 +14,7 @@ class OfflineCache {
   static final OfflineCache instance = OfflineCache._();
 
   static const _dbName = 'nutrisense_offline.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   // Table names
   static const _mealTable = 'pending_meal_logs';
@@ -45,7 +45,8 @@ class OfflineCache {
             fat_g       INTEGER NOT NULL,
             logged_at   TEXT NOT NULL,
             synced      INTEGER NOT NULL DEFAULT 0,
-            sync_id     TEXT UNIQUE
+            sync_id     TEXT UNIQUE,
+            family_member_id TEXT
           )
         ''');
         await db.execute('''
@@ -68,6 +69,11 @@ class OfflineCache {
             await db.execute('ALTER TABLE $_waterTable ADD COLUMN sync_id TEXT UNIQUE');
           } catch (_) {}
         }
+        if (oldVersion < 3) {
+          try {
+            await db.execute('ALTER TABLE $_mealTable ADD COLUMN family_member_id TEXT');
+          } catch (_) {}
+        }
       },
     );
   }
@@ -85,6 +91,7 @@ class OfflineCache {
     required int proteinG,
     required int carbsG,
     required int fatG,
+    String? familyMemberId,
   }) async {
     final db = await _database;
     final syncId = const Uuid().v4();
@@ -99,6 +106,7 @@ class OfflineCache {
       'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
       'sync_id': syncId,
+      'family_member_id': familyMemberId,
     });
   }
 

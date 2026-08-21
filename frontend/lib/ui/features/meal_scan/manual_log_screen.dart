@@ -135,19 +135,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           proteinG: proteinG,
           carbsG: carbsG,
           fatG: fatG,
+          familyMemberId: _selectedFamilyMemberId,
         );
-        try {
-          await supabase.from('meal_logs').insert({
-            'user_id': user.id,
-            'meal_type': _selectedMealType,
-            'notes': notes,
-            'total_calories': calories,
-            'total_protein_g': proteinG,
-            'total_carbs_g': carbsG,
-            'total_fat_g': fatG,
-            'family_member_id': _selectedFamilyMemberId,
-          });
-        } catch (_) {}
         // 2. Sync to Supabase in background (fire-and-forget)
         SyncService.instance.syncPending(user.id);
 

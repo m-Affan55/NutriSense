@@ -56,6 +56,7 @@ class SyncService {
             'total_fat_g': meal['fat_g'],
             'logged_at': meal['logged_at'],
             'sync_id': meal['sync_id'],
+            'family_member_id': meal['family_member_id'],
           });
           await _cache.markMealSynced(meal['local_id'] as int);
           debugPrint('[SyncService] Meal synced: local_id=${meal['local_id']}');
