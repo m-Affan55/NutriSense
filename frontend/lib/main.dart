@@ -7,6 +7,7 @@ import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 import 'ui/features/auth/update_password_screen.dart';
 import 'ui/features/navigation/main_navigation_screen.dart';
+import 'ui/features/onboarding/onboarding_view.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +16,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
 import 'core/ramadan_controller.dart';
+
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,16 +45,16 @@ Future<void> main(List<String> args) async {
       const scheme = 'io.supabase.nutrisense';
       final exePath = Platform.resolvedExecutable;
       
-      final key = Registry.currentUser.createKey('Software\\Classes\\$scheme');
-      key.createValue(RegistryValue.string('', 'URL:NutriSense Protocol'));
-      key.createValue(RegistryValue.string('URL Protocol', ''));
+      final key = CURRENT_USER.create('Software\\Classes\\$scheme');
+      key.setValue('', RegistryValue.string('URL:NutriSense Protocol'));
+      key.setValue('URL Protocol', RegistryValue.string(''));
       
-      final iconKey = key.createKey('DefaultIcon');
-      iconKey.createValue(RegistryValue.string('', '$exePath,1'));
+      final iconKey = key.create('DefaultIcon');
+      iconKey.setValue('', RegistryValue.string('$exePath,1'));
       iconKey.close();
 
-      final shellKey = key.createKey('shell\\open\\command');
-      shellKey.createValue(RegistryValue.string('', '"$exePath" "%1"'));
+      final shellKey = key.create('shell\\open\\command');
+      shellKey.setValue('', RegistryValue.string('"$exePath" "%1"'));
       shellKey.close();
       key.close();
     } catch (e) {
@@ -130,7 +133,7 @@ class NutriSenseAppState extends State<NutriSenseApp> {
   }
 
   void _initAuthListener() {
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       final session = data.session;
 
@@ -156,7 +159,7 @@ class NutriSenseAppState extends State<NutriSenseApp> {
         final isRamadan = RamadanController.instance.isRamadanMode;
         return MaterialApp(
           title: 'NutriSense',
-          navigatorKey: _navigatorKey,
+          navigatorKey: globalNavigatorKey,
           debugShowCheckedModeBanner: false,
           themeMode: _themeMode,
           theme: isRamadan ? buildRamadanTheme() : buildLightTheme(),

@@ -455,6 +455,49 @@ class ReminderManager {
     await syncRemindersWithMode();
   }
 
+  /// 7. Check and update daily streak
+  static Future<void> updateAndCheckStreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final todayStr = "\${now.year}-\${now.month.toString().padLeft(2, '0')}-\${now.day.toString().padLeft(2, '0')}";
+    final lastLogDateStr = prefs.getString('last_streak_date');
+
+    if (lastLogDateStr == todayStr) {
+      // Already logged today, don't increment streak
+      return;
+    }
+
+    int currentStreak = prefs.getInt('user_current_streak') ?? 4; // Hackathon default fallback
+
+    if (lastLogDateStr != null) {
+      final parts = lastLogDateStr.split('-');
+      if (parts.length == 3) {
+        final lastDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+        final todayDate = DateTime(now.year, now.month, now.day);
+        final difference = todayDate.difference(lastDate).inDays;
+
+        if (difference == 1) {
+          currentStreak += 1;
+        } else if (difference > 1) {
+          currentStreak = 1;
+        }
+      } else {
+        currentStreak += 1;
+      }
+    } else {
+      currentStreak += 1;
+    }
+
+    if (currentStreak <= 0) currentStreak = 1;
+
+    await prefs.setInt('user_current_streak', currentStreak);
+    await prefs.setString('last_streak_date', todayStr);
+
+    if (currentStreak % 3 == 0 || currentStreak == 5 || currentStreak == 7 || currentStreak == 10 || currentStreak == 14 || currentStreak == 30) {
+      await triggerStreakMilestoneNotification(currentStreak);
+    }
+  }
+
   static String _format12Hour(int hour, int minute) {
     final h = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     final period = hour >= 12 ? 'PM' : 'AM';

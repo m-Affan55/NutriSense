@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
+import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -226,6 +227,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       Navigator.pop(context); // close dialog
                       Navigator.pop(context); // close scanner screen
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
+                      SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food');
                     }
                   } catch (e) {
                     if (context.mounted) {

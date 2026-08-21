@@ -1,4 +1,4 @@
-# NutriSense — Current Success & System Status
+![alt text](image.png)# NutriSense — Current Success & System Status
 
 This document provides a comprehensive inventory of all features, services, database schemas, and verification results across the **NutriSense** platform.
 

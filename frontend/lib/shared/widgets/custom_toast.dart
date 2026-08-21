@@ -6,6 +6,7 @@ class CustomToast {
     String message, {
     bool isError = true,
     Duration duration = const Duration(seconds: 4),
+    VoidCallback? onTap,
   }) {
     // 1. Convert raw exception strings to friendly text
     String friendlyMessage = message;
@@ -41,42 +42,45 @@ class CustomToast {
         duration: duration,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        content: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161A22), // App dark background
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isError ? Colors.redAccent.withAlpha(120) : const Color(0xFF00E676).withAlpha(120), // Green border for success, Red for error
-              width: 1.5,
+        content: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161A22), // App dark background
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isError ? Colors.redAccent.withAlpha(120) : const Color(0xFF00E676).withAlpha(120),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(120),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(120),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_outline : Icons.check_circle_outline,
-                color: isError ? Colors.redAccent : const Color(0xFF00E676), // Green color for success, Red for error
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  friendlyMessage,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+            child: Row(
+              children: [
+                Icon(
+                  isError ? Icons.error_outline : Icons.check_circle_outline,
+                  color: isError ? Colors.redAccent : const Color(0xFF00E676),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    friendlyMessage,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -6,6 +6,7 @@ import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
+import '../../../core/swap_service.dart';
 
 class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
@@ -23,6 +24,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
   List<double> _trend = [];
   String _coachingMessage = '';
   List<dynamic> _foodSwaps = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -87,6 +89,19 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
       if (mounted) {
         setState(() => _isLoading = false);
         _ringController.forward();
+        
+        // Auto-scroll if navigated from Swap alert
+        if (SwapService.highlightNotifier.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error loading coaching data: $e');
@@ -126,6 +141,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
             : RefreshIndicator(
                 onRefresh: _loadCoachingData,
                 child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
                 child: Column(
@@ -204,37 +220,13 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                     Text('7-Day Consistency', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     SizedBox(
-                      height: 130,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(_trend.length, (index) {
-                          final val = _trend[index];
-                          final daysAgo = (_trend.length - 1) - index;
-                          final d = DateTime.now().subtract(Duration(days: daysAgo));
-                          final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                          final label = dayLabels[d.weekday - 1];
-                          
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: val < 0 ? 100 : (100 * val).clamp(4.0, 100.0),
-                                decoration: BoxDecoration(
-                                  color: val < 0 ? Colors.transparent : (val > 0.5 ? scoreColor : Colors.grey.shade600),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: val < 0 ? Border.all(color: Colors.white24, width: 1.5) : null,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                label, 
-                                style: const TextStyle(color: Colors.grey, fontSize: 11)
-                              ),
-                            ],
-                          );
-                        }),
+                      height: 140,
+                      child: CustomPaint(
+                        size: const Size(double.infinity, 140),
+                        painter: _ConsistencyChartPainter(
+                          trend: _trend,
+                          accent: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -243,7 +235,15 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                     if (_foodSwaps.isNotEmpty) ...[
                       Text('Recommended Swaps', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 16),
-                      ..._foodSwaps.map((swap) => _buildSwapCard(swap, theme)),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: SwapService.highlightNotifier,
+                        builder: (context, isHighlighted, _) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _foodSwaps.map((swap) => _buildSwapCard(swap, theme, isHighlighted)).toList(),
+                          );
+                        }
+                      ),
                     ]
                   ],
                 ),
@@ -253,14 +253,25 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme) {
-    return Container(
+  Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme, bool isHighlighted) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF161A22),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+          color: isHighlighted ? const Color(0xFF00E676) : Colors.white10,
+          width: isHighlighted ? 2.0 : 1.0,
+        ),
+        boxShadow: isHighlighted ? [
+          BoxShadow(
+            color: const Color(0xFF00E676).withAlpha(60),
+            blurRadius: 12,
+            spreadRadius: 2,
+          )
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,4 +317,83 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
     _ringController.dispose();
     super.dispose();
   }
+}
+
+class _ConsistencyChartPainter extends CustomPainter {
+  final List<double> trend;
+  final Color accent;
+
+  _ConsistencyChartPainter({
+    required this.trend,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (trend.isEmpty) return;
+
+    // Find the max value to place the dashed line at the highest bar
+    double maxVal = trend.map((v) => v < 0 ? 0.0 : v).reduce((a, b) => a > b ? a : b);
+    if (maxVal == 0) maxVal = 1.0; 
+
+    // Add 10% padding above the highest bar
+    final maxDrawVal = maxVal * 1.1; 
+    
+    final barWidth = size.width / (trend.length * 2 + 1);
+    final chartHeight = size.height - 24; // Leave room for labels
+
+    // Dashed line at the height of the max value
+    final goalY = chartHeight - (maxVal / maxDrawVal * chartHeight);
+    final dashPaint = Paint()
+      ..color = Colors.white.withAlpha(50)
+      ..strokeWidth = 1;
+    for (double x = 0; x < size.width; x += 10) {
+      canvas.drawLine(Offset(x, goalY), Offset(x + 5, goalY), dashPaint);
+    }
+
+    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    for (int i = 0; i < trend.length; i++) {
+      final val = trend[i] < 0 ? 0.0 : trend[i];
+      final barHeight = (val / maxDrawVal * chartHeight).clamp(4.0, chartHeight);
+      final x = barWidth + i * barWidth * 2;
+      final barRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, chartHeight - barHeight, barWidth, barHeight),
+        const Radius.circular(6),
+      );
+
+      final daysAgo = (trend.length - 1) - i;
+      final isToday = daysAgo == 0;
+      final d = DateTime.now().subtract(Duration(days: daysAgo));
+      final label = dayLabels[d.weekday - 1];
+
+      final barGradient = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: isToday
+            ? [accent.withAlpha(120), accent]
+            : [Colors.blueAccent.withAlpha(100), Colors.blueAccent],
+      );
+
+      final barPaint = Paint()..shader = barGradient.createShader(barRect.outerRect);
+      canvas.drawRRect(barRect, barPaint);
+
+      // Label below bar
+      final tp = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            color: isToday ? Colors.white : Colors.white.withAlpha(150), 
+            fontSize: 10,
+            fontWeight: isToday ? FontWeight.bold : FontWeight.normal
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(x + barWidth / 2 - tp.width / 2, chartHeight + 6));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConsistencyChartPainter old) => true;
 }

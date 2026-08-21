@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
+import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
@@ -491,15 +492,11 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       // Learn adaptive meal pattern and check streak milestones
       await ReminderManager.recordMealLogged(mealType, DateTime.now());
-      final prefs = await SharedPreferences.getInstance();
-      final streak = (prefs.getInt('user_current_streak') ?? 4) + 1;
-      await prefs.setInt('user_current_streak', streak);
-      if (streak % 3 == 0 || streak == 5 || streak == 7 || streak == 10 || streak == 14 || streak == 30) {
-        await ReminderManager.triggerStreakMilestoneNotification(streak);
-      }
+      await ReminderManager.updateAndCheckStreak();
 
       if (mounted) {
         CustomToast.show(context, 'Meal logged successfully!', isError: false);
+        SwapService.checkMealForSwaps(data['meal_name'] ?? 'Scanned Meal');
       }
     } catch (e) {
       if (mounted) {

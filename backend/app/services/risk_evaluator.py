@@ -59,5 +59,10 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list) -> dict:
             "level": level,
             "message": data.get("message", "")
         }
-    except Exception:
-        return {"level": "none", "message": ""}
+    except Exception as e:
+        print(f"Risk Evaluator Error: {str(e)}")
+        # Fallback safety alert if API fails but user has conditions
+        return {
+            "level": "warning", 
+            "message": "Automated safety check temporarily unavailable. Please consult your doctor before following this advice given your medical conditions."
+        }

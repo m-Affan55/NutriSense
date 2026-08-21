@@ -8,6 +8,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/api_client.dart';
 import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
+import '../../../core/swap_service.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
@@ -107,10 +108,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('No session found');
 
-      final calories = int.parse(_caloriesController.text);
-      final proteinG = int.parse(_proteinController.text);
-      final carbsG = int.parse(_carbsController.text);
-      final fatG = int.parse(_fatController.text);
+      final calories = double.parse(_caloriesController.text).round();
+      final proteinG = double.parse(_proteinController.text).round();
+      final carbsG = double.parse(_carbsController.text).round();
+      final fatG = double.parse(_fatController.text).round();
       final notes = _nameController.text.trim();
 
       if (kIsWeb) {
@@ -135,34 +136,19 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           proteinG: proteinG,
           carbsG: carbsG,
           fatG: fatG,
+          familyMemberId: _selectedFamilyMemberId,
         );
-        try {
-          await supabase.from('meal_logs').insert({
-            'user_id': user.id,
-            'meal_type': _selectedMealType,
-            'notes': notes,
-            'total_calories': calories,
-            'total_protein_g': proteinG,
-            'total_carbs_g': carbsG,
-            'total_fat_g': fatG,
-            'family_member_id': _selectedFamilyMemberId,
-          });
-        } catch (_) {}
         // 2. Sync to Supabase in background (fire-and-forget)
         SyncService.instance.syncPending(user.id);
 
         // 3. Train adaptive meal timing and check streak notifications
         await ReminderManager.recordMealLogged(_selectedMealType, DateTime.now());
-        final prefs = await SharedPreferences.getInstance();
-        final streak = (prefs.getInt('user_current_streak') ?? 4) + 1;
-        await prefs.setInt('user_current_streak', streak);
-        if (streak % 3 == 0 || streak == 5 || streak == 7 || streak == 10 || streak == 14 || streak == 30) {
-          await ReminderManager.triggerStreakMilestoneNotification(streak);
-        }
+        await ReminderManager.updateAndCheckStreak();
       }
 
       if (mounted) {
         CustomToast.show(context, _t('success'), isError: false);
+        SwapService.checkMealForSwaps(notes);
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -350,14 +336,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _caloriesController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: _t('calories'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return _t('required');
-                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  if (double.tryParse(val) == null) return _t('numberRequired');
                   return null;
                 },
               ),
@@ -367,14 +353,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _proteinController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: _t('protein'),
                         border: const OutlineInputBorder(),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return _t('required');
-                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        if (double.tryParse(val) == null) return _t('numberRequired');
                         return null;
                       },
                     ),
@@ -383,14 +369,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _carbsController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: _t('carbs'),
                         border: const OutlineInputBorder(),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return _t('required');
-                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        if (double.tryParse(val) == null) return _t('numberRequired');
                         return null;
                       },
                     ),
@@ -400,14 +386,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _fatController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: _t('fat'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return _t('required');
-                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  if (double.tryParse(val) == null) return _t('numberRequired');
                   return null;
                 },
               ),
