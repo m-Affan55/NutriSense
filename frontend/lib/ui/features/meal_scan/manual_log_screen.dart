@@ -41,7 +41,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _language = prefs.getString('language') ?? 'en';
+        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
       });
     }
   }

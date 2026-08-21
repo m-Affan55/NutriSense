@@ -45,7 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -89,6 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('language', _language);
+      await prefs.setString('app_language', _language);
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -152,8 +153,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (user == null) throw Exception('No session found');
 
       final profile = await supabase.from('health_profiles').select().eq('user_id', user.id).maybeSingle();
-      final meals = await supabase.from('meal_logs').select().eq('user_id', user.id);
-      final water = await supabase.from('water_logs').select().eq('user_id', user.id);
+      
+      final mealsResponse = await supabase
+          .from('meal_logs')
+          .select()
+          .eq('user_id', user.id)
+          .order('logged_at', ascending: false)
+          .limit(20);
+      final List<dynamic> meals = mealsResponse as List<dynamic>;
+
+      final waterResponse = await supabase
+          .from('water_logs')
+          .select()
+          .eq('user_id', user.id)
+          .order('logged_at', ascending: false)
+          .limit(20);
+      final List<dynamic> water = waterResponse as List<dynamic>;
 
       // 2. Build PDF Document
       final pdfDoc = pw.Document();
@@ -237,39 +252,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Meal log section
               pw.Text('MEAL LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
               pw.SizedBox(height: 8),
-              pw.TableHelper.fromTextArray(
-                headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
-                data: meals.map((m) => [
-                  m['notes'] ?? 'Meal',
-                  m['meal_type'] ?? 'unknown',
-                  '${m['total_calories'] ?? 0}',
-                  m['logged_at'].toString().substring(0, 10),
-                ]).toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
-                cellAlignment: pw.Alignment.centerLeft,
-                rowDecoration: const pw.BoxDecoration(
-                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+              if (meals.isEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                  child: pw.Text('No meals logged recently.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey400)),
+                )
+              else
+                pw.TableHelper.fromTextArray(
+                  headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
+                  data: meals.map((m) => [
+                    m['notes'] ?? 'Meal',
+                    m['meal_type'] ?? 'unknown',
+                    '${m['total_calories'] ?? 0}',
+                    m['logged_at'].toString().substring(0, 10),
+                  ]).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  rowDecoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                  ),
                 ),
-              ),
               pw.SizedBox(height: 24),
               
               // Hydration log section
               pw.Text('HYDRATION LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
               pw.SizedBox(height: 8),
-              pw.TableHelper.fromTextArray(
-                headers: ['Hydration Amount', 'Logged Date'],
-                data: water.map((w) => [
-                  '${w['amount_ml']} ml',
-                  w['logged_at'].toString().substring(0, 10),
-                ]).toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
-                cellAlignment: pw.Alignment.centerLeft,
-                rowDecoration: const pw.BoxDecoration(
-                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+              if (water.isEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                  child: pw.Text('No hydration logged recently.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey400)),
+                )
+              else
+                pw.TableHelper.fromTextArray(
+                  headers: ['Hydration Amount', 'Logged Date'],
+                  data: water.map((w) => [
+                    '${w['amount_ml']} ml',
+                    w['logged_at'].toString().substring(0, 10),
+                  ]).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  rowDecoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                  ),
                 ),
-              ),
             ];
           },
         ),

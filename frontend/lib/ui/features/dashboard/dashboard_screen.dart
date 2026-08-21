@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     setState(() => _isLoading = true);
 
     final prefs = await SharedPreferences.getInstance();
-    _language = prefs.getString('language') ?? 'en';
+    _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;

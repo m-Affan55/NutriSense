@@ -31,7 +31,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   Future<void> _loadLanguage() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
     });
   }
 

@@ -124,7 +124,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
               onRefresh: _loadCoachingData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

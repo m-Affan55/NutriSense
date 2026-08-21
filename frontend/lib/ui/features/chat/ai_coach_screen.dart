@@ -32,7 +32,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   Future<void> _loadLanguageAndGreeting() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
       
       // Load initial greeting based on selected language
       final greeting = _language == 'ur'
