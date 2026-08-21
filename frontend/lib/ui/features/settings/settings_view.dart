@@ -227,16 +227,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     pw.Text('HEALTH TARGETS & PROFILE', style: pw.TextStyle(fontSize: 11, color: PdfColor.fromInt(0xFF00E676), fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 12),
                     if (profile != null) ...[
-                      pw.GridView(
-                        crossAxisCount: 2,
-                        childAspectRatio: 6,
+                      pw.Column(
                         children: [
-                          pdfMetric('Age', '${profile['age']} years'),
-                          pdfMetric('Weight', '${profile['weight_kg']} kg'),
-                          pdfMetric('Height', '${profile['height_cm']} cm'),
-                          pdfMetric('Goal', profile['goal'].toString().replaceAll('_', ' ').toUpperCase()),
-                          pdfMetric('Calorie Target', '${profile['daily_calorie_target']} kcal'),
-                          pdfMetric('Daily Food Budget', '${profile['daily_budget_pkr']} PKR'),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Age', '${profile['age']} years')),
+                              pw.Expanded(child: pdfMetric('Weight', '${profile['weight_kg']} kg')),
+                            ],
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Height', '${profile['height_cm']} cm')),
+                              pw.Expanded(child: pdfMetric('Goal', profile['goal'].toString().replaceAll('_', ' ').toUpperCase())),
+                            ],
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Calorie Target', '${profile['daily_calorie_target']} kcal')),
+                              pw.Expanded(child: pdfMetric('Daily Food Budget', '${profile['daily_budget_pkr']} PKR')),
+                            ],
+                          ),
                         ],
                       ),
                       pw.SizedBox(height: 10),

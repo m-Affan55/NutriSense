@@ -41,8 +41,9 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
 
     try {
       // 1. Fetch Habit Score & Summary
+      final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
       final scoreRes = await http.get(
-        Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}'),
+        Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes'),
       );
       
       if (scoreRes.statusCode == 200) {

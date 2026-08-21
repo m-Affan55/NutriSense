@@ -12,7 +12,7 @@ class SwapRequest(BaseModel):
     recent_meals: List[str]
 
 @router.get("/habit-score/{user_id}")
-def get_habit_score(user_id: str):
+def get_habit_score(user_id: str, offset_minutes: int = 0):
     try:
         supabase = get_supabase_admin_client()
         
@@ -32,10 +32,21 @@ def get_habit_score(user_id: str):
         target_cal = profile.get('daily_calorie_target', 2000)
         target_pro = profile.get('daily_protein_g', 50)
         
-        # Group meals by UTC day to calculate daily totals
+        # Define user timezone from offset_minutes (negative offset means behind UTC, positive means ahead)
+        tz = datetime.timezone(datetime.timedelta(minutes=offset_minutes))
+        now_local = now_utc.astimezone(tz)
+        
+        # Group meals by user local day to calculate daily totals
         daily_totals = {}
         for m in meals:
-            day = m['logged_at'][:10]
+            try:
+                logged_at_str = m['logged_at'].replace('Z', '+00:00')
+                dt_utc = datetime.datetime.fromisoformat(logged_at_str)
+                dt_local = dt_utc.astimezone(tz)
+                day = dt_local.date().isoformat()
+            except Exception:
+                day = m['logged_at'][:10]
+                
             if day not in daily_totals:
                 daily_totals[day] = {'cal': 0, 'pro': 0}
             daily_totals[day]['cal'] += (m.get('total_calories') or 0)
@@ -64,7 +75,7 @@ def get_habit_score(user_id: str):
         # Generate trend for the last 7 days (Daily Adherence Score or -1.0 if missing)
         trend = []
         for i in range(7):
-            day_str = (now_utc - datetime.timedelta(days=i)).isoformat()[:10]
+            day_str = (now_local - datetime.timedelta(days=i)).date().isoformat()
             if day_str in daily_totals:
                 totals = daily_totals[day_str]
                 day_cal_acc = 1.0 if abs(totals['cal'] - target_cal) / max(target_cal, 1) <= 0.2 else 0.0
