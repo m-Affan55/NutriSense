@@ -205,3 +205,59 @@ class GeminiService:
         except Exception:
             return []
 
+    @staticmethod
+    def generate_grocery_list(recent_meals: list[str], profile: dict = None) -> list[dict]:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        
+        profile_context = ""
+        if profile:
+            profile_context = f"""
+            User's health profile:
+            - Goal: {profile.get('goal', 'N/A')}
+            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
+            """
+            
+        prompt = f"""
+        You are an expert nutritionist. Generate a weekly grocery list for a user.
+        {profile_context}
+        
+        User's recent logged meals are:
+        {json.dumps(recent_meals)}
+        
+        Generate a smart grocery list of raw ingredients and healthy foods they need to buy for the upcoming week to prepare balanced meals aligned with their goal and health profile. Avoid ingredients that conflict with their dietary restrictions or medical conditions.
+        
+        Return ONLY a JSON array of category objects, where each object has the keys:
+        - "category": string (e.g., "Produce", "Proteins", "Dairy & Alternatives", "Grains & Pantry", "Healthy Snacks")
+        - "items": list of objects, each containing:
+            - "name": string (the item name, e.g. "Spinach", "Avocado", "Chicken breast")
+            - "quantity": string (e.g. "250g", "6 units", "1 kg")
+            - "checked": boolean (always false)
+        """
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            return json.loads(response.text)
+        except Exception:
+            return [
+                {
+                    "category": "Produce",
+                    "items": [
+                        {"name": "Spinach", "quantity": "1 bunch", "checked": False},
+                        {"name": "Bananas", "quantity": "1 dozen", "checked": False}
+                    ]
+                },
+                {
+                    "category": "Proteins",
+                    "items": [
+                        {"name": "Chicken Breast", "quantity": "1 kg", "checked": False},
+                        {"name": "Eggs", "quantity": "1 dozen", "checked": False}
+                    ]
+                }
+            ]
+

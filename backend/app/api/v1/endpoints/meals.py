@@ -151,3 +151,31 @@ async def search_food(req: SearchFoodRequest):
         return macros
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/grocery-list/{user_id}")
+async def get_grocery_list(user_id: str):
+    try:
+        supabase = get_supabase_admin_client()
+        
+        # 1. Fetch profile
+        profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        profile = profile_res.data
+        
+        # 2. Fetch past 7 days of meals (using UTC bounds)
+        import datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        start_date = now_utc.date() - datetime.timedelta(days=7)
+        
+        meals_res = supabase.table('meal_logs') \
+            .select('notes') \
+            .eq('user_id', user_id) \
+            .gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00") \
+            .execute()
+        meals = meals_res.data or []
+        recent_meal_notes = [m.get('notes') for m in meals if m.get('notes')]
+        
+        # 3. Generate grocery list
+        grocery_list = GeminiService.generate_grocery_list(recent_meal_notes, profile)
+        return grocery_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

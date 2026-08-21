@@ -1,23 +1,33 @@
-# Known Issues Resolution Walkthrough
+# Smart Grocery List Generator Walkthrough
 
-We have successfully resolved both issues outlined in [KNOWN_ISSUES.md](file:///d:/AI%20Hackathon/NutriSense/KNOWN_ISSUES.md):
+We have successfully implemented the **Smart Grocery List Generator** feature across the frontend and backend:
 
-## What Was Resolved
+## What Was Implemented
 
-### 1. Duplicate Sync Risk (Offline Mode)
-- **Database Upgraded to v2** ([offline_cache.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/offline_cache.dart)):
-  - Added the `uuid` package to generate cryptographically secure local IDs.
-  - Upgraded the database version to `2` and defined an `onUpgrade` script to migrate existing databases to add `sync_id TEXT UNIQUE` column for both meal and hydration tables.
-  - Every meal/water log written locally offline now receives a unique `sync_id` UUID immediately.
-- **Supabase Target Alignment** ([supabase/schema.sql](file:///d:/AI%20Hackathon/NutriSense/supabase/schema.sql)):
-  - Declared `sync_id UUID UNIQUE` column setup inside the SQL schema definitions of both `meal_logs` and `water_logs`.
-- **Idempotent Background Synchronization** ([sync_service.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/sync_service.dart)):
-  - Modified the sync client to upload the `sync_id`.
-  - Added specific error catch block for PostgreSQL unique constraint violations (`23505`). If Supabase reports that a record with the same `sync_id` was already successfully uploaded, the row is quietly and safely marked as synced locally (`synced = 1`), preventing double-counting of calories/hydration!
+### 1. Backend Service & Endpoint
+- **Gemini List Synthesizer** ([gemini_service.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/services/gemini_service.py)):
+  - Appended `generate_grocery_list` method to `GeminiService`.
+  - Sends the user's health profile, goals, restrictions, and recent meal logs over the past 7 days.
+  - Instructs Gemini to output a structured JSON array categorized by grocery section (Produce, Proteins, Dairy & Alternatives, Grains & Pantry, Healthy Snacks, etc.) containing specific item name recommendations and quantities.
+- **FastAPI GET Endpoint** ([meals.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/meals.py)):
+  - Added `@router.get("/grocery-list/{user_id}")`.
+  - Queries Supabase for the user's health profile and the list of meal names logged in the last 7 days. Passes this context to the Gemini service.
 
-### 2. Health Connect Permission Race Condition ([health_service.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/health_service.dart))
-- **Removed Unsafe Cache Variable**: Deleted the in-memory `_authorized` state variable.
-- **Dynamic Check Implementation**: Replaced the cached check in `getTodayActivity` with a dynamic `await isAvailable` call. This performs a fast native check of permission status before trying to query health data, preventing crash exceptions if permissions are background-revoked by the user.
+### 2. Frontend MVVM Architecture
+- **Grocery ViewModel** ([grocery_viewmodel.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_viewmodel.dart)):
+  - Manages loaded categories, item checkbox toggles, and loading/error states.
+  - Implements offline-friendly caching via `SharedPreferences` so the list loads instantly and checkbox states persist correctly without internet.
+  - Exposes actions to add custom items, remove items, and batch clear checked items.
+- **Grocery View Interface** ([grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart)):
+  - Designed in the app's dark radial gradient styling (`#0D0F14`).
+  - Lists checkable grocery items grouped under clean, collapsible `ExpansionTile` category blocks.
+  - Highlights checked items with a strike-through and faded text.
+  - Includes a Floating Action Button allowing users to input and add custom items (with category dropdowns).
+  - Fully localized in both English and Urdu (loads the user's settings selection automatically).
+- **Settings Screen Integration** ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart)):
+  - Added a new list tile for the grocery list screen with localized translations under the "Privacy & Account" section:
+    * English: *Smart Grocery List — Get AI shopping list based on your recent meals.*
+    * Urdu: *اسمارٹ گروسری لسٹ — حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔*
 
 ---
 

@@ -10,6 +10,7 @@ import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
+import '../grocery_list/grocery_view.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -417,6 +418,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delSuccess': 'Your account has been deleted.',
         'changePassword': 'Change Password',
         'changePasswordSub': 'Update your login password.',
+        'groceryTitle': 'Smart Grocery List',
+        'grocerySub': 'Get AI shopping list based on your recent meals.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -447,6 +450,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delSuccess': 'آپ کا اکاؤنٹ حذف کر دیا گیا ہے۔',
         'changePassword': 'پاس ورڈ تبدیل کریں',
         'changePasswordSub': 'اپنا لاگ ان پاس ورڈ تبدیل کریں۔',
+        'groceryTitle': 'اسمارٹ گروسری لسٹ',
+        'grocerySub': 'حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -590,13 +595,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 16),
                     Text(_t('privacy'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    ListTile(
+                     ListTile(
                       leading: const Icon(Icons.lock_outline, color: Colors.blueAccent),
                       title: Text(_t('changePassword')),
                       subtitle: Text(_t('changePasswordSub')),
                       onTap: _isSaving ? null : () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.shopping_basket_outlined, color: Colors.greenAccent),
+                      title: Text(_t('groceryTitle')),
+                      subtitle: Text(_t('grocerySub')),
+                      onTap: _isSaving ? null : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const GroceryView()),
                         );
                       },
                     ),
