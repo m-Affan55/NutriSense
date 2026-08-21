@@ -142,12 +142,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
         // 3. Train adaptive meal timing and check streak notifications
         await ReminderManager.recordMealLogged(_selectedMealType, DateTime.now());
-        final prefs = await SharedPreferences.getInstance();
-        final streak = (prefs.getInt('user_current_streak') ?? 4) + 1;
-        await prefs.setInt('user_current_streak', streak);
-        if (streak % 3 == 0 || streak == 5 || streak == 7 || streak == 10 || streak == 14 || streak == 30) {
-          await ReminderManager.triggerStreakMilestoneNotification(streak);
-        }
+        await ReminderManager.updateAndCheckStreak();
       }
 
       if (mounted) {

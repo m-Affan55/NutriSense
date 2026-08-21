@@ -491,12 +491,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       // Learn adaptive meal pattern and check streak milestones
       await ReminderManager.recordMealLogged(mealType, DateTime.now());
-      final prefs = await SharedPreferences.getInstance();
-      final streak = (prefs.getInt('user_current_streak') ?? 4) + 1;
-      await prefs.setInt('user_current_streak', streak);
-      if (streak % 3 == 0 || streak == 5 || streak == 7 || streak == 10 || streak == 14 || streak == 30) {
-        await ReminderManager.triggerStreakMilestoneNotification(streak);
-      }
+      await ReminderManager.updateAndCheckStreak();
 
       if (mounted) {
         CustomToast.show(context, 'Meal logged successfully!', isError: false);

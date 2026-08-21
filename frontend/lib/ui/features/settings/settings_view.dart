@@ -807,8 +807,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(),
                     const SizedBox(height: 16),
                     
-                    // Ramadan Mode Section
-                    Text(_t('ramadanSection'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    if (_selectedDietary.contains('Halal Only')) ...[
+                      // Ramadan Mode Section
+                      Text(_t('ramadanSection'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     Container(
                       decoration: BoxDecoration(
@@ -948,6 +949,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    ],
 
                     // Smart Notifications Section
                     Container(
