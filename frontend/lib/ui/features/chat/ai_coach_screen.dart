@@ -1,15 +1,28 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import 'clinic_finder_screen.dart';
+
+enum VoiceAssistantState {
+  idle,
+  listening,
+  processing,
+  speaking,
+  error,
+}
 
 class AiCoachScreen extends StatefulWidget {
   const AiCoachScreen({super.key});
@@ -18,7 +31,7 @@ class AiCoachScreen extends StatefulWidget {
   State<AiCoachScreen> createState() => _AiCoachScreenState();
 }
 
-class _AiCoachScreenState extends State<AiCoachScreen> {
+class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
@@ -28,10 +41,205 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   String? _goal;
   List<String> _medicalConditions = [];
 
+  // Voice features
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
+  final FlutterTts _flutterTts = FlutterTts();
+  VoiceAssistantState _voiceState = VoiceAssistantState.idle;
+  bool _isVoiceModeOn = false;
+  Timer? _silenceTimer;
+  bool _isSttInitialized = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initSpeechAndTts();
     _loadLanguageAndGreeting();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _stopVoiceFeaturesCleanly();
+    }
+  }
+
+  void _stopVoiceFeaturesCleanly() {
+    _silenceTimer?.cancel();
+    if (_voiceState == VoiceAssistantState.speaking) {
+      _flutterTts.stop();
+    }
+    if (_voiceState == VoiceAssistantState.listening) {
+      _speechToText.stop();
+    }
+    if (mounted) {
+      setState(() {
+        _voiceState = VoiceAssistantState.idle;
+      });
+    }
+  }
+
+  Future<void> _initSpeechAndTts() async {
+    try {
+      _isSttInitialized = await _speechToText.initialize(
+        onError: (val) {
+          if (mounted) setState(() => _voiceState = VoiceAssistantState.error);
+        },
+      );
+    } catch (e) {
+      _isSttInitialized = false;
+    }
+
+    _flutterTts.setCompletionHandler(() {
+      if (!mounted) return;
+      if (_isVoiceModeOn) {
+        // Voice mode loop: done speaking -> start listening again
+        _startListening();
+      } else {
+        setState(() => _voiceState = VoiceAssistantState.idle);
+      }
+    });
+
+    _flutterTts.setErrorHandler((msg) {
+      if (!mounted) return;
+      CustomToast.show(context, 'TTS Error: $msg');
+      setState(() => _voiceState = VoiceAssistantState.error);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _voiceState == VoiceAssistantState.error) {
+          setState(() => _voiceState = VoiceAssistantState.idle);
+        }
+      });
+    });
+  }
+
+  Future<bool> _requestPermissions() async {
+    final micStatus = await Permission.microphone.request();
+    final speechStatus = await Permission.speech.request();
+
+    if (micStatus.isPermanentlyDenied || speechStatus.isPermanentlyDenied) {
+      _showSettingsDialog();
+      return false;
+    }
+
+    if (!micStatus.isGranted || !speechStatus.isGranted) {
+      CustomToast.show(context, 'Microphone permission is required for voice features.');
+      return false;
+    }
+
+    return true;
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permissions Required'),
+        content: const Text('Voice features require microphone and speech recognition access. Please enable them in app settings.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startListening() async {
+    // If we're already speaking, stop first
+    if (_voiceState == VoiceAssistantState.speaking) {
+      await _flutterTts.stop();
+    }
+
+    final hasPermission = await _requestPermissions();
+    if (!hasPermission) return;
+
+    if (!_isSttInitialized) {
+      CustomToast.show(context, 'Speech recognition not available on this device.');
+      return;
+    }
+
+    setState(() {
+      _voiceState = VoiceAssistantState.listening;
+      _controller.clear();
+    });
+
+    // Timeout logic: stop if no speech for 6 seconds
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer(const Duration(seconds: 6), () {
+      if (_voiceState == VoiceAssistantState.listening) {
+        _stopListeningAndProcess();
+      }
+    });
+
+    await _speechToText.listen(
+      onResult: (result) {
+        if (mounted) {
+          setState(() {
+            _controller.text = result.recognizedWords;
+          });
+          // Reset silence timer on new words
+          _silenceTimer?.cancel();
+          _silenceTimer = Timer(const Duration(seconds: 3), () {
+            if (_voiceState == VoiceAssistantState.listening) {
+              _stopListeningAndProcess();
+            }
+          });
+        }
+      },
+      localeId: _language == 'ur' ? 'ur-PK' : 'en-US',
+    );
+  }
+
+  void _stopListeningAndProcess() async {
+    _silenceTimer?.cancel();
+    await _speechToText.stop();
+    if (mounted) {
+      setState(() => _voiceState = VoiceAssistantState.processing);
+      // Auto-send if there's text
+      if (_controller.text.trim().isNotEmpty) {
+        _sendMessage();
+      } else {
+        setState(() => _voiceState = VoiceAssistantState.idle);
+      }
+    }
+  }
+
+  void _toggleVoiceMode() {
+    setState(() {
+      _isVoiceModeOn = !_isVoiceModeOn;
+    });
+    
+    if (_isVoiceModeOn) {
+      _startListening();
+    } else {
+      _stopVoiceFeaturesCleanly();
+    }
+  }
+
+  Future<void> _speakText(String text) async {
+    await _flutterTts.stop();
+    setState(() {
+      _voiceState = VoiceAssistantState.speaking;
+    });
+    
+    // Attempt to set language properly
+    try {
+      if (_language == 'ur') {
+        await _flutterTts.setLanguage('ur-PK');
+      } else {
+        await _flutterTts.setLanguage('en-US');
+      }
+    } catch (_) {}
+    
+    await _flutterTts.speak(text);
   }
 
   Future<void> _loadLanguageAndGreeting() async {
@@ -89,6 +297,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   }
 
   Future<void> _sendMessage() async {
+    // Note behavior #13: If typed manually while voice mode is ON, it will process normally
+    // but the TTS completion handler won't loop back to listening since it wasn't triggered 
+    // by Voice Mode mic tap initially, UNLESS we specifically structure it. 
+    // We will speak the text if _isVoiceModeOn, or let manual trigger just work.
+    
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
@@ -101,6 +314,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
         'time': _formatTime(DateTime.now()),
       });
       _isTyping = true;
+      if (_voiceState != VoiceAssistantState.processing) {
+         _voiceState = VoiceAssistantState.processing;
+      }
     });
 
     _scrollToBottom();
@@ -112,7 +328,6 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
       // 1. Build chat history payload
       final List<Map<String, String>> historyPayload = [];
-      // Skip the initial greeting and send the last 10 messages for token efficiency
       final startIdx = _messages.length > 11 ? _messages.length - 11 : 1;
       for (int i = startIdx; i < _messages.length - 1; i++) {
         historyPayload.add({
@@ -141,6 +356,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       final reply = data['response'] ?? 'Sorry, I encountered an issue parsing the reply.';
       final escalationAlert = data['escalation_alert'];
 
+      // Escalation handling remains exactly the same (Requirement #17)
       if (escalationAlert != null) {
         ReminderManager.showRiskAlert(
           title: escalationAlert['level'] == 'critical' ? 'Urgent Clinical Safety Alert' : 'Dietary Health Alert',
@@ -160,11 +376,29 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
           });
           _isTyping = false;
         });
+
+        // Speak the reply if Voice Mode is on
+        if (_isVoiceModeOn) {
+          _speakText(reply);
+        } else {
+          setState(() => _voiceState = VoiceAssistantState.idle);
+        }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isTyping = false);
+        setState(() {
+          _isTyping = false;
+          _voiceState = VoiceAssistantState.error;
+        });
         CustomToast.show(context, 'Chat error: ${e.toString()}');
+        
+        if (_isVoiceModeOn) {
+          _speakText(_language == 'ur' ? 'معذرت، ایک خرابی پیش آ گئی۔' : 'Sorry, an error occurred.');
+        } else {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _voiceState = VoiceAssistantState.idle);
+          });
+        }
       }
     }
 
@@ -185,6 +419,10 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _silenceTimer?.cancel();
+    _speechToText.cancel();
+    _flutterTts.stop();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -222,21 +460,38 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                       child: Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 22),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            subtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Voice Mode Toggle
+                    Row(
                       children: [
-                        Text(
-                          title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Icon(
+                          Icons.headset_mic,
+                          color: _isVoiceModeOn ? theme.colorScheme.primary : Colors.grey,
+                          size: 18,
                         ),
-                        Text(
-                          subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                          ),
+                        Switch(
+                          value: _isVoiceModeOn,
+                          onChanged: (val) => _toggleVoiceMode(),
+                          activeColor: theme.colorScheme.primary,
                         ),
                       ],
                     ),
@@ -245,6 +500,42 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
               ),
               const SizedBox(height: 12),
               Divider(color: Colors.white.withAlpha(15), height: 1),
+
+              // Voice Status Indicator (if active)
+              if (_voiceState != VoiceAssistantState.idle)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  color: _getVoiceStateColor(theme).withAlpha(30),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_getVoiceStateIcon(), size: 16, color: _getVoiceStateColor(theme)),
+                      const SizedBox(width: 8),
+                      Text(
+                        _getVoiceStateText(),
+                        style: TextStyle(color: _getVoiceStateColor(theme), fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      if (_voiceState == VoiceAssistantState.speaking) ...[
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () {
+                            _flutterTts.stop();
+                            setState(() => _voiceState = VoiceAssistantState.idle);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withAlpha(50),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('Stop Audio ⏹️', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                          ),
+                        )
+                      ]
+                    ],
+                  ),
+                ),
 
               // Messages List
               Expanded(
@@ -322,17 +613,44 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                       ),
                       child: Row(
                         children: [
+                          // Mic Button
+                          GestureDetector(
+                            onTap: () {
+                              if (_voiceState == VoiceAssistantState.listening) {
+                                _stopListeningAndProcess();
+                              } else {
+                                _startListening();
+                              }
+                            },
+                            child: Container(
+                              height: 40,
+                              width: 40,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: _voiceState == VoiceAssistantState.listening 
+                                    ? Colors.redAccent.withAlpha(80) 
+                                    : Colors.white.withAlpha(10),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _voiceState == VoiceAssistantState.listening ? Icons.mic : Icons.mic_none,
+                                color: _voiceState == VoiceAssistantState.listening ? Colors.redAccent : Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
                           Expanded(
                             child: TextField(
                               controller: _controller,
                               style: const TextStyle(color: Colors.white),
                               textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
                               decoration: InputDecoration(
-                                hintText: hint,
+                                hintText: _voiceState == VoiceAssistantState.listening ? 'Listening...' : hint,
                                 hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                               ),
+                              onSubmitted: (_) => _sendMessage(),
                             ),
                           ),
                           Container(
@@ -364,6 +682,38 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       ),
     );
   }
+
+  // --- Voice UI Helpers ---
+  Color _getVoiceStateColor(ThemeData theme) {
+    switch (_voiceState) {
+      case VoiceAssistantState.listening: return Colors.redAccent;
+      case VoiceAssistantState.processing: return Colors.orangeAccent;
+      case VoiceAssistantState.speaking: return theme.colorScheme.primary;
+      case VoiceAssistantState.error: return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+  
+  IconData _getVoiceStateIcon() {
+    switch (_voiceState) {
+      case VoiceAssistantState.listening: return Icons.mic;
+      case VoiceAssistantState.processing: return Icons.hourglass_empty;
+      case VoiceAssistantState.speaking: return Icons.volume_up;
+      case VoiceAssistantState.error: return Icons.error_outline;
+      default: return Icons.mic_none;
+    }
+  }
+
+  String _getVoiceStateText() {
+    switch (_voiceState) {
+      case VoiceAssistantState.listening: return 'Listening...';
+      case VoiceAssistantState.processing: return 'Thinking...';
+      case VoiceAssistantState.speaking: return 'Speaking...';
+      case VoiceAssistantState.error: return 'Error';
+      default: return '';
+    }
+  }
+  // ------------------------
 
   Widget _buildChatMessage({
     required String sender,
@@ -409,14 +759,27 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                         : theme.colorScheme.primary,
                   ),
                 ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: isUser
-                        ? theme.colorScheme.onPrimary.withAlpha(140)
-                        : Colors.grey.shade500,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isUser) // Manual Read Aloud Button
+                      GestureDetector(
+                        onTap: () => _speakText(message),
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 8.0),
+                          child: Icon(Icons.volume_up, size: 14, color: Colors.white70),
+                        ),
+                      ),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: isUser
+                            ? theme.colorScheme.onPrimary.withAlpha(140)
+                            : Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
