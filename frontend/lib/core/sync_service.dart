@@ -55,9 +55,17 @@ class SyncService {
             'total_carbs_g': meal['carbs_g'],
             'total_fat_g': meal['fat_g'],
             'logged_at': meal['logged_at'],
+            'sync_id': meal['sync_id'],
           });
           await _cache.markMealSynced(meal['local_id'] as int);
           debugPrint('[SyncService] Meal synced: local_id=${meal['local_id']}');
+        } on PostgrestException catch (e) {
+          if (e.code == '23505') {
+            await _cache.markMealSynced(meal['local_id'] as int);
+            debugPrint('[SyncService] Meal already synced in past (unique violation): local_id=${meal['local_id']}');
+          } else {
+            debugPrint('[SyncService] Meal sync failed (local_id=${meal['local_id']}): $e');
+          }
         } catch (e) {
           // One row failing should not stop the rest
           debugPrint('[SyncService] Meal sync failed (local_id=${meal['local_id']}): $e');
@@ -73,9 +81,17 @@ class SyncService {
             'user_id': water['user_id'],
             'amount_ml': water['amount_ml'],
             'logged_at': water['logged_at'],
+            'sync_id': water['sync_id'],
           });
           await _cache.markWaterSynced(water['local_id'] as int);
           debugPrint('[SyncService] Water synced: local_id=${water['local_id']}');
+        } on PostgrestException catch (e) {
+          if (e.code == '23505') {
+            await _cache.markWaterSynced(water['local_id'] as int);
+            debugPrint('[SyncService] Water already synced in past (unique violation): local_id=${water['local_id']}');
+          } else {
+            debugPrint('[SyncService] Water sync failed (local_id=${water['local_id']}): $e');
+          }
         } catch (e) {
           debugPrint('[SyncService] Water sync failed (local_id=${water['local_id']}): $e');
         }

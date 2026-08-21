@@ -47,7 +47,8 @@ CREATE TABLE public.meal_logs (
     total_fat_g INT,
     photo_url TEXT,
     ai_confidence_score NUMERIC(3,2) CHECK (ai_confidence_score >= 0 AND ai_confidence_score <= 1),
-    notes TEXT
+    notes TEXT,
+    sync_id UUID UNIQUE
 );
 COMMENT ON TABLE public.meal_logs IS 'Records every meal the user eats along with AI confidence scores and macros';
 
@@ -56,7 +57,8 @@ CREATE TABLE public.water_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     logged_at TIMESTAMPTZ DEFAULT now(),
-    amount_ml INT
+    amount_ml INT,
+    sync_id UUID UNIQUE
 );
 COMMENT ON TABLE public.water_logs IS 'Daily hydration tracking records';
 

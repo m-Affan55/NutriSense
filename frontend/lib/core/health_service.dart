@@ -33,8 +33,6 @@ class HealthService {
     HealthDataAccess.READ,
   ];
 
-  bool _authorized = false;
-
   /// Request READ permissions. Returns true if granted.
   /// This will also prompt the user to install Health Connect if needed on Android 13-.
   Future<bool> requestPermissions() async {
@@ -45,11 +43,9 @@ class HealthService {
         _types,
         permissions: _permissions,
       );
-      _authorized = granted;
       return granted;
     } catch (e) {
       debugPrint('[HealthService] Permission request failed: $e');
-      _authorized = false;
       return false;
     }
   }
@@ -68,7 +64,8 @@ class HealthService {
   /// Fetch today's activity stats. Returns [ActivityData.empty] on any failure.
   Future<ActivityData> getTodayActivity() async {
     try {
-      if (!_authorized) {
+      final authorized = await isAvailable;
+      if (!authorized) {
         final granted = await requestPermissions();
         if (!granted) return ActivityData.empty;
       }

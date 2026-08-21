@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 
 /// Singleton SQLite cache for offline-first meal and water log persistence.
 ///
@@ -13,7 +14,7 @@ class OfflineCache {
   static final OfflineCache instance = OfflineCache._();
 
   static const _dbName = 'nutrisense_offline.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
 
   // Table names
   static const _mealTable = 'pending_meal_logs';
@@ -43,7 +44,8 @@ class OfflineCache {
             carbs_g     INTEGER NOT NULL,
             fat_g       INTEGER NOT NULL,
             logged_at   TEXT NOT NULL,
-            synced      INTEGER NOT NULL DEFAULT 0
+            synced      INTEGER NOT NULL DEFAULT 0,
+            sync_id     TEXT UNIQUE
           )
         ''');
         await db.execute('''
@@ -52,9 +54,20 @@ class OfflineCache {
             user_id     TEXT NOT NULL,
             amount_ml   INTEGER NOT NULL,
             logged_at   TEXT NOT NULL,
-            synced      INTEGER NOT NULL DEFAULT 0
+            synced      INTEGER NOT NULL DEFAULT 0,
+            sync_id     TEXT UNIQUE
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE $_mealTable ADD COLUMN sync_id TEXT UNIQUE');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE $_waterTable ADD COLUMN sync_id TEXT UNIQUE');
+          } catch (_) {}
+        }
       },
     );
   }
@@ -74,6 +87,7 @@ class OfflineCache {
     required int fatG,
   }) async {
     final db = await _database;
+    final syncId = const Uuid().v4();
     return db.insert(_mealTable, {
       'user_id': userId,
       'meal_type': mealType,
@@ -84,6 +98,7 @@ class OfflineCache {
       'fat_g': fatG,
       'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
+      'sync_id': syncId,
     });
   }
 
@@ -135,11 +150,13 @@ class OfflineCache {
     required int amountMl,
   }) async {
     final db = await _database;
+    final syncId = const Uuid().v4();
     return db.insert(_waterTable, {
       'user_id': userId,
       'amount_ml': amountMl,
       'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
+      'sync_id': syncId,
     });
   }
 
