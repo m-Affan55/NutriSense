@@ -37,6 +37,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSaving = false;
   String _language = 'en';
 
+  bool _adaptiveReminders = true;
+  bool _streakAlerts = true;
+  bool _riskAlerts = true;
+
   final List<String> _goals = ['fat_loss', 'muscle_gain', 'maintenance'];
   final List<String> _activityLevels = ['sedentary', 'lightly_active', 'moderately_active', 'very_active'];
 
@@ -74,6 +78,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {
           _goal = healthRes['goal'];
           _activityLevel = healthRes['activity_level'];
+          _adaptiveReminders = prefs.getBool(ReminderManager.keyAdaptiveReminders) ?? true;
+          _streakAlerts = prefs.getBool(ReminderManager.keyStreakAlerts) ?? true;
+          _riskAlerts = prefs.getBool(ReminderManager.keyRiskAlerts) ?? true;
         });
       }
     } catch (e) {
@@ -443,6 +450,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'iftarTime': 'Iftar Time',
         'ramadanReminders': 'Sehri & Iftar Alerts',
         'ramadanRemindersSub': 'Receive alerts 30m before Sehri and at Iftar.',
+        'smartNotifTitle': 'Smart Notifications & Alerts',
+        'smartNotifSub': 'Personalized reminders, streaks and safety alerts.',
+        'adaptiveReminders': 'Adaptive Meal Reminders',
+        'adaptiveRemindersSub': 'Auto-adjusts reminder timing based on your actual eating routine.',
+        'streakAlerts': 'Streak Milestones & Streak Saver',
+        'streakAlertsSub': 'Celebratory streak milestone alerts & evening reminders.',
+        'riskAlerts': 'AI Clinical Safety Alerts',
+        'riskAlertsSub': 'Urgent heads-up for allergen conflicts or health safety risks.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -482,6 +497,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'iftarTime': 'افطار کا وقت',
         'ramadanReminders': 'سحر و افطار کے الرٹس',
         'ramadanRemindersSub': 'سحری سے 30 منٹ پہلے اور افطار کے وقت الرٹ حاصل کریں۔',
+        'smartNotifTitle': 'سمارٹ نوٹیفیکیشنز اور الرٹس',
+        'smartNotifSub': 'ذاتی یاد دہانیاں، اسٹریک اور حفاظتی انتباہات۔',
+        'adaptiveReminders': 'عادات کے مطابق کھانے کی یاددہانی',
+        'adaptiveRemindersSub': 'آپ کے معمول کے مطابق خودکار وقت ایڈجسٹ کرتا ہے۔',
+        'streakAlerts': 'اسٹریک کی خوشخبری اور یاد دہانی',
+        'streakAlertsSub': 'اسٹریک سنگ میل اور رات کو اسٹریک بچانے کے الرٹس۔',
+        'riskAlerts': 'اے آئی طبی و حفاظتی الرٹس',
+        'riskAlertsSub': 'الرجی یا شوگر کے خطرے سے متعلق فوری انتباہات۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -749,6 +772,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               },
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Smart Notifications Section
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isRamadan
+                              ? const Color(0xFFFFD166).withAlpha(40)
+                              : const Color(0xFF00E676).withAlpha(40),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.notifications_active_rounded,
+                                    color: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _t('smartNotifTitle'),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Text(
+                                        _t('smartNotifSub'),
+                                        style: const TextStyle(fontSize: 11, color: Colors.white60),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.psychology_alt_outlined, color: Color(0xFF00D2FF)),
+                            title: Text(
+                              _t('adaptiveReminders'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('adaptiveRemindersSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _adaptiveReminders,
+                            activeThumbColor: const Color(0xFF00D2FF),
+                            activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyAdaptiveReminders, val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() => _adaptiveReminders = val);
+                            },
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.local_fire_department, color: Color(0xFFFF9500)),
+                            title: Text(
+                              _t('streakAlerts'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('streakAlertsSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _streakAlerts,
+                            activeThumbColor: const Color(0xFFFF9500),
+                            activeTrackColor: const Color(0xFFFF9500).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyStreakAlerts, val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() => _streakAlerts = val);
+                            },
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.shield_outlined, color: Color(0xFFFF3B30)),
+                            title: Text(
+                              _t('riskAlerts'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('riskAlertsSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _riskAlerts,
+                            activeThumbColor: const Color(0xFFFF3B30),
+                            activeTrackColor: const Color(0xFFFF3B30).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyRiskAlerts, val);
+                              setState(() => _riskAlerts = val);
+                            },
+                          ),
                         ],
                       ),
                     ),

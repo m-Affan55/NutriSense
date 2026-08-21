@@ -8,6 +8,7 @@ import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
+import '../../../core/reminder_manager.dart';
 import 'clinic_finder_screen.dart';
 
 class AiCoachScreen extends StatefulWidget {
@@ -116,6 +117,14 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       final data = jsonDecode(response.body);
       final reply = data['response'] ?? 'Sorry, I encountered an issue parsing the reply.';
       final escalationAlert = data['escalation_alert'];
+
+      if (escalationAlert != null) {
+        ReminderManager.showRiskAlert(
+          title: escalationAlert['level'] == 'critical' ? 'Urgent Clinical Safety Alert' : 'Dietary Health Alert',
+          message: escalationAlert['message'] ?? 'Please review your nutrition advice.',
+          level: escalationAlert['level'] ?? 'warning',
+        );
+      }
 
       if (mounted) {
         setState(() {

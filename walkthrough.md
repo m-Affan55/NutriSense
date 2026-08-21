@@ -1,42 +1,53 @@
-# Backend Report Service & PDF Weekly Report Implementation
+# Smarter Notification System Implementation
 
-We have implemented the backend **Report Service** ([`report_service.py`](file:///d:/AI%20Hackathon/NutriSense/backend/app/services/report_service.py)), reports REST API endpoints ([`reports.py`](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/reports.py)), and client-side PDF export with backend sync ([`weekly_report_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/weekly_report_screen.dart)).
-
----
-
-## 🚀 Key Deliverables
-
-### 1. Backend Report Service ([report_service.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/services/report_service.py))
-- **Comprehensive 7-Day Aggregation**: Gathers user profile, dietary goals, medical conditions, past 7 days of `meal_logs`, and `water_logs` from Supabase.
-- **Compliance & Scoring Metrics**:
-  - `days_adhered`: Exact count (0–7) of days matching target calorie boundaries.
-  - `health_score`: 0–100 composite score based on caloric adherence, macro targets, and hydration consistency.
-  - Daily averages computed for calories, protein, carbs, fat, and hydration.
-- **Gemini AI Clinical Evaluation**:
-  - Employs Google Gemini to draft a structured review featuring Weekly Highlights, Macro & Hydration Assessment, and 3 Actionable Goals for next week.
-  - Full bilingual support in English and Urdu Nastaleeq.
-- **Zero-Dependency PDF Generator Engine**:
-  - Implemented `ReportService.generate_pdf_report()` generating clean standard PDF 1.4 documents containing health score, clinical breakdown, macro table, and Gemini review.
-
-### 2. FastAPI Endpoints & Routing ([reports.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/reports.py) & [router.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/router.py))
-- `GET /api/v1/reports/weekly?user_id={id}&language={en|ur}`: Returns structured progress metrics, 7-day breakdown, and AI review text.
-- `GET /api/v1/reports/weekly/pdf?user_id={id}&language={en|ur}`: Generates and streams down a downloadable clinical PDF file with `application/pdf` headers.
-- `GET /api/v1/meals/weekly-report`: Updated to delegate to `ReportService` for backward compatibility.
-
-### 3. Frontend Weekly Report UI & PDF Export ([weekly_report_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/weekly_report_screen.dart))
-- Connected to `/reports/weekly` API with graceful fallback.
-- Added **"Download PDF Report"** action in both the AppBar and as an elevated action button.
-- Saves generated PDF directly to the user's local `Downloads` folder with confirmation toast.
-- Features client-side PDF synthesis fallback if offline or backend is unreachable.
+We have implemented the **Smarter Notification System** with Adaptive Meal Timing Learning, Streak Milestone Celebrations & Evening Streak Saver, AI Clinical Dietary Risk Alerts, and Customizable Ramadan Fasting Alarms.
 
 ---
 
-## 🧪 Verification Results
+## 🔔 Key Notification Capabilities Implemented
 
-1. **Backend Integration & Python Execution**:
-   - `ReportService` and `reports.router` loaded successfully in FastAPI venv.
-   - Tested PDF generation: `Generated valid PDF bytes (starts with: b'%PDF-1.4')`.
-2. **Flutter Static Analysis**:
-   - `flutter analyze`: **`No issues found!`** (0 errors, 0 warnings).
-3. **Flutter Tests**:
-   - `flutter test`: **`All tests passed!`**.
+### 1. 🧠 Adaptive Meal Timing Engine ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
+- **Routine Learning**: Whenever the user logs breakfast, lunch, or dinner (via Camera Plate Scan, Barcode Scan, or Manual Log), `ReminderManager.recordMealLogged()` calculates an exponential moving average of their actual eating hour & minute.
+- **Personalized Alerts**: Rather than arbitrary fixed times, the app schedules notifications tailored to the user's specific routine:
+  - *e.g., "You usually eat lunch around 1:00 PM — fuel your afternoon and log your meal! 🥗"*
+  - *Urdu: "آپ عام طور پر 1:00 PM کے قریب کھانا کھاتے ہیں۔ توانائی کے لیے اپنا لنچ لاگ کریں! 🥗"*
+- **Configurable Toggle**: Can be toggled on/off in Settings under **Smart Notifications & Alerts**.
+
+### 2. 🔥 Streak Celebrations & Evening Streak Saver ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
+- **Instant Milestone Celebrations**: Fires an immediate heads-up celebratory notification whenever users hit milestone streaks (3, 5, 7, 10, 14, 30 days):
+  - *e.g., "🔥 5-Day Logging Streak! You're on fire! Keep this momentum going to reach your nutrition targets!"*
+  - *Urdu: "🔥 5 دن کا لاگنگ اسٹریک! زبردست کارکردگی! کل بھی اپنا ہدف برقرار رکھیں۔"*
+- **Evening Streak Saver (8:30 PM)**: Scheduled daily to remind users before midnight to log their evening intake and prevent broken streaks.
+
+### 3. 🚨 AI Clinical Safety & Risk Alerts ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart) & [ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart))
+- **Immediate Escalation Dispatch**: When the AI Coach detects health or safety risks (such as blood sugar spikes for diabetics, excessive sodium for hypertensive users, or allergens):
+  - Dispatches high-priority system alerts with distinct warning colors and clinical messaging.
+
+### 4. 🌙 Ramadan Fasting & Hydration Alarms ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
+- **Sehri Countdown**: Triggers 30 minutes before Sehri end time (*"🌙 30 minutes left for Sehri! Drink water & complete your meal"*).
+- **Iftar Alert**: Triggers at Iftar sunset time (*"🌟 Iftar Mubarak! Time to break your fast"*).
+- **Night Hydration Reminders**: 9:15 PM (Post-Iftar / Taraweeh) and 11:30 PM (Pre-Bed Hydration).
+
+### 5. ⚙️ Interactive Settings Hub ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart))
+- Dedicated **Smart Notifications & Alerts** section with live toggles for:
+  - **Adaptive Meal Reminders**
+  - **Streak Milestones & Streak Saver**
+  - **AI Clinical Safety Alerts**
+  - **Ramadan Fasting Alarms**
+- Full English and Urdu Nastaleeq localization.
+
+---
+
+## 🧪 Verification
+
+- **Flutter Static Analysis**:
+  ```bash
+  flutter analyze
+  ```
+  **Result**: `No issues found!` (0 errors, 0 warnings).
+
+- **Automated Tests**:
+  ```bash
+  flutter test
+  ```
+  **Result**: `All tests passed!`.
