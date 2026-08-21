@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'grocery_viewmodel.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../core/theme.dart';
 
 class GroceryView extends StatefulWidget {
   const GroceryView({super.key});
@@ -184,13 +186,7 @@ class _GroceryViewState extends State<GroceryView> {
         centerTitle: true,
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.8),
-            radius: 1.2,
-            colors: [Color(0xFF1A2420), Color(0xFF0D0F14)],
-          ),
-        ),
+        decoration: getAppBackgroundDecoration(RamadanController.instance.isRamadanMode),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(

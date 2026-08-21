@@ -1,25 +1,47 @@
-# Stats and Coaching Timezone Offset Fixes Walkthrough
+# Ramadan Mode Theme Implementation Walkthrough
 
-We have successfully resolved the timezone grouping issue causing the Stats / AI Coaching page logs and 7-day consistency chart to not update when logging food/water:
+We have implemented the **Ramadan Mode Theme** with the celestial midnight blue background and global theme reactivity across the entire application:
 
-## What Was Resolved
+## What Was Implemented
 
-### 1. Daily Totals Timezone Mismatch Bug (Backend)
-- **Problem**: When a user logged meals/water, the timestamps were stored in the database in UTC. The backend habit-score API (`/coaching/habit-score/{user_id}`) grouped meal calories and protein by parsing raw UTC strings directly (e.g. `logged_at[:10]`). 
-- Pakistan is in timezone `UTC +05:00`. Meals logged in local time between 12:00 AM and 5:00 AM on August 21 were stored in the database with timestamps between 7:00 PM and 11:59 PM on August 20. 
-- Because the backend was grouping by raw UTC string prefixes, it miscategorized all of today's morning logs under yesterday (`2026-08-20` UTC), showing today (`2026-08-21` UTC) as empty and failing to update the habit score or the consistency chart for today.
-- **Solution** ([coaching.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/coaching.py)):
-  - Updated the `/habit-score/{user_id}` route to accept a dynamic `offset_minutes` query parameter representing the client's local timezone offset.
-  - Parsed `logged_at` timestamps into `datetime` objects and shifted them to the user's local timezone offset using `datetime.timezone(datetime.timedelta(minutes=offset_minutes))`.
-  - Grouped and calculated consistency metrics and calorie/protein accuracy by the **user's local day** (e.g., `'2026-08-21'`) rather than the UTC date.
+### 1. Global State Management: `RamadanController`
+- Created [ramadan_controller.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/ramadan_controller.dart):
+  - Singleton extending `ChangeNotifier`.
+  - Persists `isRamadanMode` state into `SharedPreferences`.
+  - Exposes `toggleRamadanMode()` and `setRamadanMode(bool)` to immediately notify the entire widget tree when toggled.
 
-### 2. Frontend Query Synchronization
-- **Solution** ([coaching_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/predictive_coaching/coaching_screen.dart)):
-  - Updated `_loadCoachingData()` to capture the client's timezone offset:
-    ```dart
-    final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
-    ```
-  - Appended `?offset_minutes=$offsetMinutes` as a query parameter to the `habit-score` GET request.
+### 2. Celestial Midnight Blue Palette & Theme Builder
+- Updated [theme.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/core/theme.dart):
+  - Added `RamadanColors`:
+    - `bgMidnight`: `Color(0xFF080D1A)` (Deep celestial midnight navy)
+    - `bgDark`: `Color(0xFF050811)`
+    - `surfaceDark`: `Color(0xFF0E172A)` (Starry midnight surface)
+    - `primaryCyan`: `Color(0xFF00D2FF)` (Luminous Islamic cyan)
+    - `accentGold`: `Color(0xFFFFD166)` (Lantern gold)
+    - `textPrimary`: `Color(0xFFF8FAFC)`
+    - `textSecondary`: `Color(0xFF94A3B8)`
+  - Added `buildRamadanTheme()`: Configured with Material 3 dark brightness, celestial navy surfaces, luminous cyan primary, golden secondary, and fallback support for `JameelNooriNastaleeq` Urdu typography.
+  - Added `getAppBackgroundDecoration(bool isRamadan)`: Helper that generates smooth radial gradients with celestial navy depth.
+
+### 3. Dynamic App-Wide Reactive Integration
+- Updated [main.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/main.dart):
+  - Initialized `RamadanController.instance.init()` upon startup.
+  - Wrapped `MaterialApp` with `ListenableBuilder` listening to `RamadanController.instance` to hot-swap between standard and Ramadan themes globally.
+
+### 4. Settings Screen Ramadan Toggle
+- Updated [settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart):
+  - Added a dedicated **🌙 Ramadan Mode / رمضان المبارک** section with a glowing switch tile.
+  - Added localized descriptions in both English and Urdu.
+  - Instant live toggle with persistent storage.
+
+### 5. Screen-Level Theme Adaptation
+- Updated [dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart):
+  - Applied the dark blue radial gradient background.
+  - Calorie ring shaders and Scan button adapt to luminous cyan and gold gradients when Ramadan mode is active.
+- Updated [main_navigation_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/navigation/main_navigation_screen.dart):
+  - Navigation bar adopts deep navy blue glassmorphic container and golden/cyan glowing active indicators.
+- Updated [grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart) & [ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart) & [coaching_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/predictive_coaching/coaching_screen.dart):
+  - Backgrounds seamlessly switch to the celestial midnight navy gradient when Ramadan mode is enabled.
 
 ---
 

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import 'clinic_finder_screen.dart';
 
@@ -160,15 +162,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
         : 'Ask about meals, recipes, or swap options...';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0F14),
+      backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.5),
-            radius: 1.2,
-            colors: [Color(0xFF1A2420), Color(0xFF0D0F14)],
-          ),
-        ),
+        decoration: getAppBackgroundDecoration(RamadanController.instance.isRamadanMode),
         child: SafeArea(
           bottom: false,
           child: Column(

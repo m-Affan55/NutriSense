@@ -9,6 +9,8 @@ import '../meal_scan/manual_log_screen.dart';
 import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
 import '../../../core/health_service.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -489,261 +491,286 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
     final double waterRatio = (_waterLogged / _waterGoal).clamp(0.0, 1.0);
 
     return Scaffold(
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section A: Personalized Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _t('greeting'), 
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
+      body: Container(
+        height: double.infinity,
+        width: double.infinity,
+        decoration: getAppBackgroundDecoration(isRamadan),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section A: Personalized Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _t('greeting'), 
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(_getFormattedDate(), style: theme.textTheme.bodySmall),
+                              ],
+                            ),
+                            GestureDetector(
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                                );
+                                _loadData();
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: theme.colorScheme.primary, width: 2),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: theme.colorScheme.primary.withAlpha(30),
+                                  child: Icon(Icons.person, color: theme.colorScheme.primary),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(_getFormattedDate(), style: theme.textTheme.bodySmall),
-                            ],
-                          ),
-                          GestureDetector(
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                              );
-                              _loadData();
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: theme.colorScheme.primary, width: 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundColor: theme.colorScheme.primary.withAlpha(30),
-                                child: Icon(Icons.person, color: theme.colorScheme.primary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Offline sync badge (only shown when there are pending rows)
+                        if (_pendingSyncCount > 0) _buildSyncBadge(theme),
+                        if (_pendingSyncCount > 0) const SizedBox(height: 12),
+
+                      // Section B: Calorie Ring progress
+                      Builder(
+                        builder: (context) {
+                          int activeBurn = _activity.activeKcal.toInt();
+                          int netCalories = _consumedCalories - activeBurn;
+                          if (netCalories < 0) netCalories = 0;
+                          double calorieRatio = _targetCalories > 0 ? (netCalories / _targetCalories) : 0.0;
+                          if (calorieRatio > 1.0) calorieRatio = 1.0;
+
+                          return Center(
+                            child: SizedBox(
+                              height: 220,
+                              width: 220,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  AnimatedBuilder(
+                                    animation: _ringAnimation,
+                                    builder: (context, child) {
+                                      return CustomPaint(
+                                        size: const Size(220, 220),
+                                        painter: CalorieRingPainter(
+                                          progress: calorieRatio * _ringAnimation.value,
+                                          backgroundColor: const Color(0xFF262626),
+                                          gradientStart: theme.colorScheme.primary,
+                                          gradientEnd: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00BCD4),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '$netCalories',
+                                        style: theme.textTheme.displayMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_t('of')} $_targetCalories ${_t('kcal')}',
+                                        style: theme.textTheme.bodyMedium,
+                                      ),
+                                      if (activeBurn > 0)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4.0),
+                                          child: Text(
+                                            '-$activeBurn kcal active',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.orange.shade300,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Section C: Macro Breakdown Pills
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildMacroPill(context, _t('protein'), '$_consumedProtein / ${_targetProtein}g', const Color(0xFFFF5252)),
+                          _buildMacroPill(context, _t('carbs'), '$_consumedCarbs / ${_targetCarbs}g', const Color(0xFF448AFF)),
+                          _buildMacroPill(context, _t('fat'), '$_consumedFat / ${_targetFat}g', const Color(0xFFFFD700)),
                         ],
                       ),
                       const SizedBox(height: 32),
 
-                      // Offline sync badge (only shown when there are pending rows)
-                      if (_pendingSyncCount > 0) _buildSyncBadge(theme),
-                      if (_pendingSyncCount > 0) const SizedBox(height: 12),
+                      // Section D: Today's Activity & Health Connect Stats
+                      _buildActivityCard(theme),
+                      const SizedBox(height: 32),
 
-                    // Section B: Calorie Ring progress
-                    Builder(
-                      builder: (context) {
-                        int activeBurn = _activity.activeKcal.toInt();
-                        int netCalories = _consumedCalories - activeBurn;
-                        if (netCalories < 0) netCalories = 0;
-                        double calorieRatio = _targetCalories > 0 ? (netCalories / _targetCalories) : 0.0;
-                        if (calorieRatio > 1.0) calorieRatio = 1.0;
-
-                        return Center(
-                          child: SizedBox(
-                            height: 220,
-                            width: 220,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                AnimatedBuilder(
-                                  animation: _ringAnimation,
-                                  builder: (context, child) {
-                                    return CustomPaint(
-                                      size: const Size(220, 220),
-                                      painter: CalorieRingPainter(
-                                        progress: calorieRatio * _ringAnimation.value,
-                                        backgroundColor: const Color(0xFF262626),
-                                        gradientStart: theme.colorScheme.primary,
-                                        gradientEnd: const Color(0xFF00BCD4),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('$netCalories', style: theme.textTheme.headlineLarge),
-                                    Text(
-                                      '${_t('of')} $_targetCalories ${_t('kcal')}', 
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                    if (activeBurn > 0)
-                                      Text(
-                                        '(-$activeBurn active)',
-                                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                    ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildMacroPill(context, _t('protein'), '${_consumedProtein}g / ${_targetProtein}g', Colors.redAccent),
-                          _buildMacroPill(context, _t('carbs'), '${_consumedCarbs}g / ${_targetCarbs}g', Colors.blueAccent),
-                          _buildMacroPill(context, _t('fat'), '${_consumedFat}g / ${_targetFat}g', Colors.amber),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Activity Card (Health Connect / Google Fit)
-                      if (_activity != ActivityData.empty) ...[  
-                        _buildActivityCard(theme),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Section C: Today's Log
+                      // Section E: Today's Logged Meals
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_t('todayMeals'), style: theme.textTheme.titleLarge),
+                          Text(
+                            _t('todayMeals'),
+                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
                           TextButton.icon(
                             onPressed: _showAddMealOptions,
-                            icon: Icon(Icons.add, size: 16, color: theme.colorScheme.primary),
-                            label: Text(_t('addMeal'), style: TextStyle(color: theme.colorScheme.primary)),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(_t('addMeal')),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.primary,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      
-                      _todayMeals.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20.0),
-                              child: Center(
-                                child: Text(
-                                  _t('noMeals'),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(120), fontSize: 13),
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _todayMeals.length,
-                              itemBuilder: (context, index) {
-                                final meal = _todayMeals[index];
-                                final mType = meal['meal_type'] as String;
-                                IconData mIcon = Icons.restaurant;
-                                if (mType == 'breakfast') mIcon = Icons.wb_twilight;
-                                if (mType == 'lunch') mIcon = Icons.wb_sunny;
-                                if (mType == 'dinner') mIcon = Icons.nights_stay;
-                                
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: _buildMealCard(
-                                    context,
-                                    mType.toUpperCase(),
-                                    meal['notes'],
-                                    '${meal['total_calories']} kcal',
-                                    mIcon,
-                                  ),
-                                );
-                              },
+                      if (_todayMeals.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(
+                            child: Text(
+                              _t('noMeals'),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium,
                             ),
-                      const SizedBox(height: 24),
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _todayMeals.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final meal = _todayMeals[index];
+                            final mealType = meal['meal_type']?.toString().toUpperCase() ?? 'MEAL';
+                            final notes = meal['notes']?.toString() ?? 'Logged Food';
+                            final calories = '${meal['total_calories'] ?? 0} ${_t('kcal')}';
+                            
+                            IconData mealIcon;
+                            switch (meal['meal_type']?.toString().toLowerCase()) {
+                              case 'breakfast':
+                                mealIcon = Icons.wb_sunny_outlined;
+                                break;
+                              case 'lunch':
+                                mealIcon = Icons.lunch_dining_outlined;
+                                break;
+                              case 'dinner':
+                                mealIcon = Icons.dinner_dining_outlined;
+                                break;
+                              default:
+                                mealIcon = Icons.fastfood_outlined;
+                            }
 
-                      // Section D: Hydration Card
-                      Text(_t('hydration'), style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 16),
+                            return _buildMealCard(context, mealType, notes, calories, mealIcon);
+                          },
+                        ),
+                      const SizedBox(height: 32),
+
+                      // Section F: Hydration Tracker
+                      Text(
+                        _t('hydration'),
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: const Color(0xFF161A22),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withAlpha(15)),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withAlpha(20)),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0288D1).withAlpha(30),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.water_drop, color: Color(0xFF26C6DA), size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _t('mlLogged'),
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00BCD4).withAlpha(30),
+                                        shape: BoxShape.circle,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _t('goalText'),
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: Colors.white.withAlpha(150),
+                                      child: const Icon(Icons.water_drop, color: Color(0xFF00BCD4)),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _t('mlLogged'),
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
                                         ),
+                                        Text(
+                                          _t('goalText'),
+                                          style: theme.textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${(waterRatio * 100).toInt()}%',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF00BCD4),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '${(waterRatio * 100).toInt()}%',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF26C6DA),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle, color: Color(0xFF0288D1), size: 28),
-                                  onPressed: _showHydrationSelector,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.add_circle, color: Color(0xFF00BCD4), size: 28),
+                                      onPressed: _showHydrationSelector,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                             const SizedBox(height: 16),
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                height: 10,
-                                width: double.infinity,
-                                color: Colors.white.withAlpha(15),
-                                child: FractionallySizedBox(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: waterRatio,
-                                  child: Container(
-                                    decoration: const BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [Color(0xFF0288D1), Color(0xFF26C6DA)],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: waterRatio,
+                                minHeight: 8,
+                                backgroundColor: const Color(0xFF262626),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00BCD4)),
                               ),
                             ),
                           ],
@@ -751,19 +778,25 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       ),
                       const SizedBox(height: 32),
 
-                      // Section E: Quick Log Button (Scan Meal)
+                      // Section G: Scan Meal Button
                       ScaleTransition(
                         scale: _fabAnimation,
                         child: Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
-                            ),
+                            gradient: isRamadan
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF00D2FF), Color(0xFFFFD166)],
+                                  )
+                                : const LinearGradient(
+                                    colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+                                  ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00E676).withAlpha(50),
+                                color: isRamadan
+                                    ? const Color(0xFF00D2FF).withAlpha(50)
+                                    : const Color(0xFF00E676).withAlpha(50),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               )
@@ -795,6 +828,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ),
                 ),
               ),
+        ),
       ),
     );
   }

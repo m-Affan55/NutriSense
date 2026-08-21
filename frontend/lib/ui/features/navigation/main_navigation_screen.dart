@@ -4,6 +4,8 @@ import '../dashboard/dashboard_screen.dart';
 import '../meal_scan/scan_meal_screen.dart';
 import '../chat/ai_coach_screen.dart';
 import '../predictive_coaching/coaching_screen.dart';
+import '../../../core/ramadan_controller.dart';
+
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -32,6 +34,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+
     return Scaffold(
       extendBody: true, // Allows body to go behind the transparent nav bar
       body: IndexedStack(
@@ -47,17 +51,24 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             child: Container(
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF161A22).withAlpha(180),
+                color: isRamadan
+                    ? const Color(0xFF0E172A).withAlpha(220)
+                    : const Color(0xFF161A22).withAlpha(180),
                 borderRadius: BorderRadius.circular(40),
-                border: Border.all(color: Colors.white.withAlpha(20), width: 1.5),
+                border: Border.all(
+                  color: isRamadan
+                      ? const Color(0xFF00D2FF).withAlpha(50)
+                      : Colors.white.withAlpha(20),
+                  width: 1.5,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home'),
-                  _buildScanTab(), // Central elevated button
-                  _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach'),
-                  _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats'),
+                  _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
+                  _buildScanTab(isRamadan), // Central elevated button
+                  _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
+                  _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
                 ],
               ),
             ),
@@ -67,8 +78,10 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label, bool isRamadan) {
     final isSelected = _currentIndex == index;
+    final activeColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -81,7 +94,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF00E676).withAlpha(30) : Colors.transparent,
+          color: isSelected ? activeColor.withAlpha(30) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -89,14 +102,14 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           children: [
             Icon(
               isSelected ? activeIcon : inactiveIcon,
-              color: isSelected ? const Color(0xFF00E676) : const Color(0xFF8A94A6),
+              color: isSelected ? activeColor : const Color(0xFF8A94A6),
               size: isSelected ? 24 : 22,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFF00E676) : const Color(0xFF8A94A6),
+                color: isSelected ? activeColor : const Color(0xFF8A94A6),
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -107,7 +120,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildScanTab() {
+  Widget _buildScanTab(bool isRamadan) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -119,14 +132,16 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
         width: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+          gradient: LinearGradient(
+            colors: isRamadan
+                ? [const Color(0xFF00D2FF), const Color(0xFFFFD166)]
+                : [const Color(0xFF00E676), const Color(0xFF00BCD4)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF00E676).withAlpha(80),
+              color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(80),
               blurRadius: 16,
               offset: const Offset(0, 4),
             )

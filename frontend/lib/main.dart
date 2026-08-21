@@ -14,6 +14,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
+import 'core/ramadan_controller.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,24 +24,38 @@ Future<void> main(List<String> args) async {
     databaseFactory = databaseFactoryFfi;
   }
 
+  // Load environmental variables safely
   await dotenv.load(fileName: ".env");
-  
+
+  // Initialize Supabase
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    publishableKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  // Setup Windows Registry protocol if on Windows
+  // Initialize RamadanController state
+  await RamadanController.instance.init();
+
+  // Register Custom URL Scheme on Windows for Deep Linking
   if (!kIsWeb && Platform.isWindows) {
     try {
-      final path = Platform.resolvedExecutable;
-      final key = Registry.currentUser.createKey('Software\\Classes\\io.supabase.nutrisense');
-      key.createValue(RegistryValue.string('', 'URL:io.supabase.nutrisense Protocol'));
+      const scheme = 'io.supabase.nutrisense';
+      final exePath = Platform.resolvedExecutable;
+      
+      final key = Registry.currentUser.createKey('Software\\Classes\\$scheme');
+      key.createValue(RegistryValue.string('', 'URL:NutriSense Protocol'));
       key.createValue(RegistryValue.string('URL Protocol', ''));
+      
+      final iconKey = key.createKey('DefaultIcon');
+      iconKey.createValue(RegistryValue.string('', '$exePath,1'));
+      iconKey.close();
+
       final shellKey = key.createKey('shell\\open\\command');
-      shellKey.createValue(RegistryValue.string('', '"$path" "%1"'));
+      shellKey.createValue(RegistryValue.string('', '"$exePath" "%1"'));
+      shellKey.close();
+      key.close();
     } catch (e) {
-      debugPrint('Protocol registration failed: $e');
+      debugPrint('Windows URL Protocol registration failed: $e');
     }
   }
 
@@ -135,14 +150,20 @@ class NutriSenseAppState extends State<NutriSenseApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'NutriSense',
-      navigatorKey: _navigatorKey,
-      debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
-      home: const SplashScreen(),
+    return ListenableBuilder(
+      listenable: RamadanController.instance,
+      builder: (context, _) {
+        final isRamadan = RamadanController.instance.isRamadanMode;
+        return MaterialApp(
+          title: 'NutriSense',
+          navigatorKey: _navigatorKey,
+          debugShowCheckedModeBanner: false,
+          themeMode: _themeMode,
+          theme: isRamadan ? buildRamadanTheme() : buildLightTheme(),
+          darkTheme: isRamadan ? buildRamadanTheme() : buildDarkTheme(),
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }

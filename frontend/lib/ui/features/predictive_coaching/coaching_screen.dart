@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 
@@ -111,6 +113,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
     final scoreColor = _getScoreColor(_habitScore);
 
     return Scaffold(
@@ -119,11 +122,15 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadCoachingData,
-              child: SingleChildScrollView(
+      body: Container(
+        height: double.infinity,
+        width: double.infinity,
+        decoration: getAppBackgroundDecoration(isRamadan),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadCoachingData,
+                child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
                 child: Column(
@@ -247,6 +254,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                 ),
               ),
             ),
+      ),
     );
   }
 
