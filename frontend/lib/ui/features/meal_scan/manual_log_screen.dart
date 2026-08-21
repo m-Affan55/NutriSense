@@ -85,12 +85,12 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         }
       } else {
         if (mounted) {
-          CustomToast.show(context, 'Failed to fetch macros: ${response.statusCode}');
+          CustomToast.show(context, 'AI limit exceeded or failed. Please fill manually.', isError: true);
         }
       }
     } catch (e) {
       if (mounted) {
-        CustomToast.show(context, 'Network error: ${e.toString()}');
+        CustomToast.show(context, 'Network error. Please fill manually.', isError: true);
       }
     } finally {
       if (mounted) {

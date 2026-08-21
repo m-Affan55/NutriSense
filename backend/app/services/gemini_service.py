@@ -115,23 +115,14 @@ class GeminiService:
         - "fat_g": Float
         """
         
-        try:
-            response = client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=[prompt],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                ),
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            return {
-                "name": query,
-                "calories": 0,
-                "protein_g": 0.0,
-                "carbs_g": 0.0,
-                "fat_g": 0.0
-            }
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
+        return json.loads(response.text)
 
     @staticmethod
     def generate_coaching_summary(score: float, profile: dict = None) -> str:

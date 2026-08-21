@@ -6,6 +6,8 @@ import '../chat/ai_coach_screen.dart';
 import '../predictive_coaching/coaching_screen.dart';
 import '../../../core/ramadan_controller.dart';
 
+final GlobalKey<CoachingScreenState> coachingKey = GlobalKey<CoachingScreenState>();
+
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -29,7 +31,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     const DashboardScreen(),
     const ScanMealScreen(),
     const AiCoachScreen(),
-    const CoachingScreen(),
+    CoachingScreen(key: coachingKey),
   ];
 
   @override
@@ -92,6 +94,9 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
         setState(() {
           _currentIndex = index;
         });
+        if (index == 3) {
+          coachingKey.currentState?.loadCoachingData();
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
