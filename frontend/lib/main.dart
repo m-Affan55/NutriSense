@@ -42,16 +42,16 @@ Future<void> main(List<String> args) async {
       const scheme = 'io.supabase.nutrisense';
       final exePath = Platform.resolvedExecutable;
       
-      final key = Registry.currentUser.createKey('Software\\Classes\\$scheme');
-      key.createValue(RegistryValue.string('', 'URL:NutriSense Protocol'));
-      key.createValue(RegistryValue.string('URL Protocol', ''));
+      final key = CURRENT_USER.create('Software\\Classes\\$scheme');
+      key.setValue('', RegistryValue.string('URL:NutriSense Protocol'));
+      key.setValue('URL Protocol', RegistryValue.string(''));
       
-      final iconKey = key.createKey('DefaultIcon');
-      iconKey.createValue(RegistryValue.string('', '$exePath,1'));
+      final iconKey = key.create('DefaultIcon');
+      iconKey.setValue('', RegistryValue.string('$exePath,1'));
       iconKey.close();
 
-      final shellKey = key.createKey('shell\\open\\command');
-      shellKey.createValue(RegistryValue.string('', '"$exePath" "%1"'));
+      final shellKey = key.create('shell\\open\\command');
+      shellKey.setValue('', RegistryValue.string('"$exePath" "%1"'));
       shellKey.close();
       key.close();
     } catch (e) {
