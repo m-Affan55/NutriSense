@@ -123,6 +123,39 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF161A22),
+          title: Text(
+            'Terms & Policies',
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              'Welcome to NutriSense!\n\n'
+              'NutriSense is designed to help you track your fitness, meals, and general well-being.\n\n'
+              'IMPORTANT MEDICAL DISCLAIMER:\n'
+              'NutriSense aims to provide health education and tracking tools. '
+              'We are NOT doctors, and this app does NOT provide medical advice, diagnosis, or treatment. '
+              'Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.\n\n'
+              'By using this app, you acknowledge that the information provided is for educational purposes only.',
+              style: const TextStyle(color: Colors.white, height: 1.5),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('I Understand'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -286,7 +319,20 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text('I agree to Terms & Privacy Policy', style: theme.textTheme.bodySmall),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _showTermsDialog,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                'I agree to Terms & Privacy Policy', 
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -355,6 +401,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       label: const Text('Continue with Google', style: TextStyle(color: Colors.white)),
                     ),
                   ],
+
                 ],
               ),
             ),

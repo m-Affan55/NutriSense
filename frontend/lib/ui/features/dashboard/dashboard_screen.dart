@@ -15,6 +15,7 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../health_sync/health_sync_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
+import '../onboarding/onboarding_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -47,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   List<Map<String, dynamic>> _todayMeals = [];
   bool _isLoading = true;
   String _language = 'en';
+  bool _needsOnboarding = false;
 
   // Offline sync badge
   int _pendingSyncCount = 0;
@@ -109,10 +111,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             .maybeSingle();
 
         if (profileRes != null) {
+          _needsOnboarding = false;
           _targetCalories = (profileRes['daily_calorie_target'] as num?)?.toInt() ?? 2000;
           _targetProtein = (profileRes['daily_protein_g'] as num?)?.toInt() ?? 130;
           _targetCarbs = (profileRes['daily_carbs_g'] as num?)?.toInt() ?? 220;
           _targetFat = (profileRes['daily_fat_g'] as num?)?.toInt() ?? 65;
+        } else {
+          _needsOnboarding = true;
         }
       }
 
@@ -561,6 +566,64 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return translations[_language]?[key] ?? key;
   }
 
+  Widget _buildOnboardingOverlayPopup(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161A22),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.2),
+            blurRadius: 30,
+            spreadRadius: 5,
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Complete Your Profile!',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Let\'s set up your personalized health goals and AI coach. Tap the button below to get started.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+                ).then((_) => _loadData());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     FamilyViewModel.instance.removeListener(_loadData);
@@ -581,9 +644,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         return Scaffold(
           body: RamadanBackgroundWrapper(
             child: SafeArea(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
+              child: Stack(
+                children: [
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
                   onRefresh: _loadData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -936,6 +1001,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ),
                 ),
               ),
+              
+              if (_needsOnboarding && FamilyViewModel.instance.activeMember == null)
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.6),
+                      child: Center(
+                        child: _buildOnboardingOverlayPopup(theme),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1587,4 +1667,51 @@ class CalorieRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CalorieRingPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+class BouncingArrow extends StatefulWidget {
+  const BouncingArrow({super.key});
+
+  @override
+  State<BouncingArrow> createState() => _BouncingArrowState();
+}
+
+class _BouncingArrowState extends State<BouncingArrow> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_controller.value * 10, 0),
+          child: child,
+        );
+      },
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.arrow_back, color: Colors.white, size: 20),
+          SizedBox(width: 4),
+          Text('Start Here!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
 }
