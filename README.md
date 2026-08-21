@@ -71,8 +71,20 @@ NutriSense/
 ├── supabase/
 │   ├── migrations/            # 001_initial_schema.sql, 002_family_profiles.sql
 │   └── schema.sql             # Consolidated PostgreSQL schema with RLS
+├── DEPLOYMENT_AND_APK_GUIDE.md # Step-by-step guide for hosting backend & building APKs
+├── FEATURES_ROADMAP.md        # Comprehensive future feature roadmap & ideation
 └── walkthrough.md             # Complete technical verification & setup guide
 ```
+
+---
+
+## 📦 Hosting & Android APK Build Guide
+For full instructions on hosting the FastAPI backend on **Render**, setting up environment variables, and compiling standalone release `.apk` files for Android devices, see [DEPLOYMENT_AND_APK_GUIDE.md](file:///d:/AI%20Hackathon/NutriSense/DEPLOYMENT_AND_APK_GUIDE.md).
+
+---
+
+## 🔮 Future Feature Roadmap
+For a detailed breakdown of upcoming features (such as **Voice-First Urdu Logging**, **Lab Report OCR & Blood Biomarkers**, **Fridg-e-Sense Recipe Generator**, **Drug-Food Interaction Guard**, and **PCOS Tracking**), see [FEATURES_ROADMAP.md](file:///d:/AI%20Hackathon/NutriSense/FEATURES_ROADMAP.md).
 
 ---
 

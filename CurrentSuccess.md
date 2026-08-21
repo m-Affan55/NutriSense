@@ -63,3 +63,8 @@ This document provides a comprehensive inventory of all features, services, data
 
 - **Static Analysis**: `flutter analyze` $\to$ **`No issues found!`** (0 errors, 0 warnings).
 - **Automated Test Suite**: `flutter test` $\to$ **`All tests passed!`**.
+
+---
+
+## 🔮 What to Build Next
+Explore our detailed [FEATURES_ROADMAP.md](file:///d:/AI%20Hackathon/NutriSense/FEATURES_ROADMAP.md) for full specifications on prioritized future modules (Voice-first Urdu logging, Blood report OCR & biomarker tracking, Fridg-e-Sense recipe generator, Drug-food interaction guard, and PCOS nutrition tracking).
