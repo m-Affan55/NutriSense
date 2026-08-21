@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 
 // ─────────────────────────────────────────────────────────────────
 //  DATA MODEL
@@ -10,18 +15,20 @@ class _Clinic {
   final String phone;
   final String type; // 'government' | 'private'
   final String cost;
-  final String distance;
+  String distance;
+  double distanceMeters;
   final String specialty;
   final double lat;
   final double lng;
 
-  const _Clinic({
+  _Clinic({
     required this.name,
     required this.address,
     required this.phone,
     required this.type,
     required this.cost,
     required this.distance,
+    this.distanceMeters = 0.0,
     required this.specialty,
     required this.lat,
     required this.lng,
@@ -31,7 +38,7 @@ class _Clinic {
 // ─────────────────────────────────────────────────────────────────
 //  REAL KARACHI CLINICS — curated list
 // ─────────────────────────────────────────────────────────────────
-const List<_Clinic> _allClinics = [
+List<_Clinic> _allClinics = [
   // ── Government ───────────────────────────────────────────────
   _Clinic(
     name: 'Jinnah Postgraduate Medical Centre (JPMC)',
@@ -123,6 +130,52 @@ const List<_Clinic> _allClinics = [
     lat: 24.8140,
     lng: 67.0300,
   ),
+
+  // ── Lahore Fallbacks ──────────────────────────────────────────
+  _Clinic(
+    name: 'Mayo Hospital Lahore',
+    address: 'Hospital Rd, Anarkali Bazaar, Lahore',
+    phone: '+924299211120',
+    type: 'government',
+    cost: 'Free / Subsidised',
+    distance: 'N/A',
+    specialty: 'General & Emergency',
+    lat: 31.5746,
+    lng: 74.3130,
+  ),
+  _Clinic(
+    name: 'Services Hospital Lahore',
+    address: 'Jail Rd, Lahore',
+    phone: '+924299203402',
+    type: 'government',
+    cost: 'Free / Subsidised',
+    distance: 'N/A',
+    specialty: 'Multi-specialty',
+    lat: 31.5414,
+    lng: 74.3313,
+  ),
+  _Clinic(
+    name: 'Shaukat Khanum Memorial Cancer Hospital',
+    address: 'Johar Town, Lahore',
+    phone: '+924235905000',
+    type: 'private',
+    cost: 'Charity / Subsidised',
+    distance: 'N/A',
+    specialty: 'Specialized Care',
+    lat: 31.4727,
+    lng: 74.2693,
+  ),
+  _Clinic(
+    name: 'Jinnah Hospital Lahore',
+    address: 'Usmani Rd, Faisal Town, Lahore',
+    phone: '+924299231400',
+    type: 'government',
+    cost: 'Free / Subsidised',
+    distance: 'N/A',
+    specialty: 'General & Emergency',
+    lat: 31.4939,
+    lng: 74.3113,
+  ),
 ];
 
 // ─────────────────────────────────────────────────────────────────
@@ -141,11 +194,127 @@ class ClinicFinderScreen extends StatefulWidget {
 class _ClinicFinderScreenState extends State<ClinicFinderScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  bool _isLoading = true;
+  String _statusMessage = "Finding clinics near you...";
+  
+  List<_Clinic> _dynamicClinics = [];
+  bool _usingDynamic = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _initLocationAndFetch();
+  }
+  
+  Future<void> _initLocationAndFetch() async {
+    try {
+      final status = await Permission.location.request();
+      if (!status.isGranted) {
+        _useFallback("Location permission denied. Using fallback list.");
+        return;
+      }
+
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _useFallback("Location services disabled. Using fallback list.");
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high, timeLimit: const Duration(seconds: 10));
+          
+      await _fetchOverpassClinics(position.latitude, position.longitude);
+      
+    } catch (e) {
+      _useFallback("Could not get location. Using fallback list.");
+    }
+  }
+  
+  Future<void> _fetchOverpassClinics(double lat, double lng) async {
+    try {
+      // 5km radius
+      final query = '''
+      [out:json];
+      (
+        node["amenity"="hospital"](around:5000, $lat, $lng);
+        node["amenity"="clinic"](around:5000, $lat, $lng);
+      );
+      out body;
+      ''';
+      
+      final url = Uri.parse('https://overpass-api.de/api/interpreter');
+      final response = await http.post(url, body: query).timeout(const Duration(seconds: 15));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final elements = data['elements'] as List<dynamic>;
+        
+        if (elements.isEmpty) {
+            _useFallback("No clinics found nearby. Using fallback list.");
+            return;
+        }
+        
+        List<_Clinic> fetched = [];
+        for (var el in elements) {
+          final tags = el['tags'] ?? {};
+          final name = tags['name'] ?? 'Local Clinic/Hospital';
+          
+          final clat = (el['lat'] as num).toDouble();
+          final clng = (el['lon'] as num).toDouble();
+          
+          final distanceM = Geolocator.distanceBetween(lat, lng, clat, clng);
+          final distStr = '${(distanceM / 1000).toStringAsFixed(1)} km';
+          
+          // Guess type based on name for hackathon purposes
+          String type = 'private';
+          String cost = 'Medium Cost';
+          String lName = name.toLowerCase();
+          if (lName.contains('civil') || lName.contains('jinnah') || lName.contains('government') || lName.contains('mayo') || lName.contains('services')) {
+              type = 'government';
+              cost = 'Free / Subsidised';
+          }
+          
+          fetched.add(_Clinic(
+            name: name,
+            address: 'Lat: ${clat.toStringAsFixed(3)}, Lng: ${clng.toStringAsFixed(3)}',
+            phone: tags['phone'] ?? 'Unknown',
+            type: type,
+            cost: cost,
+            distance: distStr,
+            distanceMeters: distanceM,
+            specialty: tags['amenity'] == 'hospital' ? 'General Hospital' : 'Clinic',
+            lat: clat,
+            lng: clng,
+          ));
+        }
+        
+        fetched.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+        
+        if (mounted) {
+            setState(() {
+                _dynamicClinics = fetched;
+                _usingDynamic = true;
+                _isLoading = false;
+            });
+        }
+      } else {
+        _useFallback("API error. Using fallback list.");
+      }
+    } catch (e) {
+      _useFallback("Failed to fetch clinics. Using fallback list.");
+    }
+  }
+  
+  void _useFallback(String msg) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+      setState(() {
+        _usingDynamic = false;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -154,11 +323,15 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
     super.dispose();
   }
 
-  List<_Clinic> get _governmentClinics =>
-      _allClinics.where((c) => c.type == 'government').toList();
+  List<_Clinic> get _governmentClinics {
+    final list = _usingDynamic ? _dynamicClinics : _allClinics;
+    return list.where((c) => c.type == 'government').toList();
+  }
 
-  List<_Clinic> get _privateClinics =>
-      _allClinics.where((c) => c.type == 'private').toList();
+  List<_Clinic> get _privateClinics {
+    final list = _usingDynamic ? _dynamicClinics : _allClinics;
+    return list.where((c) => c.type == 'private').toList();
+  }
 
   Future<void> _call(BuildContext ctx, String phone) async {
     final uri = Uri(scheme: 'tel', path: phone);
@@ -209,7 +382,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
           'Find Affordable Care',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        bottom: TabBar(
+        bottom: _isLoading ? null : TabBar(
           controller: _tabController,
           indicatorColor: theme.colorScheme.primary,
           labelColor: theme.colorScheme.primary,
@@ -220,7 +393,16 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
           ],
         ),
       ),
-      body: Column(
+      body: _isLoading 
+        ? Center(child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: theme.colorScheme.primary),
+              const SizedBox(height: 16),
+              Text(_statusMessage, style: const TextStyle(color: Colors.white)),
+            ]
+          ))
+        : Column(
         children: [
           // ── Alert Banner ──────────────────────────────────────
           Container(
@@ -271,6 +453,19 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   }
 
   Widget _buildClinicList(List<_Clinic> clinics, ThemeData theme) {
+    if (clinics.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            'No affordable clinics found in this category near your location. Try the other tab or search on Google Maps.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          ),
+        ),
+      );
+    }
+    
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
       itemCount: clinics.length,
