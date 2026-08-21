@@ -98,13 +98,16 @@ def chat_with_coach(req: CoachRequest):
             
             if risk["level"] in ("warning", "critical"):
                 # Save risk flag to DB
-                supabase.table('risk_flags').insert({
-                    "user_id": req.user_id,
-                    "level": risk["level"],
-                    "message": risk["message"],
-                    "coach_reply": coach_reply,
-                    "is_resolved": False
-                }).execute()
+                try:
+                    supabase.table('risk_flags').insert({
+                        "user_id": req.user_id,
+                        "level": risk["level"],
+                        "message": risk["message"],
+                        "coach_reply": coach_reply,
+                        "is_resolved": False
+                    }).execute()
+                except Exception as e:
+                    print(f"Failed to log risk flag to DB: {e}")
                 
                 escalation_alert = {
                     "level": risk["level"],

@@ -25,6 +25,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   
   bool _isTyping = false;
   String _language = 'en';
+  String? _goal;
+  List<String> _medicalConditions = [];
 
   @override
   void initState() {
@@ -34,28 +36,49 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
   Future<void> _loadLanguageAndGreeting() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-      
-      final isRamadan = RamadanController.instance.isRamadanMode;
-      String greeting;
-      if (isRamadan) {
-        greeting = _language == 'ur'
-            ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
-            : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
-      } else {
-        greeting = _language == 'ur'
-            ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
-            : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+    
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final healthRes = await supabase
+            .from('health_profiles')
+            .select('goal, medical_conditions')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (healthRes != null && mounted) {
+          setState(() {
+            _goal = healthRes['goal'];
+            _medicalConditions = (healthRes['medical_conditions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          });
+        }
       }
-          
-      _messages.add({
-        'sender': _language == 'ur' ? 'کوچ' : 'Coach',
-        'text': greeting,
-        'isUser': false,
-        'time': _formatTime(DateTime.now()),
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        
+        final isRamadan = RamadanController.instance.isRamadanMode;
+        String greeting;
+        if (isRamadan) {
+          greeting = _language == 'ur'
+              ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
+              : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
+        } else {
+          greeting = _language == 'ur'
+              ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
+              : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+        }
+            
+        _messages.add({
+          'sender': _language == 'ur' ? 'کوچ' : 'Coach',
+          'text': greeting,
+          'isUser': false,
+          'time': _formatTime(DateTime.now()),
+        });
       });
-    });
+    }
   }
 
   String _formatTime(DateTime dt) {
@@ -267,44 +290,15 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    if (RamadanController.instance.isRamadanMode) ...[
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '🌙 سحری کے بہترین کھانے' : '🌙 Best Sehri foods for energy',
-                        const Color(0xFFFFD166),
+                  children: _getDynamicPrompts().map((prompt) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: _buildQuickPromptChip(
+                        _language == 'ur' ? prompt.labelUrdu : prompt.labelEng,
+                        prompt.color,
                       ),
-                      const SizedBox(width: 8),
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '💧 روزے میں پیاس سے بچاؤ' : '💧 How to avoid thirst while fasting?',
-                        const Color(0xFF00D2FF),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '🍲 صحت مند افطار کے طریقے' : '🍲 Healthy Iftar meal ideas',
-                        const Color(0xFFFFD166),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '⚡ روزے میں ورزش کا وقت' : '⚡ Workout timing in Ramadan',
-                        const Color(0xFF00E676),
-                      ),
-                    ] else ...[
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '🥗 ہائی پروٹین کھانے' : '🥗 High protein meal ideas',
-                        const Color(0xFF00E676),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '💧 پانی پینے کا ہدف' : '💧 Daily hydration plan',
-                        const Color(0xFF00BCD4),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildQuickPromptChip(
-                        _language == 'ur' ? '⚡ وزن کم کرنے کا منصوبہ' : '⚡ Fat loss nutrition advice',
-                        const Color(0xFFFFD166),
-                      ),
-                    ],
-                  ],
+                    );
+                  }).toList(),
                 ),
               ),
 
@@ -513,6 +507,47 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
     );
   }
 
+  List<_PromptChipData> _getDynamicPrompts() {
+    if (RamadanController.instance.isRamadanMode) {
+      return [
+        _PromptChipData('🌙 سحری کے بہترین کھانے', '🌙 Best Sehri foods for energy', const Color(0xFFFFD166)),
+        _PromptChipData('💧 روزے میں پیاس سے بچاؤ', '💧 How to avoid thirst while fasting?', const Color(0xFF00D2FF)),
+        _PromptChipData('🍲 صحت مند افطار کے طریقے', '🍲 Healthy Iftar meal ideas', const Color(0xFFFFD166)),
+        _PromptChipData('⚡ روزے میں ورزش کا وقت', '⚡ Workout timing in Ramadan', const Color(0xFF00E676)),
+      ];
+    }
+
+    List<_PromptChipData> prompts = [];
+    
+    // Medical condition based (Robust matching)
+    final medStr = _medicalConditions.join(' ').toLowerCase();
+    if (medStr.contains('diabete') || medStr.contains('sugar')) {
+      prompts.add(_PromptChipData('🩸 ذیابیطس کے لیے بہترین خوراک', '🩸 Diabetic-friendly low GI meals', const Color(0xFFFF3B30)));
+    }
+    if (medStr.contains('blood pressure') || medStr.contains('hypertension') || medStr.contains('heart')) {
+      prompts.add(_PromptChipData('🫀 دل اور بلڈ پریشر کی خوراک', '🫀 Low sodium & heart-healthy meals', const Color(0xFFFF9500)));
+    }
+    
+    // Goal based (Robust matching)
+    final goalStr = _goal?.toLowerCase() ?? '';
+    if (goalStr.contains('muscle') || goalStr.contains('bulk')) {
+      prompts.add(_PromptChipData('💪 پٹھوں کے لیے غذائی مشورہ', '💪 High calorie bulking meals', const Color(0xFF00E676)));
+      prompts.add(_PromptChipData('🍗 ہائی پروٹین کھانے', '🍗 High protein meal ideas', const Color(0xFF00BCD4)));
+    } else if (goalStr.contains('fat') || goalStr.contains('lose')) {
+      prompts.add(_PromptChipData('⚡ وزن کم کرنے کا منصوبہ', '⚡ Fat loss nutrition advice', const Color(0xFFFFD166)));
+      prompts.add(_PromptChipData('🥗 کم کیلوری والے کھانے', '🥗 Low calorie filling meals', const Color(0xFF00E676)));
+    } else {
+      prompts.add(_PromptChipData('⚖️ متوازن خوراک کے مشورے', '⚖️ Balanced maintenance meals', const Color(0xFF00E676)));
+    }
+
+    // Hydration (base)
+    if (prompts.length < 4) {
+      prompts.add(_PromptChipData('💧 پانی پینے کا ہدف', '💧 Daily hydration plan', const Color(0xFF00D2FF)));
+    }
+
+    return prompts.take(4).toList();
+  }
+
   Widget _buildQuickPromptChip(String text, Color accent) {
     return GestureDetector(
       onTap: () {
@@ -544,4 +579,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       ),
     );
   }
+}
+
+class _PromptChipData {
+  final String labelUrdu;
+  final String labelEng;
+  final Color color;
+  _PromptChipData(this.labelUrdu, this.labelEng, this.color);
 }
