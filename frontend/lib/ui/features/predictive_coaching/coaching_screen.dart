@@ -12,10 +12,10 @@ class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
 
   @override
-  State<CoachingScreen> createState() => _CoachingScreenState();
+  State<CoachingScreen> createState() => CoachingScreenState();
 }
 
-class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStateMixin {
+class CoachingScreenState extends State<CoachingScreen> with TickerProviderStateMixin {
   late AnimationController _ringController;
   late Animation<double> _ringAnimation;
 
@@ -35,10 +35,10 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
     );
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     
-    _loadCoachingData();
+    loadCoachingData();
   }
 
-  Future<void> _loadCoachingData() async {
+  Future<void> loadCoachingData() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
@@ -139,7 +139,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                onRefresh: _loadCoachingData,
+                onRefresh: loadCoachingData,
                 child: SingleChildScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),

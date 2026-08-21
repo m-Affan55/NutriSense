@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
 import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'manual_log_screen.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -61,7 +62,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     } catch (e) {
       if (mounted) {
         _failedBarcodes.add(barcode);
-        CustomToast.show(context, 'Product not found. Please try "Log Manually" or the AI Text Search!');
+        _showNotFoundDialog();
       }
     } finally {
       if (mounted) {
@@ -70,6 +71,42 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         });
       }
     }
+  }
+  
+  void _showNotFoundDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Product Not Found'),
+        content: const Text('We could not find this barcode in our database. Would you like to log it manually?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              controller.start();
+            },
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ManualLogScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+            child: const Text('Log Manually'),
+          ),
+        ],
+      ),
+    );
   }
   
   void _showProductResultDialog(Map<String, dynamic> data) {
@@ -215,11 +252,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     await Supabase.instance.client.from('meal_logs').insert({
                       'user_id': user!.id,
                       'meal_type': selectedMealType,
-                      'name': product['product_name'] ?? 'Packaged Food',
-                      'calories': product['calories'],
-                      'protein_g': product['protein_g'],
-                      'carbs_g': product['carbs_g'],
-                      'fat_g': product['fat_g'],
+                      'notes': product['product_name'] ?? 'Packaged Food',
+                      'total_calories': product['calories'],
+                      'total_protein_g': product['protein_g'],
+                      'total_carbs_g': product['carbs_g'],
+                      'total_fat_g': product['fat_g'],
                       'logged_at': DateTime.now().toIso8601String(),
                     });
                     
