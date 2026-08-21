@@ -107,10 +107,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('No session found');
 
-      final calories = int.parse(_caloriesController.text);
-      final proteinG = int.parse(_proteinController.text);
-      final carbsG = int.parse(_carbsController.text);
-      final fatG = int.parse(_fatController.text);
+      final calories = double.parse(_caloriesController.text).round();
+      final proteinG = double.parse(_proteinController.text).round();
+      final carbsG = double.parse(_carbsController.text).round();
+      final fatG = double.parse(_fatController.text).round();
       final notes = _nameController.text.trim();
 
       if (kIsWeb) {
@@ -350,14 +350,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _caloriesController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: _t('calories'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return _t('required');
-                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  if (double.tryParse(val) == null) return _t('numberRequired');
                   return null;
                 },
               ),
@@ -367,14 +367,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _proteinController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: _t('protein'),
                         border: const OutlineInputBorder(),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return _t('required');
-                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        if (double.tryParse(val) == null) return _t('numberRequired');
                         return null;
                       },
                     ),
@@ -383,14 +383,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _carbsController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: _t('carbs'),
                         border: const OutlineInputBorder(),
                       ),
                       validator: (val) {
                         if (val == null || val.isEmpty) return _t('required');
-                        if (int.tryParse(val) == null) return _t('numberRequired');
+                        if (double.tryParse(val) == null) return _t('numberRequired');
                         return null;
                       },
                     ),
@@ -400,14 +400,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _fatController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: _t('fat'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return _t('required');
-                  if (int.tryParse(val) == null) return _t('numberRequired');
+                  if (double.tryParse(val) == null) return _t('numberRequired');
                   return null;
                 },
               ),
