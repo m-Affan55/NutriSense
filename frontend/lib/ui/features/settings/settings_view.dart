@@ -8,8 +8,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/api_client.dart';
 import '../../../core/ramadan_controller.dart';
-import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
@@ -488,10 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Container(
-        height: double.infinity,
-        width: double.infinity,
-        decoration: getAppBackgroundDecoration(isRamadan),
+      body: RamadanBackgroundWrapper(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(

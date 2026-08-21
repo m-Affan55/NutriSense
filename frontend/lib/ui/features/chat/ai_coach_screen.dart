@@ -5,9 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
-import '../../../core/ramadan_controller.dart';
-import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 import 'clinic_finder_screen.dart';
 
 class AiCoachScreen extends StatefulWidget {
@@ -163,8 +162,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: getAppBackgroundDecoration(RamadanController.instance.isRamadanMode),
+      body: RamadanBackgroundWrapper(
         child: SafeArea(
           bottom: false,
           child: Column(

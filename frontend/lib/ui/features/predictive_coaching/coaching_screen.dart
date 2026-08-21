@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
-import '../../../core/ramadan_controller.dart';
-import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 
 class CoachingScreen extends StatefulWidget {
@@ -113,7 +112,6 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isRamadan = RamadanController.instance.isRamadanMode;
     final scoreColor = _getScoreColor(_habitScore);
 
     return Scaffold(
@@ -122,10 +120,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Container(
-        height: double.infinity,
-        width: double.infinity,
-        decoration: getAppBackgroundDecoration(isRamadan),
+      body: RamadanBackgroundWrapper(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(

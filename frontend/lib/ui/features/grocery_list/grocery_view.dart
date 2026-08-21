@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'grocery_viewmodel.dart';
-import '../../../core/ramadan_controller.dart';
-import '../../core/theme.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 
 class GroceryView extends StatefulWidget {
   const GroceryView({super.key});
@@ -185,8 +184,7 @@ class _GroceryViewState extends State<GroceryView> {
         ),
         centerTitle: true,
       ),
-      body: Container(
-        decoration: getAppBackgroundDecoration(RamadanController.instance.isRamadanMode),
+      body: RamadanBackgroundWrapper(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(

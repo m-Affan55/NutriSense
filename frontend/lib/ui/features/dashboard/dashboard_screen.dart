@@ -10,8 +10,8 @@ import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
 import '../../../core/health_service.dart';
 import '../../../core/ramadan_controller.dart';
-import '../../core/theme.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -495,10 +495,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final double waterRatio = (_waterLogged / _waterGoal).clamp(0.0, 1.0);
 
     return Scaffold(
-      body: Container(
-        height: double.infinity,
-        width: double.infinity,
-        decoration: getAppBackgroundDecoration(isRamadan),
+      body: RamadanBackgroundWrapper(
         child: SafeArea(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())

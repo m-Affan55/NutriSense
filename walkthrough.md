@@ -1,60 +1,46 @@
-# Ramadan Mode Theme Implementation Walkthrough
+# Ramadan Mode Background Visuals (Lanterns, Moon & Stars)
 
-We have implemented the **Ramadan Mode Theme** with the celestial midnight blue background and global theme reactivity across the entire application:
+We have added custom-crafted golden Islamic background visuals to the **Ramadan Mode Theme**:
 
-## What Was Implemented
+## What Was Added
 
-### 1. Global State Management: `RamadanController`
-- Created [ramadan_controller.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/ramadan_controller.dart):
-  - Singleton extending `ChangeNotifier`.
-  - Persists `isRamadanMode` state into `SharedPreferences`.
-  - Exposes `toggleRamadanMode()` and `setRamadanMode(bool)` to immediately notify the entire widget tree when toggled.
+### 1. Vector Islamic Visuals Painter (`islamic_decorations.dart`)
+Created [islamic_decorations.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/shared/widgets/islamic_decorations.dart) containing:
+- **Glowing Golden Lanterns (Fanous)**:
+  - 3 ornate hanging lanterns at staggered depths and cord lengths.
+  - Multi-tiered golden domes with crescent finials, hanging rings, and bead accents.
+  - Glass bodies with internal warm candle glow (`#FFFFFF` -> `#FFEA79` -> `#FFA000`), arched lattice panes, and bottom finials.
+  - Soft ambient candle radiance radiating into the midnight blue atmosphere.
+- **Luminous Golden Crescent Moon (Hilal)**:
+  - Metallic golden gradient (`#FFF7C2` -> `#FFD166` -> `#F59E0B` -> `#D97706`) with crisp highlight rim stroke.
+  - Soft ambient golden halo glow illuminating the upper-right night sky.
+- **Twinkling Celestial Stars & Shimmer**:
+  - 4-point sparkle stars scattered with radial shimmer and halo glow.
+  - Celestial cyan and warm golden bokeh orbs layered into the background.
 
-### 2. Celestial Midnight Blue Palette & Theme Builder
-- Updated [theme.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/core/theme.dart):
-  - Added `RamadanColors`:
-    - `bgMidnight`: `Color(0xFF080D1A)` (Deep celestial midnight navy)
-    - `bgDark`: `Color(0xFF050811)`
-    - `surfaceDark`: `Color(0xFF0E172A)` (Starry midnight surface)
-    - `primaryCyan`: `Color(0xFF00D2FF)` (Luminous Islamic cyan)
-    - `accentGold`: `Color(0xFFFFD166)` (Lantern gold)
-    - `textPrimary`: `Color(0xFFF8FAFC)`
-    - `textSecondary`: `Color(0xFF94A3B8)`
-  - Added `buildRamadanTheme()`: Configured with Material 3 dark brightness, celestial navy surfaces, luminous cyan primary, golden secondary, and fallback support for `JameelNooriNastaleeq` Urdu typography.
-  - Added `getAppBackgroundDecoration(bool isRamadan)`: Helper that generates smooth radial gradients with celestial navy depth.
+### 2. Full-Screen Non-Intrusive Wrapper (`RamadanBackgroundWrapper`)
+- Wraps the screen with a `Stack` that renders the custom painter beneath UI controls with `IgnorePointer`, ensuring all taps and scrolls pass through with 60 FPS performance.
+- Seamlessly falls back to standard background when Ramadan Mode is disabled.
 
-### 3. Dynamic App-Wide Reactive Integration
-- Updated [main.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/main.dart):
-  - Initialized `RamadanController.instance.init()` upon startup.
-  - Wrapped `MaterialApp` with `ListenableBuilder` listening to `RamadanController.instance` to hot-swap between standard and Ramadan themes globally.
-
-### 4. Settings Screen Ramadan Toggle
-- Updated [settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart):
-  - Added a dedicated **🌙 Ramadan Mode / رمضان المبارک** section with a glowing switch tile.
-  - Added localized descriptions in both English and Urdu.
-  - Instant live toggle with persistent storage.
-
-### 5. Screen-Level Theme Adaptation
-- Updated [dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart):
-  - Applied the dark blue radial gradient background.
-  - Calorie ring shaders and Scan button adapt to luminous cyan and gold gradients when Ramadan mode is active.
-- Updated [main_navigation_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/navigation/main_navigation_screen.dart):
-  - Navigation bar adopts deep navy blue glassmorphic container and golden/cyan glowing active indicators.
-- Updated [grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart) & [ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart) & [coaching_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/predictive_coaching/coaching_screen.dart):
-  - Backgrounds seamlessly switch to the celestial midnight navy gradient when Ramadan mode is enabled.
+### 3. Integrated Across Screens
+- [dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart) (Home Screen)
+- [settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart) (Settings & Ramadan Toggle)
+- [ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart) (AI Nutrition Coach)
+- [grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart) (Smart Grocery List)
+- [coaching_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/predictive_coaching/coaching_screen.dart) (AI Coaching & Habit Stats)
 
 ---
 
 ## Verification Results
 
 ### Automated Verification
-- Ran static analysis on the Flutter application:
+- Ran static analysis:
   ```bash
   flutter analyze
   ```
-  **Result**: `No issues found!` (Clean compilation, zero errors/warnings across all files).
+  **Result**: `No issues found!` (0 warnings, 0 errors).
 - Ran unit tests:
   ```bash
   flutter test
   ```
-  **Result**: `All tests passed!` (Successful compile and test execution).
+  **Result**: `All tests passed!`.
