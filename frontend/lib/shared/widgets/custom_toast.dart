@@ -9,8 +9,10 @@ class CustomToast {
   }) {
     // 1. Convert raw exception strings to friendly text
     String friendlyMessage = message;
-    if (message.contains('invalid_credentials') || message.contains('Invalid login credentials')) {
+    if (message.contains('invalid_credentials') || message.contains('Invalid login credentials') || message.contains('Incorrect email or password')) {
       friendlyMessage = 'Incorrect email or password. Please try again.';
+    } else if (message.contains('RESOURCE_EXHAUSTED') || message.contains('429') || message.contains('Quota exceeded') || message.contains('quota')) {
+      friendlyMessage = 'AI Coach limit exceeded. Please try again in a moment.\nکوچ فی الحال مصروف ہے، براہ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔';
     } else if (message.contains('email_not_confirmed')) {
       friendlyMessage = 'Please verify your email address to proceed.';
     } else if (message.contains('network') || message.contains('SocketException') || message.contains('Failed host lookup')) {
@@ -19,6 +21,8 @@ class CustomToast {
       friendlyMessage = 'An account with this email already exists.';
     } else if (message.contains('weak_password') || message.contains('Password should be')) {
       friendlyMessage = 'Your password is too weak. Please use at least 6 characters.';
+    } else if (message.contains('{') && message.contains('}')) {
+      friendlyMessage = 'Service is temporarily busy. Please try again in a moment.';
     } else if (message.contains('AuthApiException') || message.contains('Exception:')) {
       // Strip generic framework packaging tags
       friendlyMessage = message.replaceAll(RegExp(r'.*Exception:?\s*'), '');

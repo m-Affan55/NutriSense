@@ -88,7 +88,31 @@ def chat_with_coach(req: CoachRequest):
             ),
         )
         
-        return {"response": response.text}
+        coach_reply = response.text
+        
+        # 5. Evaluate Health Risk (Independent agentic pass)
+        escalation_alert = None
+        if profile and profile.get("medical_conditions"):
+            from app.services.risk_evaluator import evaluate_health_risk
+            risk = evaluate_health_risk(coach_reply, profile, meals)
+            
+            if risk["level"] in ("warning", "critical"):
+                # Save risk flag to DB
+                supabase.table('risk_flags').insert({
+                    "user_id": req.user_id,
+                    "level": risk["level"],
+                    "message": risk["message"],
+                    "coach_reply": coach_reply,
+                    "is_resolved": False
+                }).execute()
+                
+                escalation_alert = {
+                    "level": risk["level"],
+                    "message": risk["message"],
+                    "show_doctor_button": True
+                }
+
+        return {"response": coach_reply, "escalation_alert": escalation_alert}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

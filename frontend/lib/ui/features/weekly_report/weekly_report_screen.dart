@@ -38,7 +38,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;

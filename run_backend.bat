@@ -12,6 +12,6 @@ if exist venv\Scripts\activate.bat (
 )
 
 echo Starting uvicorn app.main:app on port 8000...
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --reload-dir app
 
 pause

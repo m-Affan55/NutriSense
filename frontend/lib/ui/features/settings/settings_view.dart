@@ -7,9 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/api_client.dart';
+import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
 import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
+import '../grocery_list/grocery_view.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -45,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -89,6 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('language', _language);
+      await prefs.setString('app_language', _language);
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -152,8 +156,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (user == null) throw Exception('No session found');
 
       final profile = await supabase.from('health_profiles').select().eq('user_id', user.id).maybeSingle();
-      final meals = await supabase.from('meal_logs').select().eq('user_id', user.id);
-      final water = await supabase.from('water_logs').select().eq('user_id', user.id);
+      
+      final mealsResponse = await supabase
+          .from('meal_logs')
+          .select()
+          .eq('user_id', user.id)
+          .order('logged_at', ascending: false)
+          .limit(20);
+      final List<dynamic> meals = mealsResponse as List<dynamic>;
+
+      final waterResponse = await supabase
+          .from('water_logs')
+          .select()
+          .eq('user_id', user.id)
+          .order('logged_at', ascending: false)
+          .limit(20);
+      final List<dynamic> water = waterResponse as List<dynamic>;
 
       // 2. Build PDF Document
       final pdfDoc = pw.Document();
@@ -211,16 +229,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     pw.Text('HEALTH TARGETS & PROFILE', style: pw.TextStyle(fontSize: 11, color: PdfColor.fromInt(0xFF00E676), fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 12),
                     if (profile != null) ...[
-                      pw.GridView(
-                        crossAxisCount: 2,
-                        childAspectRatio: 6,
+                      pw.Column(
                         children: [
-                          pdfMetric('Age', '${profile['age']} years'),
-                          pdfMetric('Weight', '${profile['weight_kg']} kg'),
-                          pdfMetric('Height', '${profile['height_cm']} cm'),
-                          pdfMetric('Goal', profile['goal'].toString().replaceAll('_', ' ').toUpperCase()),
-                          pdfMetric('Calorie Target', '${profile['daily_calorie_target']} kcal'),
-                          pdfMetric('Daily Food Budget', '${profile['daily_budget_pkr']} PKR'),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Age', '${profile['age']} years')),
+                              pw.Expanded(child: pdfMetric('Weight', '${profile['weight_kg']} kg')),
+                            ],
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Height', '${profile['height_cm']} cm')),
+                              pw.Expanded(child: pdfMetric('Goal', profile['goal'].toString().replaceAll('_', ' ').toUpperCase())),
+                            ],
+                          ),
+                          pw.SizedBox(height: 8),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(child: pdfMetric('Calorie Target', '${profile['daily_calorie_target']} kcal')),
+                              pw.Expanded(child: pdfMetric('Daily Food Budget', '${profile['daily_budget_pkr']} PKR')),
+                            ],
+                          ),
                         ],
                       ),
                       pw.SizedBox(height: 10),
@@ -237,39 +267,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Meal log section
               pw.Text('MEAL LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
               pw.SizedBox(height: 8),
-              pw.TableHelper.fromTextArray(
-                headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
-                data: meals.map((m) => [
-                  m['notes'] ?? 'Meal',
-                  m['meal_type'] ?? 'unknown',
-                  '${m['total_calories'] ?? 0}',
-                  m['logged_at'].toString().substring(0, 10),
-                ]).toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
-                cellAlignment: pw.Alignment.centerLeft,
-                rowDecoration: const pw.BoxDecoration(
-                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+              if (meals.isEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                  child: pw.Text('No meals logged recently.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey400)),
+                )
+              else
+                pw.TableHelper.fromTextArray(
+                  headers: ['Meal Description', 'Meal Type', 'Calories (kcal)', 'Logged Date'],
+                  data: meals.map((m) => [
+                    m['notes'] ?? 'Meal',
+                    m['meal_type'] ?? 'unknown',
+                    '${m['total_calories'] ?? 0}',
+                    m['logged_at'].toString().substring(0, 10),
+                  ]).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  rowDecoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                  ),
                 ),
-              ),
               pw.SizedBox(height: 24),
               
               // Hydration log section
               pw.Text('HYDRATION LOG DETAILS', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF00E676))),
               pw.SizedBox(height: 8),
-              pw.TableHelper.fromTextArray(
-                headers: ['Hydration Amount', 'Logged Date'],
-                data: water.map((w) => [
-                  '${w['amount_ml']} ml',
-                  w['logged_at'].toString().substring(0, 10),
-                ]).toList(),
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
-                cellAlignment: pw.Alignment.centerLeft,
-                rowDecoration: const pw.BoxDecoration(
-                  border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+              if (water.isEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                  child: pw.Text('No hydration logged recently.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey400)),
+                )
+              else
+                pw.TableHelper.fromTextArray(
+                  headers: ['Hydration Amount', 'Logged Date'],
+                  data: water.map((w) => [
+                    '${w['amount_ml']} ml',
+                    w['logged_at'].toString().substring(0, 10),
+                  ]).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF0D0F14)),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  rowDecoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+                  ),
                 ),
-              ),
             ];
           },
         ),
@@ -390,6 +432,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delSuccess': 'Your account has been deleted.',
         'changePassword': 'Change Password',
         'changePasswordSub': 'Update your login password.',
+        'groceryTitle': 'Smart Grocery List',
+        'grocerySub': 'Get AI shopping list based on your recent meals.',
+        'ramadanTitle': 'Ramadan Mode',
+        'ramadanSub': 'Celestial midnight blue theme & Islamic fasting mode.',
+        'ramadanSection': 'Ramadan Mode',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -420,6 +467,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'delSuccess': 'آپ کا اکاؤنٹ حذف کر دیا گیا ہے۔',
         'changePassword': 'پاس ورڈ تبدیل کریں',
         'changePasswordSub': 'اپنا لاگ ان پاس ورڈ تبدیل کریں۔',
+        'groceryTitle': 'اسمارٹ گروسری لسٹ',
+        'grocerySub': 'حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔',
+        'ramadanTitle': 'رمضان موڈ',
+        'ramadanSub': 'نیلا آسمانی تھیم اور سحر و افطار کے اوزار فعال کریں۔',
+        'ramadanSection': 'رمضان المبارک',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -428,6 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -435,20 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Container(
-        height: double.infinity,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D0F14),
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.8),
-            radius: 1.2,
-            colors: [
-              theme.colorScheme.primary.withAlpha(20),
-              const Color(0xFF0D0F14),
-            ],
-          ),
-        ),
+      body: RamadanBackgroundWrapper(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -561,15 +601,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 16),
+                    
+                    // Ramadan Mode Section
+                    Text(_t('ramadanSection'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isRamadan
+                            ? const Color(0xFF132448).withAlpha(150)
+                            : const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isRamadan
+                              ? const Color(0xFF00D2FF).withAlpha(80)
+                              : Colors.white.withAlpha(15),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: SwitchListTile(
+                        secondary: const Text('🌙', style: TextStyle(fontSize: 24)),
+                        title: Text(
+                          _t('ramadanTitle'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isRamadan ? const Color(0xFFFFD166) : Colors.white,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _t('ramadanSub'),
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                        value: isRamadan,
+                        activeThumbColor: const Color(0xFF00D2FF),
+                        activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
+                        onChanged: (val) async {
+                          await RamadanController.instance.setRamadanMode(val);
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
                     Text(_t('privacy'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    ListTile(
+                     ListTile(
                       leading: const Icon(Icons.lock_outline, color: Colors.blueAccent),
                       title: Text(_t('changePassword')),
                       subtitle: Text(_t('changePasswordSub')),
                       onTap: _isSaving ? null : () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.shopping_basket_outlined, color: Colors.greenAccent),
+                      title: Text(_t('groceryTitle')),
+                      subtitle: Text(_t('grocerySub')),
+                      onTap: _isSaving ? null : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const GroceryView()),
                         );
                       },
                     ),
