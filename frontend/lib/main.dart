@@ -17,6 +17,8 @@ import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
 import 'core/ramadan_controller.dart';
 
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -157,7 +159,7 @@ class NutriSenseAppState extends State<NutriSenseApp> {
         final isRamadan = RamadanController.instance.isRamadanMode;
         return MaterialApp(
           title: 'NutriSense',
-          navigatorKey: _navigatorKey,
+          navigatorKey: globalNavigatorKey,
           debugShowCheckedModeBanner: false,
           themeMode: _themeMode,
           theme: isRamadan ? buildRamadanTheme() : buildLightTheme(),

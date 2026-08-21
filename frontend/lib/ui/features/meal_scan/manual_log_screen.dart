@@ -8,6 +8,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/api_client.dart';
 import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
+import '../../../core/swap_service.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
@@ -147,6 +148,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
       if (mounted) {
         CustomToast.show(context, _t('success'), isError: false);
+        SwapService.checkMealForSwaps(notes);
         Navigator.pop(context, true);
       }
     } catch (e) {

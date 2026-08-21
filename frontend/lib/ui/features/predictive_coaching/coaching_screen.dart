@@ -6,6 +6,7 @@ import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
+import '../../../core/swap_service.dart';
 
 class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
@@ -23,6 +24,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
   List<double> _trend = [];
   String _coachingMessage = '';
   List<dynamic> _foodSwaps = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -87,6 +89,19 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
       if (mounted) {
         setState(() => _isLoading = false);
         _ringController.forward();
+        
+        // Auto-scroll if navigated from Swap alert
+        if (SwapService.highlightNotifier.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error loading coaching data: $e');
@@ -126,6 +141,7 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
             : RefreshIndicator(
                 onRefresh: _loadCoachingData,
                 child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
                 child: Column(
@@ -219,7 +235,15 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
                     if (_foodSwaps.isNotEmpty) ...[
                       Text('Recommended Swaps', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 16),
-                      ..._foodSwaps.map((swap) => _buildSwapCard(swap, theme)),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: SwapService.highlightNotifier,
+                        builder: (context, isHighlighted, _) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _foodSwaps.map((swap) => _buildSwapCard(swap, theme, isHighlighted)).toList(),
+                          );
+                        }
+                      ),
                     ]
                   ],
                 ),
@@ -229,14 +253,25 @@ class _CoachingScreenState extends State<CoachingScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme) {
-    return Container(
+  Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme, bool isHighlighted) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF161A22),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+          color: isHighlighted ? const Color(0xFF00E676) : Colors.white10,
+          width: isHighlighted ? 2.0 : 1.0,
+        ),
+        boxShadow: isHighlighted ? [
+          BoxShadow(
+            color: const Color(0xFF00E676).withAlpha(60),
+            blurRadius: 12,
+            spreadRadius: 2,
+          )
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
