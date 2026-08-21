@@ -14,6 +14,8 @@ import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
+import '../family_profiles/family_view.dart';
+import '../family_profiles/family_viewmodel.dart';
 import '../../../core/reminder_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -907,6 +909,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const HealthSyncView()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Family Profiles Section
+                    ListTile(
+                      leading: const Icon(Icons.people_alt_outlined, color: Color(0xFFFFD166)),
+                      title: Text(
+                        _language == 'ur' ? 'خاندانی پروفائلز' : 'Family Profiles',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _language == 'ur'
+                            ? 'بچوں اور بزرگوں کی غذائیت کا انتظام کریں'
+                            : 'Manage nutrition for children & elderly parents',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (FamilyViewModel.instance.members.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFD166).withAlpha(30),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${FamilyViewModel.instance.members.length}',
+                                style: const TextStyle(color: Color(0xFFFFD166), fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const FamilyView()),
                         );
                       },
                     ),

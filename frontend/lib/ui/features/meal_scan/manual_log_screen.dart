@@ -10,6 +10,7 @@ import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
+import '../family_profiles/family_viewmodel.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -27,6 +28,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   final _fatController = TextEditingController();
 
   String _selectedMealType = 'breakfast';
+  String? _selectedFamilyMemberId = FamilyViewModel.instance.activeMember?.id;
   bool _isSaving = false;
   bool _isSearching = false;
   String _language = 'en';
@@ -121,6 +123,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           'total_protein_g': proteinG,
           'total_carbs_g': carbsG,
           'total_fat_g': fatG,
+          'family_member_id': _selectedFamilyMemberId,
         });
       } else {
         // 1. Write to local SQLite cache immediately (works offline)
@@ -133,6 +136,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           carbsG: carbsG,
           fatG: fatG,
         );
+        try {
+          await supabase.from('meal_logs').insert({
+            'user_id': user.id,
+            'meal_type': _selectedMealType,
+            'notes': notes,
+            'total_calories': calories,
+            'total_protein_g': proteinG,
+            'total_carbs_g': carbsG,
+            'total_fat_g': fatG,
+            'family_member_id': _selectedFamilyMemberId,
+          });
+        } catch (_) {}
         // 2. Sync to Supabase in background (fire-and-forget)
         SyncService.instance.syncPending(user.id);
 
@@ -244,6 +259,35 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   ],
                 ),
               ),
+
+              // Family Member Selector
+              if (FamilyViewModel.instance.members.isNotEmpty) ...[
+                DropdownButtonFormField<String?>(
+                  initialValue: _selectedFamilyMemberId,
+                  dropdownColor: const Color(0xFF1E232E),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: _language == 'ur' ? 'یہ کھانا کس کے لیے ہے؟' : 'Logging meal for',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.people_outline, color: Color(0xFF00E676)),
+                  ),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(_language == 'ur' ? '🧑 میں (ذاتی اکاؤنٹ)' : '🧑 Me (Primary Account)'),
+                    ),
+                    ...FamilyViewModel.instance.members.map((m) => DropdownMenuItem<String?>(
+                          value: m.id,
+                          child: Text('${m.relationshipEmoji} ${m.name} (${m.getLocalizedRelationship(_language)})'),
+                        )),
+                  ],
+                  onChanged: (val) {
+                    setState(() => _selectedFamilyMemberId = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

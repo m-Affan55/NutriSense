@@ -146,8 +146,37 @@ CREATE TABLE public.risk_flags (
 );
 COMMENT ON TABLE public.risk_flags IS 'Stores AI-detected health risks needing escalation';
 
-ALTER TABLE public.risk_flags ENABLE ROW LEVEL SECURITY;
+-- 7. Family Members Table
+CREATE TABLE public.family_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    relationship TEXT NOT NULL CHECK (relationship IN ('child', 'parent', 'spouse', 'sibling', 'other')),
+    age INT,
+    gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+    daily_calorie_target INT DEFAULT 1800,
+    daily_protein_g INT DEFAULT 100,
+    daily_carbs_g INT DEFAULT 200,
+    daily_fat_g INT DEFAULT 50,
+    medical_conditions TEXT[] DEFAULT '{}',
+    dietary_restrictions TEXT[] DEFAULT '{}',
+    avatar_color TEXT DEFAULT '#00E676',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+COMMENT ON TABLE public.family_members IS 'Stores dependents and family profiles managed by the main user';
 
-CREATE POLICY "Users can manage their own risk flags" 
-    ON public.risk_flags FOR ALL 
-    USING (auth.uid() = user_id);
+-- Add family_member_id column to meal_logs
+ALTER TABLE public.meal_logs ADD COLUMN IF NOT EXISTS family_member_id UUID REFERENCES public.family_members(id) ON DELETE CASCADE;
+
+ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own family members" 
+    ON public.family_members FOR ALL 
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE TRIGGER update_family_members_updated_at
+    BEFORE UPDATE ON public.family_members
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();

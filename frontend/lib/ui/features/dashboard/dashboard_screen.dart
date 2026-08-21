@@ -13,6 +13,8 @@ import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../health_sync/health_sync_view.dart';
+import '../family_profiles/family_viewmodel.dart';
+import '../family_profiles/family_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -69,6 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
     );
 
+    FamilyViewModel.instance.addListener(_loadData);
+    FamilyViewModel.instance.loadMembers();
+
     _loadData();
   }
 
@@ -85,22 +90,30 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     try {
       if (user == null) return;
 
-      // 1. Get name metadata
+      // 1. Get name metadata or active dependent name
+      final activeMember = FamilyViewModel.instance.activeMember;
       final fullName = user.userMetadata?['full_name'] ?? 'User';
-      _userName = fullName;
+      _userName = activeMember != null ? activeMember.name : fullName;
 
-      // 2. Fetch targets
-      final profileRes = await supabase
-          .from('health_profiles')
-          .select()
-          .eq('user_id', user.id)
-          .maybeSingle();
+      // 2. Fetch targets (per active family member or primary user)
+      if (activeMember != null) {
+        _targetCalories = activeMember.dailyCalorieTarget;
+        _targetProtein = activeMember.dailyProteinG;
+        _targetCarbs = activeMember.dailyCarbsG;
+        _targetFat = activeMember.dailyFatG;
+      } else {
+        final profileRes = await supabase
+            .from('health_profiles')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-      if (profileRes != null) {
-        _targetCalories = (profileRes['daily_calorie_target'] as num?)?.toInt() ?? 2000;
-        _targetProtein = (profileRes['daily_protein_g'] as num?)?.toInt() ?? 130;
-        _targetCarbs = (profileRes['daily_carbs_g'] as num?)?.toInt() ?? 220;
-        _targetFat = (profileRes['daily_fat_g'] as num?)?.toInt() ?? 65;
+        if (profileRes != null) {
+          _targetCalories = (profileRes['daily_calorie_target'] as num?)?.toInt() ?? 2000;
+          _targetProtein = (profileRes['daily_protein_g'] as num?)?.toInt() ?? 130;
+          _targetCarbs = (profileRes['daily_carbs_g'] as num?)?.toInt() ?? 220;
+          _targetFat = (profileRes['daily_fat_g'] as num?)?.toInt() ?? 65;
+        }
       }
 
       // 3. Fetch today's meals
@@ -122,6 +135,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       List<Map<String, dynamic>> tempMeals = [];
 
       for (var meal in mealsRes) {
+        final fId = meal['family_member_id']?.toString();
+        if (activeMember != null) {
+          if (fId != activeMember.id) continue;
+        } else {
+          if (fId != null && fId.isNotEmpty) continue;
+        }
+
         calSum += (meal['total_calories'] as num?)?.toInt() ?? 0;
         proteinSum += (meal['total_protein_g'] as num?)?.toInt() ?? 0;
         carbsSum += (meal['total_carbs_g'] as num?)?.toInt() ?? 0;
@@ -543,6 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    FamilyViewModel.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
     super.dispose();
@@ -609,7 +630,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+
+                        // Family Profiles Switcher Pill Bar
+                        _buildFamilyProfileBar(theme, isRamadan),
+                        const SizedBox(height: 16),
 
                         // Offline sync badge (only shown when there are pending rows)
                         if (_pendingSyncCount > 0) _buildSyncBadge(theme),
@@ -1336,6 +1361,163 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
+  Widget _buildFamilyProfileBar(ThemeData theme, bool isRamadan) {
+    return ListenableBuilder(
+      listenable: FamilyViewModel.instance,
+      builder: (context, _) {
+        final familyVM = FamilyViewModel.instance;
+        final members = familyVM.members;
+        final active = familyVM.activeMember;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  // Primary User "Me" Chip
+                  GestureDetector(
+                    onTap: () {
+                      familyVM.setActiveMember(null);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: active == null
+                            ? (isRamadan ? const Color(0xFFFFD166).withAlpha(40) : const Color(0xFF00E676).withAlpha(40))
+                            : const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: active == null
+                              ? (isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676))
+                              : Colors.white12,
+                          width: active == null ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🧑', style: TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(
+                            _language == 'ur' ? 'میں (ذاتی)' : 'Me (Self)',
+                            style: TextStyle(
+                              color: active == null ? Colors.white : Colors.white60,
+                              fontWeight: active == null ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Family Dependent Chips
+                  ...members.map((m) {
+                    final isSelected = active?.id == m.id;
+                    return GestureDetector(
+                      onTap: () {
+                        familyVM.setActiveMember(m);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? m.color.withAlpha(40) : const Color(0xFF161A22),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? m.color : Colors.white12,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(m.relationshipEmoji, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 6),
+                            Text(
+                              m.name,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.white60,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // Add / Manage Family Button
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const FamilyView()),
+                      );
+                      _loadData();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(10),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.group_add_outlined, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text(
+                            _language == 'ur' ? 'خاندان' : '+ Family',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Active Dependent Banner when a family member is selected
+            if (active != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: active.color.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: active.color.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: active.color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _language == 'ur'
+                            ? '${active.name} (${active.getLocalizedRelationship(_language)}) • روزانہ کا ہدف: ${active.dailyCalorieTarget} kcal'
+                            : 'Tracking for ${active.name} (${active.getLocalizedRelationship(_language)}) • Goal: ${active.dailyCalorieTarget} kcal',
+                        style: TextStyle(color: active.color, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildActivityStat(IconData icon, String value, String label, Color color) {
     return Column(
       children: [
@@ -1345,7 +1527,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
         Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
       ],
     );
