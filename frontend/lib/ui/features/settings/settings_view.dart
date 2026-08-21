@@ -807,7 +807,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(),
                     const SizedBox(height: 16),
                     
-                    if (_selectedDietary.contains('Halal Only')) ...[
+                    if (_selectedDietary.any((d) => d.toLowerCase().contains('halal'))) ...[
                       // Ramadan Mode Section
                       Text(_t('ramadanSection'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),

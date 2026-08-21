@@ -52,9 +52,9 @@ dependencies:
   win32_registry: ^3.0.3
   uuid: ^4.6.0
   sqflite_common_ffi: ^2.4.2+1
-  speech_to_text: ^6.6.1
-  flutter_tts: ^3.8.5
-  permission_handler: ^11.3.1
+  speech_to_text: ^7.4.0
+  flutter_tts: ^4.2.5
+  permission_handler: ^13.0.1
 
 dev_dependencies:
   flutter_test:

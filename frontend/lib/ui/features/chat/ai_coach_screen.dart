@@ -480,21 +480,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                         ],
                       ),
                     ),
-                    // Voice Mode Toggle
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.headset_mic,
-                          color: _isVoiceModeOn ? theme.colorScheme.primary : Colors.grey,
-                          size: 18,
-                        ),
-                        Switch(
-                          value: _isVoiceModeOn,
-                          onChanged: (val) => _toggleVoiceMode(),
-                          activeColor: theme.colorScheme.primary,
-                        ),
-                      ],
-                    ),
+                    // Removed Voice Mode Toggle from here to place in input bar
                   ],
                 ),
               ),
@@ -651,6 +637,24 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                               ),
                               onSubmitted: (_) => _sendMessage(),
+                            ),
+                          ),
+                          // Voice Mode Button (ChatGPT Style)
+                          GestureDetector(
+                            onTap: _toggleVoiceMode,
+                            child: Container(
+                              height: 40,
+                              width: 40,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: _isVoiceModeOn ? theme.colorScheme.primary : Colors.white.withAlpha(10),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isVoiceModeOn ? Icons.close : Icons.graphic_eq,
+                                color: _isVoiceModeOn ? theme.colorScheme.onPrimary : Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
                           Container(

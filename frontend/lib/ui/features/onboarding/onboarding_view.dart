@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../shared/widgets/custom_toast.dart';
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+import '../../../core/health_service.dart';
 
 class OnboardingWizardScreen extends StatefulWidget {
   const OnboardingWizardScreen({super.key});
@@ -16,7 +19,7 @@ class OnboardingWizardScreen extends StatefulWidget {
 class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final int _totalPages = 6;
+  final int _totalPages = 7;
   bool _isLoading = false;
 
   // Data
@@ -169,6 +172,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                   _buildActivityPage(),
                   _buildHealthAndDietPage(),
                   _buildBudgetPage(),
+                  _buildHealthSyncPage(),
                 ],
               ),
             ),
@@ -214,6 +218,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     if (_currentPage == 3 && _activityLevel != null) canProceed = true;
     if (_currentPage == 4 && _healthConditions.isNotEmpty && _dietaryPreference != null) canProceed = true;
     if (_currentPage == 5 && _budget != null) canProceed = true;
+    if (_currentPage == 6) canProceed = true; // Final health sync page, always optional
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -358,6 +363,105 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           isSelected: _budget == b,
           onTap: () => setState(() => _budget = b),
         )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildHealthSyncPage() {
+    final theme = Theme.of(context);
+    return _buildPageWrapper(
+      title: 'Connect Health Apps',
+      subtitle: 'NutriSense works best when it can automatically track your steps, calories burned, and sleep!',
+      child: Column(
+        children: [
+          Icon(Icons.health_and_safety, size: 80, color: theme.colorScheme.primary),
+          const SizedBox(height: 24),
+          const Text(
+            'We recommend enabling Health Sync so you never have to manually log your daily activity.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const SizedBox(height: 48),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: () async {
+              setState(() => _isLoading = true);
+              try {
+                // Try requesting permission natively
+                final success = await HealthService.instance.requestPermissions();
+                if (success) {
+                  CustomToast.show(context, 'Health Tracking Enabled!');
+                  _nextPage(); // auto advance on success
+                } else {
+                  throw Exception('Permission denied or app missing');
+                }
+              } catch (e) {
+                // If it fails (likely due to missing Health Connect), show prompt
+                if (Platform.isAndroid) {
+                  _showInstallPrompt(
+                    'Health Connect Missing',
+                    'You need Google Health Connect installed to sync your fitness data. Would you like to install it now?',
+                    'market://details?id=com.google.android.apps.healthdata',
+                  );
+                } else if (Platform.isIOS) {
+                  _showInstallPrompt(
+                    'Apple Health Required',
+                    'Please ensure Apple Health is set up and permissions are granted in your iPhone settings.',
+                    null, // Settings URL could go here, but usually it's built-in
+                  );
+                }
+              } finally {
+                setState(() => _isLoading = false);
+              }
+            },
+            child: const Text('Enable Auto-Sync', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: _nextPage,
+            child: const Text('Skip for now', style: TextStyle(color: Colors.grey)),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showInstallPrompt(String title, String message, String? storeUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161A22),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Theme.of(context).colorScheme.primary.withAlpha(50)),
+        ),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          if (storeUrl != null)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final uri = Uri.parse(storeUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  if (mounted) CustomToast.show(context, 'Could not launch store', isError: true);
+                }
+              },
+              child: const Text('Install Now', style: TextStyle(color: Colors.white)),
+            ),
+        ],
       ),
     );
   }

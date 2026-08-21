@@ -709,13 +709,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         if (isRamadan) _buildRamadanScheduleCard(theme, isRamadan),
                         if (isRamadan) const SizedBox(height: 24),
 
-                      // Section B: Calorie Ring progress
                       Builder(
                         builder: (context) {
                           int activeBurn = _activity.activeKcal.toInt();
-                          int netCalories = _consumedCalories - activeBurn;
-                          if (netCalories < 0) netCalories = 0;
-                          double calorieRatio = _targetCalories > 0 ? (netCalories / _targetCalories) : 0.0;
+                          // Show what the user actually ate as the main number to avoid confusion
+                          int displayCalories = _consumedCalories; 
+                          double calorieRatio = _targetCalories > 0 ? (displayCalories / _targetCalories) : 0.0;
                           if (calorieRatio > 1.0) calorieRatio = 1.0;
 
                           return Center(
@@ -743,7 +742,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        '$netCalories',
+                                        '$displayCalories',
                                         style: theme.textTheme.displayMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                           color: theme.colorScheme.onSurface,
