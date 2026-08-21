@@ -32,6 +32,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _medicalConditionsController = TextEditingController();
+  final _dietaryRestrictionsController = TextEditingController();
 
   String? _goal;
   String? _activityLevel;
@@ -45,6 +47,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final List<String> _goals = ['fat_loss', 'muscle_gain', 'maintenance'];
   final List<String> _activityLevels = ['sedentary', 'lightly_active', 'moderately_active', 'very_active'];
+  final List<String> _medicalOptions = ["Diabetes", "Hypertension", "IBS", "Heart Disease", "None"];
+  final List<String> _dietaryOptions = ["Halal Only", "Vegetarian", "Lactose-Free", "Gluten-Free", "None"];
+
+  List<String> _selectedMedical = [];
+  List<String> _selectedDietary = [];
 
   @override
   void initState() {
@@ -77,6 +84,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _weightController.text = '${healthRes['weight_kg'] ?? ''}';
         _heightController.text = '${healthRes['height_cm'] ?? ''}';
         _budgetController.text = '${healthRes['daily_budget_pkr'] ?? ''}';
+        
+        final medList = (healthRes['medical_conditions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        final dietList = (healthRes['dietary_restrictions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        _selectedMedical = medList.isEmpty ? [] : medList;
+        _selectedDietary = dietList.isEmpty ? [] : dietList;
+        
+        _medicalConditionsController.text = _selectedMedical.join(', ');
+        _dietaryRestrictionsController.text = _selectedDietary.join(', ');
+        
         setState(() {
           _goal = healthRes['goal'];
           _activityLevel = healthRes['activity_level'];
@@ -122,6 +138,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'daily_budget_pkr': int.parse(_budgetController.text),
         'goal': _goal,
         'activity_level': _activityLevel,
+        'medical_conditions': _selectedMedical,
+        'dietary_restrictions': _selectedDietary,
       };
 
       await supabase
@@ -412,6 +430,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showSelectionDialog(String title, List<String> options, List<String> selectedOptions, bool isMultiSelect, Function(List<String>) onChange) async {
+    List<String> tempSelected = List.from(selectedOptions);
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF161A22),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options.map((opt) {
+                    final isSelected = tempSelected.contains(opt);
+                    return ListTile(
+                      title: Text(
+                        opt, 
+                        style: TextStyle(
+                          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white70,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 15,
+                        )
+                      ),
+                      onTap: () {
+                        setState(() {
+                          if (isMultiSelect) {
+                            if (isSelected) {
+                              tempSelected.remove(opt);
+                            } else {
+                              if (opt == 'None') {
+                                tempSelected = ['None'];
+                              } else {
+                                tempSelected.remove('None');
+                                tempSelected.add(opt);
+                              }
+                            }
+                            onChange(tempSelected);
+                          } else {
+                            tempSelected = [opt];
+                            onChange(tempSelected);
+                            Navigator.pop(ctx);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   String _t(String key) {
     final translations = {
       'en': {
@@ -426,6 +502,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'goalsActivity': 'Goals & Activity',
         'goal': 'Health Goal',
         'activity': 'Activity Index',
+        'medicalConditions': 'Medical Conditions',
+        'dietaryRestrictions': 'Dietary Restrictions',
         'save': 'Save Targets',
         'privacy': 'Privacy & Account',
         'export': 'Export Health Data (PDF)',
@@ -473,6 +551,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'goalsActivity': 'اهداف اور سرگرمی',
         'goal': 'صحت کا ہدف',
         'activity': 'سرگرمی کا انڈیکس',
+        'medicalConditions': 'طبی مسائل',
+        'dietaryRestrictions': 'غذائی پابندیاں',
         'save': 'ترتیبات محفوظ کریں',
         'privacy': 'پرائیویسی اور اکاؤنٹ',
         'export': 'ڈیٹا ایکسپورٹ کریں (PDF)',
@@ -605,18 +685,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 20),
                     Text(_t('goalsActivity'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _goal,
-                      decoration: InputDecoration(labelText: _t('goal'), border: const OutlineInputBorder()),
-                      items: _goals.map((g) => DropdownMenuItem(value: g, child: Text(g.replaceAll('_', ' ').toUpperCase()))).toList(),
-                      onChanged: (val) => setState(() => _goal = val),
+                    InkWell(
+                      onTap: () => _showSelectionDialog(
+                        _t('goal'),
+                        _goals.map((g) => g.replaceAll('_', ' ').toUpperCase()).toList(),
+                        [_goal?.replaceAll('_', ' ').toUpperCase() ?? ''],
+                        false,
+                        (selected) {
+                          if (selected.isNotEmpty) {
+                            setState(() {
+                              _goal = _goals.firstWhere((g) => g.replaceAll('_', ' ').toUpperCase() == selected.first);
+                            });
+                          }
+                        },
+                      ),
+                      child: IgnorePointer(
+                        child: TextFormField(
+                          key: ValueKey(_goal),
+                          initialValue: _goal?.replaceAll('_', ' ').toUpperCase(),
+                          decoration: InputDecoration(
+                            labelText: _t('goal'),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _activityLevel,
-                      decoration: InputDecoration(labelText: _t('activity'), border: const OutlineInputBorder()),
-                      items: _activityLevels.map((a) => DropdownMenuItem(value: a, child: Text(a.replaceAll('_', ' ').toUpperCase()))).toList(),
-                      onChanged: (val) => setState(() => _activityLevel = val),
+                    InkWell(
+                      onTap: () => _showSelectionDialog(
+                        _t('activity'),
+                        _activityLevels.map((a) => a.replaceAll('_', ' ').toUpperCase()).toList(),
+                        [_activityLevel?.replaceAll('_', ' ').toUpperCase() ?? ''],
+                        false,
+                        (selected) {
+                          if (selected.isNotEmpty) {
+                            setState(() {
+                              _activityLevel = _activityLevels.firstWhere((a) => a.replaceAll('_', ' ').toUpperCase() == selected.first);
+                            });
+                          }
+                        },
+                      ),
+                      child: IgnorePointer(
+                        child: TextFormField(
+                          key: ValueKey(_activityLevel),
+                          initialValue: _activityLevel?.replaceAll('_', ' ').toUpperCase(),
+                          decoration: InputDecoration(
+                            labelText: _t('activity'),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    InkWell(
+                      onTap: () => _showSelectionDialog(
+                        _t('medicalConditions'),
+                        _medicalOptions,
+                        _selectedMedical,
+                        true,
+                        (selected) {
+                          setState(() {
+                            _selectedMedical = selected;
+                            _medicalConditionsController.text = selected.join(', ');
+                          });
+                        },
+                      ),
+                      child: IgnorePointer(
+                        child: TextFormField(
+                          controller: _medicalConditionsController,
+                          decoration: InputDecoration(
+                            labelText: _t('medicalConditions'),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () => _showSelectionDialog(
+                        _t('dietaryRestrictions'),
+                        _dietaryOptions,
+                        _selectedDietary,
+                        true,
+                        (selected) {
+                          setState(() {
+                            _selectedDietary = selected;
+                            _dietaryRestrictionsController.text = selected.join(', ');
+                          });
+                        },
+                      ),
+                      child: IgnorePointer(
+                        child: TextFormField(
+                          controller: _dietaryRestrictionsController,
+                          decoration: InputDecoration(
+                            labelText: _t('dietaryRestrictions'),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
