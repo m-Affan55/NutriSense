@@ -1,35 +1,56 @@
-# Health Sync Dashboard Implementation (All Platforms)
+# Ramadan Mode Implementation (Sehri & Iftar Fasting Cycle)
 
-The **Health Sync Dashboard** is now fully implemented and verified across Android, iOS, Windows Desktop, and Web browsers.
-
----
-
-## 🚀 Key Capabilities Built
-
-### 1. Universal Cross-Platform Health Engine ([health_service.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/health_service.dart))
-- **Native Wearable & OS Sensor Sync**: Integrates with Android Health Connect and Apple HealthKit to read steps, active calories burned, sleep duration, and heart rate (BPM).
-- **Universal Cross-Platform Storage**: Implements persistent local activity caching and state restoration via `SharedPreferences` so activity data persists reliably on **Windows Desktop, Web Browsers, and Android/iOS**.
-- **Fixed Permission Race Condition**: Removed stale in-memory authorization states and enforced fresh validation on every read.
-
-### 2. Full-Featured Health Sync Dashboard Screen ([health_sync_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/health_sync/health_sync_view.dart))
-- **Animated Circular Step Ring**: Custom painter with dynamic arc gradients, glow indicators, goal completion percentage, and Ramadan mode color coordination.
-- **4 Live Metric Cards**: Glassmorphic stat tiles for **Steps**, **Burned Calories (kcal)**, **Heart Rate (BPM)**, and **Sleep (hours)**.
-- **7-Day Activity Trend Bar Chart**: Custom-painted bar chart with daily step volume, goal dashed line overlay, total calories burned, average sleep, and bilingual weekday labels (Mon–Sun / پیر تا اتوار).
-- **Interactive Quick-Log Modal**: Built-in modal allowing users on **any platform (Windows, Web, Android, iOS)** to log or adjust today's steps, active calories, sleep hours, and pulse with instant visual feedback.
-- **Configurable Daily Step Goal**: In-app dialog allowing custom step goal targets (persisted).
-- **AI Health Coach Insight Card**: Contextual feedback analyzing step averages against targets in English and Urdu.
-
-### 3. Seamless Navigation Integration
-- **Tappable Dashboard Activity Card** ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart)): Tapping the activity card on the home dashboard opens the full Health Sync Dashboard with animated transitions and "See More →" indicators.
-- **Settings Navigation Tile** ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart)): Dedicated "Health Sync" entry under Settings.
-
-### 4. Bilingual Localization & Theme Integration
-- Full support for **English** and **Urdu (Jameel Noori Nastaleeq)**.
-- Synchronized with **Ramadan Mode** (glowing celestial gold and cyan accents with Islamic visual background) and **Normal Theme** (emerald & organic green accents).
+**Ramadan Mode** is now fully adapted to the Islamic fasting cycle according to **Sehri (Suhoor)** and **Iftar**, synchronizing throughout the entire app.
 
 ---
 
-## 🧪 Verification Results
+## 🌙 Key Capabilities Implemented
+
+### 1. Intelligent Fasting & Timings Engine ([ramadan_controller.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/ramadan_controller.dart))
+- **Accurate Fasting Calculation**: Determines whether current local time is in the **Fasting Window (روزہ جاری ہے)** or the **Eating & Hydration Window (کھانے اور ہائیڈریشن کا وقت)**.
+- **Live Countdown Timer**: Calculates exact hours and minutes remaining until Iftar (when fasting) or Sehri ends (during the evening eating window).
+- **Fasting Timeline Progress**: Computes the elapsed duration of today's fast as a percentage (0.0 to 1.0) with gold gradient progress visualization.
+- **Ramadan Meal Mapping**: Seamlessly adapts database meal types to Islamic meals while preserving database schema compatibility:
+  - `Breakfast` ➔ **Sehri / Suhoor (سحری)**
+  - `Dinner` ➔ **Iftar (افطار)**
+  - `Lunch` ➔ **Post-Iftar Dinner (افطار کے بعد کا کھانا)**
+  - `Snack` ➔ **Taraweeh / Midnight Snack (تراویح اسنیک)**
+
+### 2. Interactive Ramadan Dashboard Schedule Card ([dashboard_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/dashboard/dashboard_screen.dart))
+- **Live Fasting Status & Countdown**: Displays real-time status with golden lunar accents (e.g. `⏳ Fasting in progress • 3h 15m until Iftar` / `⏳ روزہ جاری ہے • افطار میں 3 گھنٹے 15 منٹ باقی`).
+- **Sehri & Iftar Time Badges**:
+  - 🌙 **Sehri End (سحری ختم)**: `04:30 AM` with instant tap-to-edit.
+  - 🌅 **Iftar Time (افطار کا وقت)**: `06:45 PM` with instant tap-to-edit.
+- **Fast Hydration Quick-Log Chips**:
+  - `+500ml Iftar (افطار)`
+  - `+250ml Taraweeh (تراویح)`
+  - `+500ml Sehri (سحری)`
+- **Ramadan Hydration Selector**: The water logging modal provides dedicated Ramadan hydration presets to help users hit their 2.5L target between Iftar and Sehri.
+
+### 3. Customizable Timings & Alarms in Settings ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart))
+- In-app `showTimePicker()` dialogs to configure local **Sehri Time** and **Iftar Time**.
+- **Ramadan Reminders Toggle**: Automatically enables customized alarms and notifications.
+
+### 4. Smart Ramadan Reminders ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))
+- **Sehri Alert**: Triggers 30 minutes before Sehri ends (*"⏰ 30 minutes left for Sehri! Drink water & complete your meal"*).
+- **Iftar Alert**: Triggers at Iftar time (*"🌟 Iftar Mubarak! Time to break your fast with dates, water & fruit"*).
+- **Night Hydration Reminders**: Scheduled at 9:15 PM (Post-Iftar / Taraweeh) and 11:30 PM (Pre-Sleep).
+- **Suppresses daytime meal notifications** during fasting hours.
+
+### 5. Ramadan-Aware AI Nutrition Coach ([ai_coach_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart))
+- Initial greeting dynamically switches to a Ramadan-specific welcome in English and Urdu Nastaleeq.
+- Horizontal Quick Suggestion Chips for:
+  - `🌙 Best Sehri foods for energy` / `سحری کے بہترین کھانے`
+  - `💧 How to avoid thirst while fasting?` / `روزے میں پیاس سے بچاؤ`
+  - `🍲 Healthy Iftar meal ideas` / `صحت مند افطار کے طریقے`
+  - `⚡ Workout timing in Ramadan` / `روزے میں ورزش کا وقت`
+
+### 6. Meal Logging Integration ([manual_log_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/meal_scan/manual_log_screen.dart) & [scan_meal_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/meal_scan/scan_meal_screen.dart))
+- Meal category selectors automatically switch to **Sehri**, **Iftar**, **Post-Iftar Dinner**, and **Taraweeh Snack**.
+
+---
+
+## 🧪 Verification
 
 - **Static Analysis**:
   ```bash
@@ -37,7 +58,7 @@ The **Health Sync Dashboard** is now fully implemented and verified across Andro
   ```
   **Result**: `No issues found!` (0 errors, 0 warnings).
 
-- **Automated Test Suite**:
+- **Automated Tests**:
   ```bash
   flutter test
   ```

@@ -8,6 +8,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/api_client.dart';
 import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
+import '../../../core/ramadan_controller.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -272,12 +273,15 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   border: const OutlineInputBorder(),
                 ),
                 items: _mealTypes.map((type) {
+                  final isRamadan = RamadanController.instance.isRamadanMode;
                   String label = type.toUpperCase();
-                  if (_language == 'ur') {
+                  if (isRamadan) {
+                    label = RamadanController.instance.getLocalizedMealName(type, _language);
+                  } else if (_language == 'ur') {
                     if (type == 'breakfast') label = 'ناشتہ';
                     if (type == 'lunch') label = 'دوپہر کا کھانا';
                     if (type == 'dinner') label = 'رات کا کھانا';
-                    if (type == 'snack') label = 'سنییک';
+                    if (type == 'snack') label = 'اسنیک';
                   }
                   return DropdownMenuItem(value: type, child: Text(label));
                 }).toList(),

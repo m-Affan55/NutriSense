@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../core/ramadan_controller.dart';
 import 'barcode_scanner_screen.dart';
 
 class ScanMealScreen extends StatefulWidget {
@@ -246,11 +247,31 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                          DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                          DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                          DropdownMenuItem(value: 'snack', child: Text('Snack / Other')),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'breakfast',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('breakfast', _language)
+                                : (_language == 'ur' ? 'ناشتہ' : 'Breakfast')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dinner',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('dinner', _language)
+                                : (_language == 'ur' ? 'رات کا کھانا' : 'Dinner')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'lunch',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('lunch', _language)
+                                : (_language == 'ur' ? 'دوپہر کا کھانا' : 'Lunch')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'snack',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('snack', _language)
+                                : (_language == 'ur' ? 'اسنیک' : 'Snack / Other')),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {

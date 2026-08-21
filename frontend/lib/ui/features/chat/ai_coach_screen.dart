@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
+import '../../../core/ramadan_controller.dart';
 import 'clinic_finder_screen.dart';
 
 class AiCoachScreen extends StatefulWidget {
@@ -35,10 +36,17 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
     setState(() {
       _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
       
-      // Load initial greeting based on selected language
-      final greeting = _language == 'ur'
-          ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
-          : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+      final isRamadan = RamadanController.instance.isRamadanMode;
+      String greeting;
+      if (isRamadan) {
+        greeting = _language == 'ur'
+            ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
+            : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
+      } else {
+        greeting = _language == 'ur'
+            ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
+            : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+      }
           
       _messages.add({
         'sender': _language == 'ur' ? 'کوچ' : 'Coach',
@@ -243,9 +251,57 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                 ),
               ),
 
+              // Quick Ramadan & Nutrition Prompt Chips
+              Container(
+                height: 42,
+                margin: const EdgeInsets.only(bottom: 6),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    if (RamadanController.instance.isRamadanMode) ...[
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '🌙 سحری کے بہترین کھانے' : '🌙 Best Sehri foods for energy',
+                        const Color(0xFFFFD166),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '💧 روزے میں پیاس سے بچاؤ' : '💧 How to avoid thirst while fasting?',
+                        const Color(0xFF00D2FF),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '🍲 صحت مند افطار کے طریقے' : '🍲 Healthy Iftar meal ideas',
+                        const Color(0xFFFFD166),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '⚡ روزے میں ورزش کا وقت' : '⚡ Workout timing in Ramadan',
+                        const Color(0xFF00E676),
+                      ),
+                    ] else ...[
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '🥗 ہائی پروٹین کھانے' : '🥗 High protein meal ideas',
+                        const Color(0xFF00E676),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '💧 پانی پینے کا ہدف' : '💧 Daily hydration plan',
+                        const Color(0xFF00BCD4),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickPromptChip(
+                        _language == 'ur' ? '⚡ وزن کم کرنے کا منصوبہ' : '⚡ Fat loss nutrition advice',
+                        const Color(0xFFFFD166),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
               // Input Bar
               Container(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 100),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D0F14),
                   border: Border(top: BorderSide(color: Colors.white.withAlpha(15))),
@@ -442,6 +498,38 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickPromptChip(String text, Color accent) {
+    return GestureDetector(
+      onTap: () {
+        _controller.text = text;
+        _sendMessage();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: accent.withAlpha(20),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: accent.withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                color: accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_upward_rounded, size: 12, color: accent),
           ],
         ),
       ),

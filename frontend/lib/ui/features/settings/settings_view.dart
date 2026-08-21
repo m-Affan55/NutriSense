@@ -14,6 +14,7 @@ import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
+import '../../../core/reminder_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -437,7 +438,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'grocerySub': 'Get AI shopping list based on your recent meals.',
         'ramadanTitle': 'Ramadan Mode',
         'ramadanSub': 'Celestial midnight blue theme & Islamic fasting mode.',
-        'ramadanSection': 'Ramadan Mode',
+        'ramadanSection': 'Ramadan Fasting & Timings',
+        'suhoorTime': 'Sehri / Suhoor Time',
+        'iftarTime': 'Iftar Time',
+        'ramadanReminders': 'Sehri & Iftar Alerts',
+        'ramadanRemindersSub': 'Receive alerts 30m before Sehri and at Iftar.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -472,7 +477,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'grocerySub': 'حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔',
         'ramadanTitle': 'رمضان موڈ',
         'ramadanSub': 'نیلا آسمانی تھیم اور سحر و افطار کے اوزار فعال کریں۔',
-        'ramadanSection': 'رمضان المبارک',
+        'ramadanSection': 'رمضان المبارک اور اوقات',
+        'suhoorTime': 'سحری ختم ہونے کا وقت',
+        'iftarTime': 'افطار کا وقت',
+        'ramadanReminders': 'سحر و افطار کے الرٹس',
+        'ramadanRemindersSub': 'سحری سے 30 منٹ پہلے اور افطار کے وقت الرٹ حاصل کریں۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -619,26 +628,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           width: 1.5,
                         ),
                       ),
-                      child: SwitchListTile(
-                        secondary: const Text('🌙', style: TextStyle(fontSize: 24)),
-                        title: Text(
-                          _t('ramadanTitle'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isRamadan ? const Color(0xFFFFD166) : Colors.white,
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            secondary: const Text('🌙', style: TextStyle(fontSize: 24)),
+                            title: Text(
+                              _t('ramadanTitle'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isRamadan ? const Color(0xFFFFD166) : Colors.white,
+                              ),
+                            ),
+                            subtitle: Text(
+                              _t('ramadanSub'),
+                              style: const TextStyle(fontSize: 12, color: Colors.white70),
+                            ),
+                            value: isRamadan,
+                            activeThumbColor: const Color(0xFF00D2FF),
+                            activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
+                            onChanged: (val) async {
+                              await RamadanController.instance.setRamadanMode(val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() {});
+                            },
                           ),
-                        ),
-                        subtitle: Text(
-                          _t('ramadanSub'),
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                        value: isRamadan,
-                        activeThumbColor: const Color(0xFF00D2FF),
-                        activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
-                        onChanged: (val) async {
-                          await RamadanController.instance.setRamadanMode(val);
-                          setState(() {});
-                        },
+                          if (isRamadan) ...[
+                            const Divider(color: Colors.white12, height: 1),
+                            // Sehri / Suhoor Time Picker
+                            ListTile(
+                              leading: const Icon(Icons.wb_twilight, color: Color(0xFF00D2FF)),
+                              title: Text(
+                                _t('suhoorTime'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00D2FF).withAlpha(30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF00D2FF).withAlpha(90)),
+                                ),
+                                child: Text(
+                                  RamadanController.instance.formatTime(RamadanController.instance.suhoorTime),
+                                  style: const TextStyle(
+                                    color: Color(0xFF00D2FF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              onTap: () async {
+                                final current = RamadanController.instance.suhoorTime;
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: current,
+                                );
+                                if (picked != null) {
+                                  await RamadanController.instance.setSuhoorTime(picked);
+                                  await ReminderManager.syncRemindersWithMode();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                            const Divider(color: Colors.white12, height: 1),
+                            // Iftar Time Picker
+                            ListTile(
+                              leading: const Icon(Icons.wb_sunny_outlined, color: Color(0xFFFFD166)),
+                              title: Text(
+                                _t('iftarTime'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFD166).withAlpha(30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFFD166).withAlpha(90)),
+                                ),
+                                child: Text(
+                                  RamadanController.instance.formatTime(RamadanController.instance.iftarTime),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD166),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              onTap: () async {
+                                final current = RamadanController.instance.iftarTime;
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: current,
+                                );
+                                if (picked != null) {
+                                  await RamadanController.instance.setIftarTime(picked);
+                                  await ReminderManager.syncRemindersWithMode();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                            const Divider(color: Colors.white12, height: 1),
+                            // Ramadan Alarms Toggle
+                            SwitchListTile(
+                              secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF00E676)),
+                              title: Text(
+                                _t('ramadanReminders'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              subtitle: Text(
+                                _t('ramadanRemindersSub'),
+                                style: const TextStyle(color: Colors.white60, fontSize: 11),
+                              ),
+                              value: RamadanController.instance.remindersEnabled,
+                              activeThumbColor: const Color(0xFF00E676),
+                              activeTrackColor: const Color(0xFF00E676).withAlpha(60),
+                              onChanged: (val) async {
+                                await RamadanController.instance.setRemindersEnabled(val);
+                                await ReminderManager.syncRemindersWithMode();
+                                setState(() {});
+                              },
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),

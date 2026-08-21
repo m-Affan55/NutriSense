@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'ramadan_controller.dart';
 
 class ReminderManager {
   static final _notifications = FlutterLocalNotificationsPlugin();
@@ -23,13 +25,15 @@ class ReminderManager {
     
     try {
       tz.initializeTimeZones();
-      // Setup local location timezone fallback
       tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
     } catch (_) {}
     
     await _notifications.initialize(
       settings: initSettings,
     );
+
+    // Initial schedule based on active mode
+    await syncRemindersWithMode();
   }
 
   static Future<void> requestPermissions() async {
@@ -66,12 +70,123 @@ class ReminderManager {
     return scheduledDate;
   }
 
-  static Future<void> scheduleDailyBreakfastReminder() async {
+  /// Cancels all existing reminders and sets up either Ramadan or standard schedule
+  static Future<void> syncRemindersWithMode() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
+
+    await _notifications.cancelAll();
+
+    final ramadan = RamadanController.instance;
+    if (ramadan.isRamadanMode && ramadan.remindersEnabled) {
+      await _scheduleRamadanReminders(ramadan.suhoorTime, ramadan.iftarTime);
+    } else {
+      await _scheduleStandardReminders();
+    }
+  }
+
+  /// Backward-compatible alias for initializing/refreshing all scheduled reminders
+  static Future<void> scheduleAllReminders() async {
+    await syncRemindersWithMode();
+  }
+
+  /// Ramadan-specific schedules: Sehri countdown, Iftar alert, and post-fasting hydration
+  static Future<void> _scheduleRamadanReminders(TimeOfDay suhoorTime, TimeOfDay iftarTime) async {
+    // 1. Suhoor Alert (30 mins before Suhoor ends)
+    int suhoorAlertMinute = suhoorTime.minute - 30;
+    int suhoorAlertHour = suhoorTime.hour;
+    if (suhoorAlertMinute < 0) {
+      suhoorAlertMinute += 60;
+      suhoorAlertHour = (suhoorAlertHour - 1 + 24) % 24;
+    }
+
+    await _notifications.zonedSchedule(
+      id: 101,
+      title: '🌙 Sehri Ending Soon!',
+      body: '30 minutes left for Sehri! Drink water & complete your meal. 🍳💧',
+      scheduledDate: _nextInstanceOfTime(suhoorAlertHour, suhoorAlertMinute),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_ramadan',
+          'NutriSense Ramadan Alarms',
+          channelDescription: 'Sehri, Iftar and fasting reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 2. Iftar Alert (at Iftar time)
+    await _notifications.zonedSchedule(
+      id: 102,
+      title: '🌟 Iftar Mubarak!',
+      body: 'Time to break your fast! Start with dates, water & fruit. 🌴🥤',
+      scheduledDate: _nextInstanceOfTime(iftarTime.hour, iftarTime.minute),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_ramadan',
+          'NutriSense Ramadan Alarms',
+          channelDescription: 'Sehri, Iftar and fasting reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 3. Post-Iftar / Taraweeh Hydration (9:15 PM)
+    await _notifications.zonedSchedule(
+      id: 103,
+      title: '💧 Night Hydration',
+      body: 'Drink 500ml of water to replenish during the non-fasting window!',
+      scheduledDate: _nextInstanceOfTime(21, 15),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_ramadan',
+          'NutriSense Ramadan Alarms',
+          channelDescription: 'Sehri, Iftar and fasting reminders',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 4. Pre-Sleep Hydration (11:30 PM)
+    await _notifications.zonedSchedule(
+      id: 104,
+      title: '💧 Pre-Bed Water Check',
+      body: 'Stay hydrated before sleeping to make tomorrow\'s fast easier.',
+      scheduledDate: _nextInstanceOfTime(23, 30),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_ramadan',
+          'NutriSense Ramadan Alarms',
+          channelDescription: 'Sehri, Iftar and fasting reminders',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// Standard non-fasting reminders
+  static Future<void> _scheduleStandardReminders() async {
+    // Breakfast
     await _notifications.zonedSchedule(
       id: 1,
       title: 'Breakfast Reminder',
       body: 'Time to log your healthy breakfast! 🍳',
-      scheduledDate: _nextInstanceOfTime(9, 0), // 9:00 AM
+      scheduledDate: _nextInstanceOfTime(9, 0),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'nutrisense_reminders',
@@ -85,14 +200,13 @@ class ReminderManager {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
-  }
 
-  static Future<void> scheduleDailyLunchReminder() async {
+    // Lunch
     await _notifications.zonedSchedule(
       id: 2,
       title: 'Lunch Reminder',
       body: 'Fuel your afternoon! Time to log your lunch. 🥗',
-      scheduledDate: _nextInstanceOfTime(13, 30), // 1:30 PM
+      scheduledDate: _nextInstanceOfTime(13, 30),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'nutrisense_reminders',
@@ -106,14 +220,13 @@ class ReminderManager {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
-  }
 
-  static Future<void> scheduleDailyDinnerReminder() async {
+    // Dinner
     await _notifications.zonedSchedule(
       id: 3,
       title: 'Dinner Reminder',
       body: 'Wrap up your day! Don\'t forget to log your dinner. 🍲',
-      scheduledDate: _nextInstanceOfTime(20, 30), // 8:30 PM
+      scheduledDate: _nextInstanceOfTime(20, 30),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'nutrisense_reminders',
@@ -127,14 +240,13 @@ class ReminderManager {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
-  }
 
-  static Future<void> scheduleDailyHydrationReminders() async {
+    // Standard Hydration reminders
     final times = [
-      _Time(11, 0),
-      _Time(15, 0),
-      _Time(18, 0),
-      _Time(21, 0),
+      const TimeOfDay(hour: 11, minute: 0),
+      const TimeOfDay(hour: 15, minute: 0),
+      const TimeOfDay(hour: 18, minute: 0),
+      const TimeOfDay(hour: 21, minute: 0),
     ];
     
     for (int i = 0; i < times.length; i++) {
@@ -148,8 +260,8 @@ class ReminderManager {
             'nutrisense_hydration',
             'NutriSense Hydration',
             channelDescription: 'Daily water intake reminders',
-            importance: Importance.high,
-            priority: Priority.high,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
           ),
           iOS: DarwinNotificationDetails(),
         ),
@@ -158,28 +270,4 @@ class ReminderManager {
       );
     }
   }
-
-  static Future<void> cancelAllReminders() async {
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      return;
-    }
-    await _notifications.cancelAll();
-  }
-
-  static Future<void> scheduleAllReminders() async {
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      return;
-    }
-    await cancelAllReminders();
-    await scheduleDailyBreakfastReminder();
-    await scheduleDailyLunchReminder();
-    await scheduleDailyDinnerReminder();
-    await scheduleDailyHydrationReminders();
-  }
-}
-
-class _Time {
-  final int hour;
-  final int minute;
-  _Time(this.hour, this.minute);
 }
