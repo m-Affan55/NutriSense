@@ -2,6 +2,17 @@
 
 Hi Jamal, here is the comprehensive breakdown of the features i have integrated, fixed. please test the features that are left to be tested.
 
+## 🧪 Features Left to Test (Needs Verification)
+While the core logic is in place, we still need to rigorously test the following edge cases:
+
+- **AI Assistant Edge Cases:** We need to verify how the AI assistant responds to complex or unexpected health scenarios.
+- **Clinic Finder Verification:** We need to test whether the Clinic Finder is actually picking up the correct GPS location and showing accurate hospitals nearby.
+- **Camera Feature Hallucinations:** The camera scanning feature for meals needs rigorous testing, as the underlying AI model has a tendency to hallucinate macros or ingredients. 
+- **Habit Score Monitoring:** Keep a close eye on the Habit Score metric to ensure it is accurately updating and punishing/rewarding the correct behaviors over time.
+- **Family Feature:** The family connectivity feature needs to be thoroughly tested for edge cases.
+
+
+
 ## 🐛 Features & Bugs Fixed
 we have successfully resolved the following:
 
@@ -22,12 +33,5 @@ we have successfully resolved the following:
 - **Profile Updates:** Updated the profile section to explicitly include medical conditions for better AI personalization.
 - **Get Started:** Added a seamless "Get Started" feature.
 - **Food Swap Redirect:** Implemented a redirection mechanism for suggested food swaps.
+- **redirect user to manuall logs if barcode fails** : if the barcode fails we now redirect the user to the manual log screen.
 
-## 🧪 Features Left to Test (Needs Verification)
-While the core logic is in place, we still need to rigorously test the following edge cases:
-
-- **AI Assistant Edge Cases:** We need to verify how the AI assistant responds to complex or unexpected health scenarios.
-- **Clinic Finder Verification:** We need to test whether the Clinic Finder is actually picking up the correct GPS location and showing accurate hospitals nearby.
-- **Camera Feature Hallucinations:** The camera scanning feature for meals needs rigorous testing, as the underlying AI model has a tendency to hallucinate macros or ingredients. 
-- **Habit Score Monitoring:** Keep a close eye on the Habit Score metric to ensure it is accurately updating and punishing/rewarding the correct behaviors over time.
-- **Family Feature:** The family connectivity feature needs to be thoroughly tested for edge cases.
