@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:win32_registry/win32_registry.dart';
+import 'package:sqflite_common_ffi/sqflite_common_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 import 'ui/features/auth/update_password_screen.dart';
@@ -16,6 +18,12 @@ import 'core/sync_service.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  if (!kIsWeb && Platform.isWindows) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
   await dotenv.load(fileName: ".env");
   
   await Supabase.initialize(

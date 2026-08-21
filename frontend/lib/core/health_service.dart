@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
@@ -36,6 +37,7 @@ class HealthService {
   /// Request READ permissions. Returns true if granted.
   /// This will also prompt the user to install Health Connect if needed on Android 13-.
   Future<bool> requestPermissions() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return false;
     try {
       final health = Health();
       await health.configure();
@@ -52,6 +54,7 @@ class HealthService {
 
   /// Check if Health Connect / Apple Health is installed and authorized.
   Future<bool> get isAvailable async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return false;
     try {
       final health = Health();
       await health.configure();
@@ -63,6 +66,7 @@ class HealthService {
 
   /// Fetch today's activity stats. Returns [ActivityData.empty] on any failure.
   Future<ActivityData> getTodayActivity() async {
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return ActivityData.empty;
     try {
       final authorized = await isAvailable;
       if (!authorized) {

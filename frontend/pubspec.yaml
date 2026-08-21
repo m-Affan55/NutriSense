@@ -51,6 +51,7 @@ dependencies:
   path: ^1.9.1
   win32_registry: ^2.1.0
   uuid: ^4.6.0
+  sqflite_common_ffi: ^2.4.2+1
 
 dev_dependencies:
   flutter_test:
