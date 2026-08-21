@@ -14,6 +14,9 @@ import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
+import '../family_profiles/family_view.dart';
+import '../family_profiles/family_viewmodel.dart';
+import '../../../core/reminder_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -35,6 +38,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
   String _language = 'en';
+
+  bool _adaptiveReminders = true;
+  bool _streakAlerts = true;
+  bool _riskAlerts = true;
 
   final List<String> _goals = ['fat_loss', 'muscle_gain', 'maintenance'];
   final List<String> _activityLevels = ['sedentary', 'lightly_active', 'moderately_active', 'very_active'];
@@ -73,6 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {
           _goal = healthRes['goal'];
           _activityLevel = healthRes['activity_level'];
+          _adaptiveReminders = prefs.getBool(ReminderManager.keyAdaptiveReminders) ?? true;
+          _streakAlerts = prefs.getBool(ReminderManager.keyStreakAlerts) ?? true;
+          _riskAlerts = prefs.getBool(ReminderManager.keyRiskAlerts) ?? true;
         });
       }
     } catch (e) {
@@ -437,7 +447,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'grocerySub': 'Get AI shopping list based on your recent meals.',
         'ramadanTitle': 'Ramadan Mode',
         'ramadanSub': 'Celestial midnight blue theme & Islamic fasting mode.',
-        'ramadanSection': 'Ramadan Mode',
+        'ramadanSection': 'Ramadan Fasting & Timings',
+        'suhoorTime': 'Sehri / Suhoor Time',
+        'iftarTime': 'Iftar Time',
+        'ramadanReminders': 'Sehri & Iftar Alerts',
+        'ramadanRemindersSub': 'Receive alerts 30m before Sehri and at Iftar.',
+        'smartNotifTitle': 'Smart Notifications & Alerts',
+        'smartNotifSub': 'Personalized reminders, streaks and safety alerts.',
+        'adaptiveReminders': 'Adaptive Meal Reminders',
+        'adaptiveRemindersSub': 'Auto-adjusts reminder timing based on your actual eating routine.',
+        'streakAlerts': 'Streak Milestones & Streak Saver',
+        'streakAlertsSub': 'Celebratory streak milestone alerts & evening reminders.',
+        'riskAlerts': 'AI Clinical Safety Alerts',
+        'riskAlertsSub': 'Urgent heads-up for allergen conflicts or health safety risks.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -472,7 +494,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'grocerySub': 'حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔',
         'ramadanTitle': 'رمضان موڈ',
         'ramadanSub': 'نیلا آسمانی تھیم اور سحر و افطار کے اوزار فعال کریں۔',
-        'ramadanSection': 'رمضان المبارک',
+        'ramadanSection': 'رمضان المبارک اور اوقات',
+        'suhoorTime': 'سحری ختم ہونے کا وقت',
+        'iftarTime': 'افطار کا وقت',
+        'ramadanReminders': 'سحر و افطار کے الرٹس',
+        'ramadanRemindersSub': 'سحری سے 30 منٹ پہلے اور افطار کے وقت الرٹ حاصل کریں۔',
+        'smartNotifTitle': 'سمارٹ نوٹیفیکیشنز اور الرٹس',
+        'smartNotifSub': 'ذاتی یاد دہانیاں، اسٹریک اور حفاظتی انتباہات۔',
+        'adaptiveReminders': 'عادات کے مطابق کھانے کی یاددہانی',
+        'adaptiveRemindersSub': 'آپ کے معمول کے مطابق خودکار وقت ایڈجسٹ کرتا ہے۔',
+        'streakAlerts': 'اسٹریک کی خوشخبری اور یاد دہانی',
+        'streakAlertsSub': 'اسٹریک سنگ میل اور رات کو اسٹریک بچانے کے الرٹس۔',
+        'riskAlerts': 'اے آئی طبی و حفاظتی الرٹس',
+        'riskAlertsSub': 'الرجی یا شوگر کے خطرے سے متعلق فوری انتباہات۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -619,26 +653,238 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           width: 1.5,
                         ),
                       ),
-                      child: SwitchListTile(
-                        secondary: const Text('🌙', style: TextStyle(fontSize: 24)),
-                        title: Text(
-                          _t('ramadanTitle'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isRamadan ? const Color(0xFFFFD166) : Colors.white,
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            secondary: const Text('🌙', style: TextStyle(fontSize: 24)),
+                            title: Text(
+                              _t('ramadanTitle'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isRamadan ? const Color(0xFFFFD166) : Colors.white,
+                              ),
+                            ),
+                            subtitle: Text(
+                              _t('ramadanSub'),
+                              style: const TextStyle(fontSize: 12, color: Colors.white70),
+                            ),
+                            value: isRamadan,
+                            activeThumbColor: const Color(0xFF00D2FF),
+                            activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
+                            onChanged: (val) async {
+                              await RamadanController.instance.setRamadanMode(val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() {});
+                            },
                           ),
+                          if (isRamadan) ...[
+                            const Divider(color: Colors.white12, height: 1),
+                            // Sehri / Suhoor Time Picker
+                            ListTile(
+                              leading: const Icon(Icons.wb_twilight, color: Color(0xFF00D2FF)),
+                              title: Text(
+                                _t('suhoorTime'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00D2FF).withAlpha(30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF00D2FF).withAlpha(90)),
+                                ),
+                                child: Text(
+                                  RamadanController.instance.formatTime(RamadanController.instance.suhoorTime),
+                                  style: const TextStyle(
+                                    color: Color(0xFF00D2FF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              onTap: () async {
+                                final current = RamadanController.instance.suhoorTime;
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: current,
+                                );
+                                if (picked != null) {
+                                  await RamadanController.instance.setSuhoorTime(picked);
+                                  await ReminderManager.syncRemindersWithMode();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                            const Divider(color: Colors.white12, height: 1),
+                            // Iftar Time Picker
+                            ListTile(
+                              leading: const Icon(Icons.wb_sunny_outlined, color: Color(0xFFFFD166)),
+                              title: Text(
+                                _t('iftarTime'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFD166).withAlpha(30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFFD166).withAlpha(90)),
+                                ),
+                                child: Text(
+                                  RamadanController.instance.formatTime(RamadanController.instance.iftarTime),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD166),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              onTap: () async {
+                                final current = RamadanController.instance.iftarTime;
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: current,
+                                );
+                                if (picked != null) {
+                                  await RamadanController.instance.setIftarTime(picked);
+                                  await ReminderManager.syncRemindersWithMode();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                            const Divider(color: Colors.white12, height: 1),
+                            // Ramadan Alarms Toggle
+                            SwitchListTile(
+                              secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF00E676)),
+                              title: Text(
+                                _t('ramadanReminders'),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                              subtitle: Text(
+                                _t('ramadanRemindersSub'),
+                                style: const TextStyle(color: Colors.white60, fontSize: 11),
+                              ),
+                              value: RamadanController.instance.remindersEnabled,
+                              activeThumbColor: const Color(0xFF00E676),
+                              activeTrackColor: const Color(0xFF00E676).withAlpha(60),
+                              onChanged: (val) async {
+                                await RamadanController.instance.setRemindersEnabled(val);
+                                await ReminderManager.syncRemindersWithMode();
+                                setState(() {});
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Smart Notifications Section
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isRamadan
+                              ? const Color(0xFFFFD166).withAlpha(40)
+                              : const Color(0xFF00E676).withAlpha(40),
                         ),
-                        subtitle: Text(
-                          _t('ramadanSub'),
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                        value: isRamadan,
-                        activeThumbColor: const Color(0xFF00D2FF),
-                        activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
-                        onChanged: (val) async {
-                          await RamadanController.instance.setRamadanMode(val);
-                          setState(() {});
-                        },
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.notifications_active_rounded,
+                                    color: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _t('smartNotifTitle'),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Text(
+                                        _t('smartNotifSub'),
+                                        style: const TextStyle(fontSize: 11, color: Colors.white60),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.psychology_alt_outlined, color: Color(0xFF00D2FF)),
+                            title: Text(
+                              _t('adaptiveReminders'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('adaptiveRemindersSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _adaptiveReminders,
+                            activeThumbColor: const Color(0xFF00D2FF),
+                            activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyAdaptiveReminders, val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() => _adaptiveReminders = val);
+                            },
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.local_fire_department, color: Color(0xFFFF9500)),
+                            title: Text(
+                              _t('streakAlerts'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('streakAlertsSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _streakAlerts,
+                            activeThumbColor: const Color(0xFFFF9500),
+                            activeTrackColor: const Color(0xFFFF9500).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyStreakAlerts, val);
+                              await ReminderManager.syncRemindersWithMode();
+                              setState(() => _streakAlerts = val);
+                            },
+                          ),
+                          const Divider(color: Colors.white12, height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.shield_outlined, color: Color(0xFFFF3B30)),
+                            title: Text(
+                              _t('riskAlerts'),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              _t('riskAlertsSub'),
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            value: _riskAlerts,
+                            activeThumbColor: const Color(0xFFFF3B30),
+                            activeTrackColor: const Color(0xFFFF3B30).withAlpha(60),
+                            onChanged: (val) async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(ReminderManager.keyRiskAlerts, val);
+                              setState(() => _riskAlerts = val);
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -663,6 +909,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const HealthSyncView()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Family Profiles Section
+                    ListTile(
+                      leading: const Icon(Icons.people_alt_outlined, color: Color(0xFFFFD166)),
+                      title: Text(
+                        _language == 'ur' ? 'خاندانی پروفائلز' : 'Family Profiles',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _language == 'ur'
+                            ? 'بچوں اور بزرگوں کی غذائیت کا انتظام کریں'
+                            : 'Manage nutrition for children & elderly parents',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (FamilyViewModel.instance.members.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFD166).withAlpha(30),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${FamilyViewModel.instance.members.length}',
+                                style: const TextStyle(color: Color(0xFFFFD166), fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const FamilyView()),
                         );
                       },
                     ),

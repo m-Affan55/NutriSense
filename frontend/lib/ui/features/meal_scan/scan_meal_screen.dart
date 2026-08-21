@@ -7,6 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../../core/reminder_manager.dart';
+import '../family_profiles/family_viewmodel.dart';
 import 'barcode_scanner_screen.dart';
 
 class ScanMealScreen extends StatefulWidget {
@@ -127,6 +130,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
   void _showScanResultDialog(Map<String, dynamic> data) {
     String selectedMealType = 'breakfast';
+    String? selectedFamilyMemberId = FamilyViewModel.instance.activeMember?.id;
     
     showDialog(
       context: context,
@@ -246,11 +250,31 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                          DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                          DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                          DropdownMenuItem(value: 'snack', child: Text('Snack / Other')),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'breakfast',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('breakfast', _language)
+                                : (_language == 'ur' ? 'ناشتہ' : 'Breakfast')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dinner',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('dinner', _language)
+                                : (_language == 'ur' ? 'رات کا کھانا' : 'Dinner')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'lunch',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('lunch', _language)
+                                : (_language == 'ur' ? 'دوپہر کا کھانا' : 'Lunch')),
+                          ),
+                          DropdownMenuItem(
+                            value: 'snack',
+                            child: Text(RamadanController.instance.isRamadanMode
+                                ? RamadanController.instance.getLocalizedMealName('snack', _language)
+                                : (_language == 'ur' ? 'اسنیک' : 'Snack / Other')),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -261,6 +285,39 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
+
+                      // Family Member Selector
+                      if (FamilyViewModel.instance.members.isNotEmpty) ...[
+                        Text(
+                          _language == 'ur' ? 'کس کے لیے لاگ کر رہے ہیں؟' : 'Logging for Family Member',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String?>(
+                          initialValue: selectedFamilyMemberId,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(Icons.people_outline, color: Color(0xFF00E676), size: 20),
+                          ),
+                          items: [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text(_language == 'ur' ? '🧑 میں (ذاتی اکاؤنٹ)' : '🧑 Me (Primary Account)'),
+                            ),
+                            ...FamilyViewModel.instance.members.map((m) => DropdownMenuItem<String?>(
+                                  value: m.id,
+                                  child: Text('${m.relationshipEmoji} ${m.name} (${m.getLocalizedRelationship(_language)})'),
+                                )),
+                          ],
+                          onChanged: (val) {
+                            setDialogState(() {
+                              selectedFamilyMemberId = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Macro Summary Card
                       Card(
@@ -376,7 +433,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                   ),
                   onPressed: () async {
                     Navigator.of(dialogContext).pop();
-                    await _saveMealLog(data, selectedMealType);
+                    await _saveMealLog(data, selectedMealType, selectedFamilyMemberId);
                   },
                   child: const Text('Confirm & Log'),
                 ),
@@ -408,7 +465,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
     );
   }
 
-  Future<void> _saveMealLog(Map<String, dynamic> data, String mealType) async {
+  Future<void> _saveMealLog(Map<String, dynamic> data, String mealType, [String? familyMemberId]) async {
     setState(() {
       _isLoading = true;
     });
@@ -427,9 +484,19 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         'total_carbs_g': (data['total_carbs_g'] as num?)?.toInt() ?? 0,
         'total_fat_g': (data['total_fat_g'] as num?)?.toInt() ?? 0,
         'notes': data['meal_name'],
+        'family_member_id': familyMemberId,
       };
 
       await supabase.from('meal_logs').insert(payload);
+
+      // Learn adaptive meal pattern and check streak milestones
+      await ReminderManager.recordMealLogged(mealType, DateTime.now());
+      final prefs = await SharedPreferences.getInstance();
+      final streak = (prefs.getInt('user_current_streak') ?? 4) + 1;
+      await prefs.setInt('user_current_streak', streak);
+      if (streak % 3 == 0 || streak == 5 || streak == 7 || streak == 10 || streak == 14 || streak == 30) {
+        await ReminderManager.triggerStreakMilestoneNotification(streak);
+      }
 
       if (mounted) {
         CustomToast.show(context, 'Meal logged successfully!', isError: false);

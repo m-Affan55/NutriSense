@@ -13,6 +13,8 @@ import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../health_sync/health_sync_view.dart';
+import '../family_profiles/family_viewmodel.dart';
+import '../family_profiles/family_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -69,6 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
     );
 
+    FamilyViewModel.instance.addListener(_loadData);
+    FamilyViewModel.instance.loadMembers();
+
     _loadData();
   }
 
@@ -85,22 +90,30 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     try {
       if (user == null) return;
 
-      // 1. Get name metadata
+      // 1. Get name metadata or active dependent name
+      final activeMember = FamilyViewModel.instance.activeMember;
       final fullName = user.userMetadata?['full_name'] ?? 'User';
-      _userName = fullName;
+      _userName = activeMember != null ? activeMember.name : fullName;
 
-      // 2. Fetch targets
-      final profileRes = await supabase
-          .from('health_profiles')
-          .select()
-          .eq('user_id', user.id)
-          .maybeSingle();
+      // 2. Fetch targets (per active family member or primary user)
+      if (activeMember != null) {
+        _targetCalories = activeMember.dailyCalorieTarget;
+        _targetProtein = activeMember.dailyProteinG;
+        _targetCarbs = activeMember.dailyCarbsG;
+        _targetFat = activeMember.dailyFatG;
+      } else {
+        final profileRes = await supabase
+            .from('health_profiles')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-      if (profileRes != null) {
-        _targetCalories = (profileRes['daily_calorie_target'] as num?)?.toInt() ?? 2000;
-        _targetProtein = (profileRes['daily_protein_g'] as num?)?.toInt() ?? 130;
-        _targetCarbs = (profileRes['daily_carbs_g'] as num?)?.toInt() ?? 220;
-        _targetFat = (profileRes['daily_fat_g'] as num?)?.toInt() ?? 65;
+        if (profileRes != null) {
+          _targetCalories = (profileRes['daily_calorie_target'] as num?)?.toInt() ?? 2000;
+          _targetProtein = (profileRes['daily_protein_g'] as num?)?.toInt() ?? 130;
+          _targetCarbs = (profileRes['daily_carbs_g'] as num?)?.toInt() ?? 220;
+          _targetFat = (profileRes['daily_fat_g'] as num?)?.toInt() ?? 65;
+        }
       }
 
       // 3. Fetch today's meals
@@ -122,6 +135,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       List<Map<String, dynamic>> tempMeals = [];
 
       for (var meal in mealsRes) {
+        final fId = meal['family_member_id']?.toString();
+        if (activeMember != null) {
+          if (fId != activeMember.id) continue;
+        } else {
+          if (fId != null && fId.isNotEmpty) continue;
+        }
+
         calSum += (meal['total_calories'] as num?)?.toInt() ?? 0;
         proteinSum += (meal['total_protein_g'] as num?)?.toInt() ?? 0;
         carbsSum += (meal['total_carbs_g'] as num?)?.toInt() ?? 0;
@@ -278,6 +298,65 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         ),
                       ),
                       const SizedBox(height: 16),
+                      if (RamadanController.instance.isRamadanMode) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFD166).withAlpha(25),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFFD166).withAlpha(60)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('🌙', style: TextStyle(fontSize: 16)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _language == 'ur'
+                                      ? 'رمضان ہائیڈریشن ہدف: افطار اور سحری کے درمیان 2.5 لیٹر پانی پیئں۔'
+                                  : 'Ramadan Hydration Target: Aim for 2.5L split between Iftar and Sehri.',
+                                  style: const TextStyle(color: Color(0xFFFFD166), fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.wb_sunny_outlined, color: Color(0xFFFFD166)),
+                          title: Text(
+                            _language == 'ur' ? 'افطار کے وقت (500 ملی لیٹر)' : 'Iftar Hydration (500 ml)',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _logWater(500);
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.nightlight_round, color: Color(0xFF00D2FF)),
+                          title: Text(
+                            _language == 'ur' ? 'تراویح کے بعد (500 ملی لیٹر)' : 'Post-Taraweeh (500 ml)',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _logWater(500);
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.wb_twilight, color: Color(0xFF00E676)),
+                          title: Text(
+                            _language == 'ur' ? 'سحری کے وقت (500 ملی لیٹر)' : 'Sehri Hydration (500 ml)',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _logWater(500);
+                          },
+                        ),
+                        const Divider(color: Colors.white12),
+                      ],
                       ListTile(
                         leading: const Icon(Icons.local_drink, color: Color(0xFF26C6DA)),
                         title: Text(glass, style: const TextStyle(color: Colors.white)),
@@ -484,6 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   void dispose() {
+    FamilyViewModel.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
     super.dispose();
@@ -550,11 +630,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+
+                        // Family Profiles Switcher Pill Bar
+                        _buildFamilyProfileBar(theme, isRamadan),
+                        const SizedBox(height: 16),
 
                         // Offline sync badge (only shown when there are pending rows)
                         if (_pendingSyncCount > 0) _buildSyncBadge(theme),
                         if (_pendingSyncCount > 0) const SizedBox(height: 12),
+
+                        // Ramadan Fasting & Hydration Schedule Card
+                        if (isRamadan) _buildRamadanScheduleCard(theme, isRamadan),
+                        if (isRamadan) const SizedBox(height: 24),
 
                       // Section B: Calorie Ring progress
                       Builder(
@@ -675,23 +763,42 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           separatorBuilder: (context, index) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final meal = _todayMeals[index];
-                            final mealType = meal['meal_type']?.toString().toUpperCase() ?? 'MEAL';
+                            final rawType = meal['meal_type']?.toString().toLowerCase() ?? 'meal';
+                            final mealType = isRamadan
+                                ? RamadanController.instance.getLocalizedMealName(rawType, _language)
+                                : (meal['meal_type']?.toString().toUpperCase() ?? 'MEAL');
                             final notes = meal['notes']?.toString() ?? 'Logged Food';
                             final calories = '${meal['total_calories'] ?? 0} ${_t('kcal')}';
                             
                             IconData mealIcon;
-                            switch (meal['meal_type']?.toString().toLowerCase()) {
-                              case 'breakfast':
-                                mealIcon = Icons.wb_sunny_outlined;
-                                break;
-                              case 'lunch':
-                                mealIcon = Icons.lunch_dining_outlined;
-                                break;
-                              case 'dinner':
-                                mealIcon = Icons.dinner_dining_outlined;
-                                break;
-                              default:
-                                mealIcon = Icons.fastfood_outlined;
+                            if (isRamadan) {
+                              switch (rawType) {
+                                case 'breakfast':
+                                  mealIcon = Icons.nights_stay_outlined;
+                                  break;
+                                case 'dinner':
+                                  mealIcon = Icons.wb_twilight;
+                                  break;
+                                case 'lunch':
+                                  mealIcon = Icons.dinner_dining_outlined;
+                                  break;
+                                default:
+                                  mealIcon = Icons.local_cafe_outlined;
+                              }
+                            } else {
+                              switch (rawType) {
+                                case 'breakfast':
+                                  mealIcon = Icons.wb_sunny_outlined;
+                                  break;
+                                case 'lunch':
+                                  mealIcon = Icons.lunch_dining_outlined;
+                                  break;
+                                case 'dinner':
+                                  mealIcon = Icons.dinner_dining_outlined;
+                                  break;
+                                default:
+                                  mealIcon = Icons.fastfood_outlined;
+                              }
                             }
 
                             return _buildMealCard(context, mealType, notes, calories, mealIcon);
@@ -1005,6 +1112,412 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
+  /// Interactive Ramadan Fasting & Timings Card for Sehri and Iftar
+  Widget _buildRamadanScheduleCard(ThemeData theme, bool isRamadan) {
+    final ramadan = RamadanController.instance;
+    final isFasting = ramadan.isCurrentlyFasting();
+    final progress = ramadan.getFastingProgress();
+    final statusMsg = ramadan.getFastingStatusMessage(_language);
+    final suhoorFormatted = ramadan.formatTime(ramadan.suhoorTime);
+    final iftarFormatted = ramadan.formatTime(ramadan.iftarTime);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF132448).withAlpha(190),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFFD166).withAlpha(70), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFD166).withAlpha(15),
+                blurRadius: 16,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row
+              Row(
+                children: [
+                  const Text('🌙', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    _language == 'ur' ? 'رمضان فاسٹنگ شیڈول' : 'Ramadan Fasting Tracker',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFFFFD166),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      );
+                      setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD166).withAlpha(30),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFFD166).withAlpha(80)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.edit, size: 12, color: Color(0xFFFFD166)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _language == 'ur' ? 'اوقات' : 'Timings',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD166),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Sehri & Iftar Time Badges
+              Row(
+                children: [
+                  // Sehri Badge
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00D2FF).withAlpha(20),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF00D2FF).withAlpha(60)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.wb_twilight, color: Color(0xFF00D2FF), size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                _language == 'ur' ? 'سحری ختم' : 'Sehri Ends',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            suhoorFormatted,
+                            style: const TextStyle(
+                              color: Color(0xFF00D2FF),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Iftar Badge
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD166).withAlpha(20),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFFD166).withAlpha(60)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.wb_sunny_outlined, color: Color(0xFFFFD166), size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                _language == 'ur' ? 'افطار کا وقت' : 'Iftar Time',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            iftarFormatted,
+                            style: const TextStyle(
+                              color: Color(0xFFFFD166),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Live Status Countdown & Progress Bar
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(50),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusMsg,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: isFasting ? progress : 1.0,
+                        minHeight: 6,
+                        backgroundColor: Colors.white.withAlpha(20),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isFasting ? const Color(0xFFFFD166) : const Color(0xFF00E676),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Ramadan Hydration Quick Presets
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _language == 'ur' ? 'فوری پانی لاگ:' : 'Fast Hydration Log:',
+                    style: const TextStyle(color: Colors.white60, fontSize: 11),
+                  ),
+                  Row(
+                    children: [
+                      _buildQuickWaterChip('500ml', 500, _language == 'ur' ? 'افطار' : 'Iftar'),
+                      const SizedBox(width: 6),
+                      _buildQuickWaterChip('250ml', 250, _language == 'ur' ? 'تراویح' : 'Taraweeh'),
+                      const SizedBox(width: 6),
+                      _buildQuickWaterChip('500ml', 500, _language == 'ur' ? 'سحری' : 'Sehri'),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickWaterChip(String amount, int ml, String label) {
+    return GestureDetector(
+      onTap: () {
+        _logWater(ml);
+        CustomToast.show(context, '+$amount ($label) logged!', isError: false);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00BCD4).withAlpha(25),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF00BCD4).withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.water_drop, color: Color(0xFF00BCD4), size: 12),
+            const SizedBox(width: 3),
+            Text(
+              '+$amount',
+              style: const TextStyle(
+                color: Color(0xFF00BCD4),
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyProfileBar(ThemeData theme, bool isRamadan) {
+    return ListenableBuilder(
+      listenable: FamilyViewModel.instance,
+      builder: (context, _) {
+        final familyVM = FamilyViewModel.instance;
+        final members = familyVM.members;
+        final active = familyVM.activeMember;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  // Primary User "Me" Chip
+                  GestureDetector(
+                    onTap: () {
+                      familyVM.setActiveMember(null);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: active == null
+                            ? (isRamadan ? const Color(0xFFFFD166).withAlpha(40) : const Color(0xFF00E676).withAlpha(40))
+                            : const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: active == null
+                              ? (isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676))
+                              : Colors.white12,
+                          width: active == null ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🧑', style: TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(
+                            _language == 'ur' ? 'میں (ذاتی)' : 'Me (Self)',
+                            style: TextStyle(
+                              color: active == null ? Colors.white : Colors.white60,
+                              fontWeight: active == null ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Family Dependent Chips
+                  ...members.map((m) {
+                    final isSelected = active?.id == m.id;
+                    return GestureDetector(
+                      onTap: () {
+                        familyVM.setActiveMember(m);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? m.color.withAlpha(40) : const Color(0xFF161A22),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? m.color : Colors.white12,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(m.relationshipEmoji, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 6),
+                            Text(
+                              m.name,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.white60,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // Add / Manage Family Button
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const FamilyView()),
+                      );
+                      _loadData();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(10),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.group_add_outlined, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text(
+                            _language == 'ur' ? 'خاندان' : '+ Family',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Active Dependent Banner when a family member is selected
+            if (active != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: active.color.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: active.color.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: active.color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _language == 'ur'
+                            ? '${active.name} (${active.getLocalizedRelationship(_language)}) • روزانہ کا ہدف: ${active.dailyCalorieTarget} kcal'
+                            : 'Tracking for ${active.name} (${active.getLocalizedRelationship(_language)}) • Goal: ${active.dailyCalorieTarget} kcal',
+                        style: TextStyle(color: active.color, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildActivityStat(IconData icon, String value, String label, Color color) {
     return Column(
       children: [
@@ -1014,7 +1527,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
         Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
       ],
     );

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import 'macro_trend_chart.dart';
@@ -16,6 +19,7 @@ class WeeklyReportScreen extends StatefulWidget {
 
 class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   bool _isLoading = true;
+  bool _isDownloadingPdf = false;
   String _language = 'en';
 
   String _summary = '';
@@ -45,19 +49,31 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       if (user == null) return;
 
       // 1. Fetch weekly report from AI backend
-      final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/weekly-report?user_id=${user.id}');
-      final response = await http.get(url);
+      try {
+        final url = Uri.parse('${ApiClient.getBaseUrl()}/reports/weekly?user_id=${user.id}&language=$_language');
+        final response = await http.get(url);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _summary = data['weekly_summary'] ?? '';
-        _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
-        _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
-      } else {
-        throw Exception('Server error: ${response.body}');
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          _summary = data['weekly_summary'] ?? '';
+          _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
+          _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
+        } else {
+          // Fallback to legacy meals weekly endpoint
+          final fallbackUrl = Uri.parse('${ApiClient.getBaseUrl()}/meals/weekly-report?user_id=${user.id}&language=$_language');
+          final fallbackRes = await http.get(fallbackUrl);
+          if (fallbackRes.statusCode == 200) {
+            final data = jsonDecode(fallbackRes.body);
+            _summary = data['weekly_summary'] ?? '';
+            _healthScore = (data['health_score'] as num?)?.toInt() ?? 0;
+            _daysAdhered = (data['days_adhered'] as num?)?.toInt() ?? 0;
+          }
+        }
+      } catch (e) {
+        debugPrint('[WeeklyReport] Backend fetch error: $e');
       }
 
-      // 2. Fetch target metrics
+      // 2. Fetch target metrics from Supabase
       final profileRes = await supabase
           .from('health_profiles')
           .select()
@@ -97,6 +113,107 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     }
   }
 
+  Future<void> _exportPdfReport() async {
+    setState(() => _isDownloadingPdf = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      List<int> pdfBytes = [];
+
+      // 1. Try downloading from backend PDF generator
+      try {
+        final pdfUrl = Uri.parse('${ApiClient.getBaseUrl()}/reports/weekly/pdf?user_id=${user.id}&language=$_language');
+        final response = await http.get(pdfUrl);
+        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+          pdfBytes = response.bodyBytes;
+        }
+      } catch (e) {
+        debugPrint('[WeeklyReport] Backend PDF download fallback: $e');
+      }
+
+      // 2. Fallback to client-side PDF document generation if backend was unreachable
+      if (pdfBytes.isEmpty) {
+        final pdfDoc = pw.Document();
+        final nowStr = DateTime.now().toString().split(' ')[0];
+
+        pdfDoc.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            build: (pw.Context context) {
+              return pw.Padding(
+                padding: const pw.EdgeInsets.all(32),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('NutriSense - Weekly Clinical Report',
+                        style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 8),
+                    pw.Text('Generated: $nowStr | Language: $_language', style: const pw.TextStyle(fontSize: 12)),
+                    pw.Divider(thickness: 1.5),
+                    pw.SizedBox(height: 12),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Health Adherence Score: $_healthScore%',
+                            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                        pw.Text('Goals Met: $_daysAdhered / 7 Days',
+                            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 12),
+                    pw.Text(
+                      'Daily Targets: Cal: $_targetCalories kcal | Protein: ${_targetProtein}g | Carbs: ${_targetCarbs}g | Fat: ${_targetFat}g',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                    pw.SizedBox(height: 16),
+                    pw.Text('AI Nutritionist Progress Review:',
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 8),
+                    pw.Text(
+                      _summary.isNotEmpty ? _summary : 'Consistent nutrition tracking active for past 7 days.',
+                      style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.4),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+        pdfBytes = await pdfDoc.save();
+      }
+
+      // 3. Save to user's Downloads directory
+      final userProfile = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '.';
+      final downloadsDir = Directory('$userProfile/Downloads');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      final file = File('${downloadsDir.path}/nutrisense_weekly_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await file.writeAsBytes(pdfBytes);
+
+      if (mounted) {
+        CustomToast.show(
+          context,
+          _language == 'ur'
+              ? 'پی ڈی ایف رپورٹ ڈاؤن لوڈز فولڈر میں محفوظ ہو گئی!'
+              : 'Weekly PDF Report saved to Downloads folder!',
+          isError: false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(context, 'PDF export failed: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingPdf = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -108,11 +225,19 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     final scoreLabel = _language == 'ur' ? 'ہیلتھ سکور' : 'Health Score';
     final adherenceLabel = _language == 'ur' ? 'اہداف کی تعمیل' : 'Goals Adherence';
     final daysText = _language == 'ur' ? '$_daysAdhered میں سے 7 دن' : '$_daysAdhered out of 7 days';
+    final exportPdfText = _language == 'ur' ? 'پی ڈی ایف رپورٹ ڈاؤن لوڈ کریں' : 'Download PDF Report';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
+          IconButton(
+            icon: _isDownloadingPdf
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: exportPdfText,
+            onPressed: _isDownloadingPdf ? null : _exportPdfReport,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadReport,
@@ -187,6 +312,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                       language: _language,
                     ),
                     const SizedBox(height: 16),
+
+                    // AI Narrative Review Card
                     Card(
                       color: const Color(0xFF161A22),
                       elevation: 0,
@@ -226,6 +353,28 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Download PDF Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isDownloadingPdf ? null : _exportPdfReport,
+                        icon: _isDownloadingPdf
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                            : const Icon(Icons.picture_as_pdf, size: 20),
+                        label: Text(
+                          exportPdfText,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: const Color(0xFF0B101B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),
