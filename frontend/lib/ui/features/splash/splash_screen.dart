@@ -58,13 +58,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final theme = Theme.of(context);
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D0F14),
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.8),
+            radius: 1.2,
             colors: [
-              Color(0xFFE8F5E9), // Light green tint
-              Colors.white,
+              theme.colorScheme.primary.withAlpha(20),
+              const Color(0xFF0D0F14),
             ],
           ),
         ),
@@ -133,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       Text(
                         'AI-Powered Personal Nutritionist',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black54,
+                          color: Colors.white.withAlpha(150),
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -163,7 +164,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     Text(
                       'Optimizing your meal plans...',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black45,
+                        color: Colors.white.withAlpha(100),
                       ),
                     ),
                   ],

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'barcode_scanner_screen.dart';
 
 class ScanMealScreen extends StatefulWidget {
   const ScanMealScreen({super.key});
@@ -18,6 +20,20 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
   File? _selectedImage;
+  String _language = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    });
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -136,6 +152,46 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                     ),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20, color: Colors.grey),
+                    onPressed: () {
+                      final controller = TextEditingController(text: data['meal_name'] ?? '');
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: const Color(0xFF1E232E),
+                          title: const Text('Correct Food Name', style: TextStyle(color: Colors.white)),
+                          content: TextField(
+                            controller: controller,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'e.g. Beef Siri Paye',
+                              hintStyle: TextStyle(color: Colors.white54),
+                              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (controller.text.isNotEmpty) {
+                                  setDialogState(() {
+                                    data['meal_name'] = controller.text;
+                                    data['recognition_confidence'] = 'high'; // Clear the warning if it exists
+                                  });
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: const Text('Save'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -157,6 +213,26 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           ),
                         ),
                       const SizedBox(height: 16),
+                      
+                      // Standard AI Disclaimer
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withAlpha(30),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.withAlpha(100)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.orange),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text('AI is unsure about this food. Tap the pencil icon above to correct it.', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       // Meal Type Selector
                       const Text(
@@ -250,9 +326,13 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
+                          final displayName = _language == 'ur' && item['local_name'] != null 
+                              ? item['local_name'] 
+                              : item['name'] ?? 'Ingredient';
+
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: Text(item['name'] ?? 'Ingredient', style: const TextStyle(fontWeight: FontWeight.w500)),
+                            title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
                             subtitle: Text('${item['estimated_weight_g']}g • ${item['calories']} kcal'),
                             trailing: Text(
                               'P:${item['protein_g']}g F:${item['fat_g']}g C:${item['carbs_g']}g',
@@ -342,10 +422,10 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         'user_id': user.id,
         'meal_type': mealType,
         'food_items': data['items'],
-        'total_calories': (data['total_calories'] as num).toInt(),
-        'total_protein_g': (data['total_protein_g'] as num).toInt(),
-        'total_carbs_g': (data['total_carbs_g'] as num).toInt(),
-        'total_fat_g': (data['total_fat_g'] as num).toInt(),
+        'total_calories': (data['total_calories'] as num?)?.toInt() ?? 0,
+        'total_protein_g': (data['total_protein_g'] as num?)?.toInt() ?? 0,
+        'total_carbs_g': (data['total_carbs_g'] as num?)?.toInt() ?? 0,
+        'total_fat_g': (data['total_fat_g'] as num?)?.toInt() ?? 0,
         'notes': data['meal_name'],
       };
 
@@ -438,6 +518,23 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                       onPressed: () => _pickImage(ImageSource.gallery),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Scan Barcode'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        foregroundColor: Colors.tealAccent,
+                        side: const BorderSide(color: Colors.tealAccent),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),

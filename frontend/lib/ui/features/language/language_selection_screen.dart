@@ -18,6 +18,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     if (_selectedLanguage == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_language', _selectedLanguage!);
+    await prefs.setString('language', _selectedLanguage!);
     
     if (mounted) {
       Navigator.of(context).pushReplacement(

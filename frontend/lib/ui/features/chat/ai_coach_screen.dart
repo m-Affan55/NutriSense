@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../shared/widgets/islamic_decorations.dart';
+import 'clinic_finder_screen.dart';
 
 class AiCoachScreen extends StatefulWidget {
   const AiCoachScreen({super.key});
@@ -31,7 +33,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   Future<void> _loadLanguageAndGreeting() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _language = prefs.getString('language') ?? 'en';
+      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
       
       // Load initial greeting based on selected language
       final greeting = _language == 'ur'
@@ -105,6 +107,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
 
       final data = jsonDecode(response.body);
       final reply = data['response'] ?? 'Sorry, I encountered an issue parsing the reply.';
+      final escalationAlert = data['escalation_alert'];
 
       if (mounted) {
         setState(() {
@@ -113,6 +116,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
             'text': reply,
             'isUser': false,
             'time': _formatTime(DateTime.now()),
+            'escalationAlert': escalationAlert,
           });
           _isTyping = false;
         });
@@ -157,15 +161,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
         : 'Ask about meals, recipes, or swap options...';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0F14),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.5),
-            radius: 1.2,
-            colors: [Color(0xFF1A2420), Color(0xFF0D0F14)],
-          ),
-        ),
+      backgroundColor: Colors.transparent,
+      body: RamadanBackgroundWrapper(
         child: SafeArea(
           bottom: false,
           child: Column(
@@ -240,6 +237,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                       time: msg['time'],
                       isUser: msg['isUser'],
                       theme: theme,
+                      escalationAlert: msg['escalationAlert'],
                     );
                   },
                 ),
@@ -314,6 +312,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
     required String time,
     required bool isUser,
     required ThemeData theme,
+    Map<String, dynamic>? escalationAlert,
   }) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -370,6 +369,79 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                 height: 1.4,
               ),
             ),
+            if (escalationAlert != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade900.withAlpha(50),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade600.withAlpha(100)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          escalationAlert['level'] == 'critical' 
+                              ? Icons.warning_rounded 
+                              : Icons.info_outline,
+                          color: Colors.amber.shade400,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Safety Alert',
+                          style: TextStyle(
+                            color: Colors.amber.shade400,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      escalationAlert['message'] ?? '',
+                      style: TextStyle(
+                        color: Colors.amber.shade100,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    if (escalationAlert['show_doctor_button'] == true) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: Icon(Icons.local_hospital, size: 16, color: Colors.amber.shade200),
+                          label: Text(
+                            'Find Affordable Care',
+                            style: TextStyle(color: Colors.amber.shade200, fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.amber.shade600.withAlpha(100)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ClinicFinderScreen(
+                                  riskLevel: escalationAlert['level'] ?? 'warning',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

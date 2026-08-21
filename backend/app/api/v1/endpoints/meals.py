@@ -1,5 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from pydantic import BaseModel
 from app.services.gemini_service import GeminiService
+from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
 
 router = APIRouter()
@@ -30,6 +32,38 @@ async def scan_meal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class BarcodeRequest(BaseModel):
+    barcode: str
+    user_id: str
+
+class SearchFoodRequest(BaseModel):
+    query: str
+
+@router.post("/scan-barcode")
+async def scan_barcode(req: BarcodeRequest):
+    try:
+        # 1. Fetch user's health profile
+        supabase = get_supabase_admin_client()
+        profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        profile = profile_response.data
+        
+        # 2. Fetch product data from OpenFoodFacts
+        product_data = await BarcodeService.fetch_product_data(req.barcode)
+        
+        # 3. Check for allergies using Gemini
+        warnings = GeminiService.evaluate_ingredients(
+            ingredients=product_data["ingredients"],
+            allergens=product_data["allergens"],
+            profile=profile
+        )
+        
+        return {
+            "product": product_data,
+            "allergy_warnings": warnings
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/weekly-report")
 def get_weekly_report(user_id: str):
     try:
@@ -39,15 +73,16 @@ def get_weekly_report(user_id: str):
         profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
         profile = profile_res.data
         
-        # 2. Fetch past 7 days of logs
+        # 2. Fetch past 7 days of logs (using UTC bounds)
         import datetime
-        end_date = datetime.date.today()
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        end_date = now_utc.date()
         start_date = end_date - datetime.timedelta(days=7)
         
-        meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59").execute()
+        meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59+00:00").execute()
         meals = meals_res.data
         
-        water_res = supabase.table('water_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59").execute()
+        water_res = supabase.table('water_logs').select('*').eq('user_id', user_id).gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00").lte('logged_at', f"{end_date.isoformat()}T23:59:59+00:00").execute()
         water = water_res.data
         
         # 3. Formulate prompts
@@ -106,5 +141,41 @@ def get_weekly_report(user_id: str):
         )
         
         return json.loads(response.text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/search-food")
+async def search_food(req: SearchFoodRequest):
+    try:
+        macros = GeminiService.estimate_food_macros(req.query)
+        return macros
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/grocery-list/{user_id}")
+async def get_grocery_list(user_id: str):
+    try:
+        supabase = get_supabase_admin_client()
+        
+        # 1. Fetch profile
+        profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        profile = profile_res.data
+        
+        # 2. Fetch past 7 days of meals (using UTC bounds)
+        import datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        start_date = now_utc.date() - datetime.timedelta(days=7)
+        
+        meals_res = supabase.table('meal_logs') \
+            .select('notes') \
+            .eq('user_id', user_id) \
+            .gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00") \
+            .execute()
+        meals = meals_res.data or []
+        recent_meal_notes = [m.get('notes') for m in meals if m.get('notes')]
+        
+        # 3. Generate grocery list
+        grocery_list = GeminiService.generate_grocery_list(recent_meal_notes, profile)
+        return grocery_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
