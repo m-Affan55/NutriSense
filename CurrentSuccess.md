@@ -1,78 +1,65 @@
-# NutriSense — Current Success & Future Roadmap
+# NutriSense — Current Success & System Status
 
-This document outlines the current state of NutriSense (what has been successfully implemented) and details the high-priority future features to be implemented next.
+This document provides a comprehensive inventory of all features, services, database schemas, and verification results across the **NutriSense** platform.
 
 ---
 
-## 🏆 Current Success (Completed Features)
+## 🏆 Completed Milestones & Feature Inventory
 
 ### 1. Core Platform & User Profiles
-* **Conversational Onboarding**: Capture parameters (age, weight, height, budget, medical conditions, diet restrictions, fitness goals).
-* **Personalized Diet Plan & Targets**: Calculates and saves daily targets for calories, protein, carbs, and fats.
-* **Urdu & English Localization**: Cross-screen translation support (dashboard, weekly report, settings, manual loggers).
+* **Conversational Onboarding**: Captures age, gender, weight, height, budget in PKR, medical conditions, diet restrictions, and goals.
+* **Personalized Macro Targets**: Auto-computes and saves daily targets for calories, protein, carbs, and fats.
+* **Bilingual Localization**: Full cross-screen English and Urdu Nastaleeq translation with dynamic RTL/LTR adjustment.
+* **Pakistani Natural Radial Theme**: Vibrant Emerald Green and Islamic Gold radial gradient background with subtle nutrition background geometry.
 
-### 2. Meal & Hydration Tracking
-* **AI Image Scan-to-Log (Pakistan-Optimised)**: Instant photo scanning using Gemini Vision.
-  Automatically identifies both international and Pakistani foods (Daal, Biryani, Bhindi, 
-  Nihari, Paratha, etc.) with portion size calibration for South Asian serving conventions 
-  (katori, roti, naan). Adjusts macro calculations for ghee/oil-based cooking methods 
-  (tarka). Displays food names in Urdu or English based on the user's selected language. 
-  When recognition confidence is low, a non-blocking correction button appears — the user 
-  never has to take extra steps for any food type.
-* **Manual Meal Logger**: Localized manual logging form with verification controls.
-* **Advanced Hydration Selector**: Custom bottom sheet offering standard cup/bottle selections and dynamic custom milliliter entries.
+### 2. Multimodal Meal & Hydration Tracking
+* **AI Image Scan-to-Log (Gemini Vision)**: Instant camera scanning calibrated for South Asian portion conventions (*katori, roti, naan*) and cooking oil/tarka macro calculations.
+* **Non-blocking Live Corrections**: Food name and portion editing with instant macro recalculation.
+* **Barcode Scanner**: `mobile_scanner` + OpenFoodFacts integration with automated allergy and medical cross-referencing.
+* **Manual Meal Logger**: Form with AI-powered search auto-fill.
+* **Advanced Hydration Selector**: Standard cups/bottles and dynamic milliliter logging with Ramadan-specific hydration schedules.
 
-### 3. Data Analytics & Interactive Visualization
-* **AI Weekly Report**: Instant narrative summary detailing calorie and macro intake trends over the last 7 days.
-* **Interactive Macro Trend Charts**: Clickable custom-painted weekly calorie and macro bar chart detailing goal-target comparisons and selection drawers.
+### 3. Ramadan Fasting Suite
+* **Automatic & Manual Mode**: Hijri date detection with manual override in Settings.
+* **Dynamic Meal Slot Renaming**: Automatically adjusts meal keys to *Sehri*, *Iftar*, *Post-Iftar Dinner*, and *Taraweeh Snack*.
+* **Live Countdown Clocks**: Dual real-time countdown clocks for Sehri and Iftar for local Pakistani timezones.
+* **Ramadan Health Rules**: Suppresses daytime eating alerts while fasting, enforces split hydration, and tunes AI Coach responses for fasting nutrition.
 
-### 4. Account Security & Recovery
-* **Supabase Authentication**: Secure login, signup, and signout flows.
-* **Google Social OAuth**: "Continue with Google" sign-in support.
-* **Password Recovery**: Complete recovery loop via Forgot Password and Update Password screens.
-* **Profile Settings Theme Alignment**: Cohesive dark-mode radial styling matching the login experience.
+### 4. 👨‍👩‍👧‍👦 Family Profiles (خاندانی پروفائلز)
+* **Supabase Integration**: `family_members` table with `user_id` foreign key and `family_member_id` foreign key on `meal_logs`.
+* **Family Management Screen (`family_view.dart`)**: Comprehensive dependent manager for children, elderly parents, spouses, and siblings with condition chips and dietary restrictions.
+* **Intelligent Macro Calculator**: Automatically calculates age-, gender-, and condition-tailored targets (e.g. child development vs elderly diabetic parents).
+* **1-Tap Dashboard Switcher**: Top avatar pill bar (`[🧑 Me] [👧 Ayesha] [👴 Abu] [+ Family]`) dynamically filtering calorie rings, macro targets, and logged meals.
+* **Per-Dependent Meal Logging**: Attribute camera scans or manual logs to specific family members.
 
-### 5. Utilities & Privacy Controls
-* **Local Push Reminders**: Cross-platform system notifications scheduling daily meal logging and hydration alerts.
-* **Beautiful PDF Export**: Dark-accented Multi-Page PDF receipt outlining targets, logged meals, and hydration data.
-* **Account Deletion**: Cascading user erasure via Supabase database constraints.
+### 5. 📊 Backend Report Service & PDF Weekly Report
+* **FastAPI Analytics API (`/api/v1/reports/weekly`)**: 7-day adherence aggregation, macro distribution trends, and clinical narrative reviews generated by Gemini.
+* **Zero-Dependency PDF Generator (`/api/v1/reports/weekly/pdf`)**: Pure-Python PDF 1.4 binary stream generator producing downloadable clinical PDF reports directly into the user's `Downloads` folder.
+* **Interactive Frontend Report Screen**: Clickable 7-day macro charts, AI progress analysis, and direct PDF download.
 
-### 6. AI Agentic Safety Pipeline
-* **Multi-Step Coach Architecture**: The AI Coach no longer makes a single LLM call. 
-  Every response goes through a 3-step pipeline: (1) Retrieval of user health profile 
-  and 7-day meal history from Supabase (Pragmatic RAG), (2) Coach reply generation 
-  with full medical context, (3) Independent Risk Evaluator pass that checks the 
-  response against the user's medical conditions.
-* **Wellness Risk Detection**: When the Risk Evaluator detects a medically concerning 
-  pattern (e.g. consistent high-carb intake for a diabetic user, or high-sodium meals 
-  for a hypertensive user), a non-alarmist escalation alert is surfaced inline in the 
-  chat. The AI never diagnoses — it only recommends professional consultation.
-* **Affordable Doctor & Clinic Finder**: When an escalation alert is shown, a 
-  "Find Affordable Care" button appears. Users can choose government hospital or 
-  private clinic preference and see a list of nearby options with distance, contact 
-  information, and one-tap calling or directions.
+### 6. 🔔 Smarter Notification System
+* **Adaptive Meal Reminders**: Automatically learns user's routine eating hours via exponential moving average and sends personalized prompts.
+* **Streak Milestone Celebrations**: Fires celebratory notifications on 3, 5, 7, 10, 14, 30 days.
+* **Evening Streak Saver (8:30 PM)**: Scheduled daily to remind users before midnight to prevent broken streaks.
+* **AI Clinical Safety & Risk Alerts**: High-priority alert dispatch when Gemini detects dangerous metabolic patterns.
+* **Ramadan Alarms**: 30-min Sehri countdown alert, Iftar sunset alert, and night hydration alerts.
 
-### 7. Advanced Tracking & Offline Sync
-* **Offline Mode & Background Sync**: Users can now log meals and view their dashboards completely offline using SQLite. A background `SyncService` gracefully pushes all cached logs up to Supabase the moment an internet connection is reestablished, ensuring zero data loss.
-* **Health API Sync**: Integrated Apple Health & Google Fit (via Health Connect) to auto-ingest daily steps and active energy burn, overlaying this physical activity alongside food tracking on the Dashboard.
+### 7. 🛒 Smart Grocery List Generator
+* **Automated Shopping Lists**: Converts logged meals and weekly plans into categorized, checkable grocery lists with bilingual names.
 
-### 8. Predictive Coaching & Habit Score
-* **Habit Score Engine**: Computes a dynamic 30-day "Habit Score" based on daily adherence to calorie and protein targets, visualized via a responsive UI gauge and 7-Day Consistency chart.
-* **Proactive Food Swaps**: Gemini analyzes the user's recent meals and cross-references their medical profile to recommend healthier, personalized food swaps (e.g., swapping a high-carb item for a high-protein equivalent), complete with clear rationales.
+### 8. 📱 Cross-Platform Health Sync Dashboard
+* **Physical Activity Overlay**: Synchronizes daily steps, active calories burned, sleep, and heart rate across Android (Health Connect), iOS (Apple Health), and Windows/Web (simulation telemetry).
 
-### 9. Barcode Scanner & Allergy Alerts
-* **Mobile Barcode Scanning**: Integrated `mobile_scanner` to allow users to scan pre-packaged foods instantly.
-* **Nutrition API & Allergy Cross-check**: Connects to OpenFoodFacts on the backend to retrieve ingredients and allergens. Passes the ingredients through the Gemini Risk Evaluator to automatically cross-check against the user's specific dietary restrictions and medical conditions, surfacing critical warnings instantly.
+### 9. 📴 Offline-First SQLite Sync Engine
+* **Idempotent Dual-Write Cache**: SQLite local storage (`nutrisense_offline.db`) storing meal/water logs with UUID v4 `sync_id` idempotency keys preventing duplicate uploads during network reconnections.
+
+### 10. 🛡️ AI Agentic Safety Pipeline
+* **3-Step Clinical Architecture**: Retrieval (RAG) $\to$ Contextual Coaching $\to$ Independent Risk Evaluator.
+* **Care Locator**: Integrated "Find Affordable Care" button linking users to nearby government hospitals and private clinics with 1-tap call/directions.
 
 ---
 
-## 🚀 What to Implement Next (Prioritized Backlog)
+## 🧪 Current Verification Status
 
-The following backlog is prioritized by product value and developmental sequence:
-
-### Priority 1: Smart Grocery List Generator (Medium)
-* **Objective**: Convert weekly meal plans into organized, categorized shopping lists.
-* **Action Items**:
-  1. Connect the existing `grocery_list` Flutter screen stub to a new backend endpoint.
-  2. Use Gemini to extract ingredients from logged meals and group by category.
-  3. Design interactive checklists where items can be marked off.
+- **Static Analysis**: `flutter analyze` $\to$ **`No issues found!`** (0 errors, 0 warnings).
+- **Automated Test Suite**: `flutter test` $\to$ **`All tests passed!`**.
