@@ -222,13 +222,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       'logged_at': DateTime.now().toIso8601String(),
                     });
                     
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.pop(context); // close dialog
                       Navigator.pop(context); // close scanner screen
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
                     }
                   } catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       CustomToast.show(context, 'Failed to log food');
                     }
                   }

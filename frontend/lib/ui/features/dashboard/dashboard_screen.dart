@@ -9,6 +9,7 @@ import '../meal_scan/manual_log_screen.dart';
 import '../../../core/offline_cache.dart';
 import '../../../core/sync_service.dart';
 import '../../../core/health_service.dart';
+import '../../../shared/widgets/custom_toast.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -489,9 +490,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final double waterRatio = (_waterLogged / _waterGoal).clamp(0.0, 1.0);
-    final double calorieRatio = _targetCalories > 0 
-        ? (_consumedCalories / _targetCalories).clamp(0.0, 1.0)
-        : 0.0;
 
     return Scaffold(
       body: SafeArea(
@@ -553,7 +551,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     // Section B: Calorie Ring progress
                     Builder(
                       builder: (context) {
-                        int activeBurn = _activity?.activeKcal.toInt() ?? 0;
+                        int activeBurn = _activity.activeKcal.toInt();
                         int netCalories = _consumedCalories - activeBurn;
                         if (netCalories < 0) netCalories = 0;
                         double calorieRatio = _targetCalories > 0 ? (netCalories / _targetCalories) : 0.0;

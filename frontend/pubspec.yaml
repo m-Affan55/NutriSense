@@ -49,6 +49,7 @@ dependencies:
   connectivity_plus: ^6.0.0
   health: ^12.0.0
   path: ^1.9.1
+  win32_registry: ^2.1.0
 
 dev_dependencies:
   flutter_test:
