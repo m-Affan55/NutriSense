@@ -34,47 +34,52 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isRamadan = RamadanController.instance.isRamadanMode;
+    return ListenableBuilder(
+      listenable: RamadanController.instance,
+      builder: (context, _) {
+        final isRamadan = RamadanController.instance.isRamadanMode;
 
-    return Scaffold(
-      extendBody: true, // Allows body to go behind the transparent nav bar
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(40),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              height: 72,
-              decoration: BoxDecoration(
-                color: isRamadan
-                    ? const Color(0xFF0E172A).withAlpha(220)
-                    : const Color(0xFF161A22).withAlpha(180),
-                borderRadius: BorderRadius.circular(40),
-                border: Border.all(
-                  color: isRamadan
-                      ? const Color(0xFF00D2FF).withAlpha(50)
-                      : Colors.white.withAlpha(20),
-                  width: 1.5,
+        return Scaffold(
+          extendBody: true, // Allows body to go behind the transparent nav bar
+          body: IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: isRamadan
+                        ? const Color(0xFF0E172A).withAlpha(220)
+                        : const Color(0xFF161A22).withAlpha(180),
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(
+                      color: isRamadan
+                          ? const Color(0xFF00D2FF).withAlpha(50)
+                          : Colors.white.withAlpha(20),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
+                      _buildScanTab(isRamadan), // Central elevated button
+                      _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
+                      _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
+                    ],
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
-                  _buildScanTab(isRamadan), // Central elevated button
-                  _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
-                  _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
-                ],
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

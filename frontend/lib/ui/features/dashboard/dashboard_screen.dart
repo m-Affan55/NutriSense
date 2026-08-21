@@ -490,13 +490,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isRamadan = RamadanController.instance.isRamadanMode;
-    final double waterRatio = (_waterLogged / _waterGoal).clamp(0.0, 1.0);
+    return ListenableBuilder(
+      listenable: RamadanController.instance,
+      builder: (context, _) {
+        final theme = Theme.of(context);
+        final isRamadan = RamadanController.instance.isRamadanMode;
+        final double waterRatio = (_waterLogged / _waterGoal).clamp(0.0, 1.0);
 
-    return Scaffold(
-      body: RamadanBackgroundWrapper(
-        child: SafeArea(
+        return Scaffold(
+          body: RamadanBackgroundWrapper(
+            child: SafeArea(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
@@ -827,6 +830,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               ),
         ),
       ),
+    );
+      },
     );
   }
 
