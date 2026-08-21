@@ -686,10 +686,9 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                           heartRateBpm: hr,
                         );
 
-                        if (mounted) {
-                          Navigator.pop(sheetCtx);
-                          CustomToast.show(context, _t('logSuccess'), isError: false);
-                        }
+                        if (!mounted || !sheetCtx.mounted) return;
+                        Navigator.pop(sheetCtx);
+                        CustomToast.show(context, _t('logSuccess'), isError: false);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00E676),
@@ -712,6 +711,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
   // ──────────────────── STEP GOAL DIALOG ──────────────────────────
   void _showStepGoalDialog() {
     final controller = TextEditingController(text: '${_vm.stepGoal}');
+    final isRamadan = RamadanController.instance.isRamadanMode;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -742,9 +742,19 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676),
+              foregroundColor: const Color(0xFF0B101B),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text(_t('save')),
+            child: Text(
+              _t('save'),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF0B101B),
+              ),
+            ),
           ),
         ],
       ),
