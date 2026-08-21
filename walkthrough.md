@@ -1,33 +1,24 @@
-# Smart Grocery List Generator Walkthrough
+# Jameel Noori Nastaleeq Font Integration Walkthrough
 
-We have successfully implemented the **Smart Grocery List Generator** feature across the frontend and backend:
+We have successfully integrated the **Jameel Noori Nastaleeq** font to style all Urdu content inside the app:
 
 ## What Was Implemented
 
-### 1. Backend Service & Endpoint
-- **Gemini List Synthesizer** ([gemini_service.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/services/gemini_service.py)):
-  - Appended `generate_grocery_list` method to `GeminiService`.
-  - Sends the user's health profile, goals, restrictions, and recent meal logs over the past 7 days.
-  - Instructs Gemini to output a structured JSON array categorized by grocery section (Produce, Proteins, Dairy & Alternatives, Grains & Pantry, Healthy Snacks, etc.) containing specific item name recommendations and quantities.
-- **FastAPI GET Endpoint** ([meals.py](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/meals.py)):
-  - Added `@router.get("/grocery-list/{user_id}")`.
-  - Queries Supabase for the user's health profile and the list of meal names logged in the last 7 days. Passes this context to the Gemini service.
+### 1. Font Asset Ingestion
+- Created a dedicated asset directory: `frontend/assets/fonts/`
+- Downloaded the official TrueType font file `JameelNooriNastaleeq.ttf` (10.3 MB) directly from the mirrored repository asset release.
+- Added the asset declarations to the `fonts:` section inside [pubspec.yaml](file:///d:/AI%20Hackathon/NutriSense/frontend/pubspec.yaml):
+  ```yaml
+  fonts:
+    - family: JameelNooriNastaleeq
+      fonts:
+        - asset: assets/fonts/JameelNooriNastaleeq.ttf
+  ```
 
-### 2. Frontend MVVM Architecture
-- **Grocery ViewModel** ([grocery_viewmodel.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_viewmodel.dart)):
-  - Manages loaded categories, item checkbox toggles, and loading/error states.
-  - Implements offline-friendly caching via `SharedPreferences` so the list loads instantly and checkbox states persist correctly without internet.
-  - Exposes actions to add custom items, remove items, and batch clear checked items.
-- **Grocery View Interface** ([grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart)):
-  - Designed in the app's dark radial gradient styling (`#0D0F14`).
-  - Lists checkable grocery items grouped under clean, collapsible `ExpansionTile` category blocks.
-  - Highlights checked items with a strike-through and faded text.
-  - Includes a Floating Action Button allowing users to input and add custom items (with category dropdowns).
-  - Fully localized in both English and Urdu (loads the user's settings selection automatically).
-- **Settings Screen Integration** ([settings_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart)):
-  - Added a new list tile for the grocery list screen with localized translations under the "Privacy & Account" section:
-    * English: *Smart Grocery List — Get AI shopping list based on your recent meals.*
-    * Urdu: *اسمارٹ گروسری لسٹ — حالیہ کھانوں کی بنیاد پر خریداری کی فہرست بنائیں۔*
+### 2. Global Text Theme Fallbacks ([theme.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/core/theme.dart))
+- Configured a fallback list of fonts: `const fallbackFonts = ['JameelNooriNastaleeq'];`
+- Updated both `buildLightTheme()` and `buildDarkTheme()` styles. Applied `copyWith(fontFamilyFallback: fallbackFonts)` to all typography classes (`bodyLarge`, `bodyMedium`, `bodySmall`, `headlineLarge`, `headlineMedium`, `headlineSmall`, `titleLarge`, `titleMedium`, and `appBarTheme`).
+- **How it works**: Since the primary fonts (`Inter` and `Outfit`) do not contain glyphs for Urdu characters, Flutter will automatically fall back to `JameelNooriNastaleeq` whenever rendering Urdu. This ensures a beautiful Nastaleeq appearance globally for Urdu text, while English text/numbers retain their modern fonts.
 
 ---
 

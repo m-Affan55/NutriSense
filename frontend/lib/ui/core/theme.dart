@@ -10,7 +10,7 @@ const Color _textPrimaryDark = Color(0xFFFFFFFF);
 const Color _textSecondaryDark = Color(0xFF8A94A6);
 
 ThemeData buildLightTheme() {
-  // Keeping a basic light theme just in case, but dark mode is default
+  const fallbackFonts = ['JameelNooriNastaleeq'];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -19,11 +19,21 @@ ThemeData buildLightTheme() {
       primary: _primaryGreen,
       secondary: _secondaryOrange,
     ),
-    textTheme: GoogleFonts.interTextTheme(),
+    textTheme: GoogleFonts.interTextTheme().copyWith(
+      bodyLarge: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+      bodyMedium: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+      bodySmall: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+      headlineLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+      headlineMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+      headlineSmall: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+      titleLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+      titleMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+    ),
   );
 }
 
 ThemeData buildDarkTheme() {
+  const fallbackFonts = ['JameelNooriNastaleeq'];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -40,14 +50,14 @@ ThemeData buildDarkTheme() {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
     textTheme: GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme).copyWith(
-      headlineLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.bold),
-      headlineMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600),
-      headlineSmall: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600),
-      titleLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600),
-      titleMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w500),
-      bodyLarge: GoogleFonts.inter(color: _textPrimaryDark),
-      bodyMedium: GoogleFonts.inter(color: _textSecondaryDark),
-      bodySmall: GoogleFonts.inter(color: _textSecondaryDark),
+      headlineLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.bold).copyWith(fontFamilyFallback: fallbackFonts),
+      headlineMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+      headlineSmall: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+      titleLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+      titleMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w500).copyWith(fontFamilyFallback: fallbackFonts),
+      bodyLarge: GoogleFonts.inter(color: _textPrimaryDark).copyWith(fontFamilyFallback: fallbackFonts),
+      bodyMedium: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
+      bodySmall: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: _bgDark,
@@ -57,7 +67,7 @@ ThemeData buildDarkTheme() {
         color: _textPrimaryDark,
         fontSize: 20,
         fontWeight: FontWeight.w600,
-      ),
+      ).copyWith(fontFamilyFallback: fallbackFonts),
       iconTheme: const IconThemeData(color: _textPrimaryDark),
     ),
   );
