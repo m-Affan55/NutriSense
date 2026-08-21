@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -362,10 +363,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         CustomToast.show(
           context,
-          'PDF Receipt successfully saved to downloads folder.',
+          'Opening PDF Receipt...',
           isError: false,
         );
       }
+      
+      // Auto-open the file
+      await OpenFile.open(file.path);
     } catch (e) {
       if (mounted) {
         CustomToast.show(context, 'PDF generation failed: ${e.toString()}');
