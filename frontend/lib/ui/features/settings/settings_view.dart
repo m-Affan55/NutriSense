@@ -13,6 +13,7 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
+import '../health_sync/health_sync_view.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -641,6 +642,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // Health Sync Section
+                    ListTile(
+                      leading: Icon(Icons.monitor_heart_outlined,
+                          color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)),
+                      title: Text(
+                        _language == 'ur' ? 'ہیلتھ سنک' : 'Health Sync',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _language == 'ur'
+                            ? 'سرگرمی، نیند اور دل کی دھڑکن ٹریک کریں'
+                            : 'Track activity, sleep & heart rate',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const HealthSyncView()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
                     const Divider(),
                     const SizedBox(height: 16),
                     Text(_t('privacy'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),

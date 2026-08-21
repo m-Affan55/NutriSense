@@ -12,6 +12,7 @@ import '../../../core/health_service.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
+import '../health_sync/health_sync_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -933,53 +934,73 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   /// Activity card showing Health Connect / Google Fit stats.
   Widget _buildActivityCard(ThemeData theme) {
     final netCalories = _consumedCalories - _activity.activeKcal;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161A22),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.directions_run, color: theme.colorScheme.primary, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Today\'s Activity',
-                style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              // Net calories chip
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: netCalories > 0 ? Colors.orange.withAlpha(30) : Colors.green.withAlpha(30),
-                  borderRadius: BorderRadius.circular(20),
+    final seeMore = _language == 'ur' ? 'مزید دیکھیں' : 'See More';
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HealthSyncView()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161A22),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withAlpha(15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.directions_run, color: theme.colorScheme.primary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  _language == 'ur' ? 'آج کی سرگرمی' : 'Today\'s Activity',
+                  style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                child: Text(
-                  'Net: ${netCalories > 0 ? '+' : ''}$netCalories kcal',
-                  style: TextStyle(
-                    color: netCalories > 0 ? Colors.orange.shade300 : Colors.green.shade300,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                const Spacer(),
+                // Net calories chip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: netCalories > 0 ? Colors.orange.withAlpha(30) : Colors.green.withAlpha(30),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Net: ${netCalories > 0 ? '+' : ''}$netCalories kcal',
+                    style: TextStyle(
+                      color: netCalories > 0 ? Colors.orange.shade300 : Colors.green.shade300,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActivityStat(Icons.directions_walk, '${_activity.steps}', _language == 'ur' ? 'قدم' : 'Steps', Colors.blue.shade300),
+                _buildActivityStat(Icons.local_fire_department, '${_activity.activeKcal}', _language == 'ur' ? 'جلائے' : 'Burned', Colors.orange.shade300),
+                _buildActivityStat(Icons.favorite, _activity.heartRateBpm > 0 ? '${_activity.heartRateBpm}' : '--', _language == 'ur' ? 'دھڑکن' : 'BPM', Colors.red.shade300),
+                _buildActivityStat(Icons.bedtime, '${_activity.sleepHours}h', _language == 'ur' ? 'نیند' : 'Sleep', Colors.purple.shade300),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(seeMore, style: TextStyle(color: theme.colorScheme.primary, fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_ios, color: theme.colorScheme.primary, size: 12),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildActivityStat(Icons.directions_walk, '${_activity.steps}', 'Steps', Colors.blue.shade300),
-              _buildActivityStat(Icons.local_fire_department, '${_activity.activeKcal}', 'Burned', Colors.orange.shade300),
-              _buildActivityStat(Icons.bedtime, '${_activity.sleepHours}h', 'Sleep', Colors.purple.shade300),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
