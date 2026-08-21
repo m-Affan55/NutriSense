@@ -6,12 +6,14 @@ Hi Jamal, here is the comprehensive breakdown of the features i have integrated,
 we have successfully resolved the following:
 
 - **Clinic Finder Update:** Fixed and enhanced the Clinic Finder feature to use GPS and dynamically fetch local hospitals via the Overpass API, with proper Lahore fallback options.
-- **AI Manual Log Handling:** Fixed the AI macros estimator on the manual log screen. If the AI limit is exceeded or an exception occurs, it now cleanly shows an error message prompting the user to fill the fields manually instead of silently failing.
+- **AI Manual Log Handling:** Added proper exception handling at the AI manual logs filling field. If the AI limit is exceeded or an exception occurs, it now prompts the user to fill the fields manually instead of silently failing.
 - **Form Field Validation:** Fixed the form field validators to correctly parse and save decimal values when logging meals manually.
 - **Export Health Data (PDF):** The export feature now correctly utilizes the `path_provider` package to safely save reports. This resolves previous crashes on Windows/Android related to saving files. It now successfully opens the phone's default PDF viewer using the `open_file` package.
 - **Medical Escalation:** Fixed issues with the medical escalation feature in the AI coach chat to properly trigger emergency alerts.
 - **Duplicate Meals Bug:** Resolved the critical issue where meals were being saved twice in the database.
-- **Ramadan Mode Enhancements:** Fixed the log streak alert so that Ramadan mode explicitly checks for halal-only food guidelines to keep it targeted for Muslim users.
+- **Ramadan Mode Enhancements:** Fixed the Ramadan mode toggle so it is only available/enabled for Muslims, which we check via the "Halal only" dietary selection.
+- **Alert Streaks Fixed:** Fixed the log streak alerts so they only pop up once for the day, not for every single meal.
+- **Terms and Conditions:** Added the terms and conditions.
 - **UI & Visualization:** Improved the stats bar chart visuals to be cleaner and more readable.
 
 ## ✅ New Features Implemented
@@ -29,5 +31,3 @@ While the core logic is in place, we still need to rigorously test the following
 - **Camera Feature Hallucinations:** The camera scanning feature for meals needs rigorous testing, as the underlying AI model has a tendency to hallucinate macros or ingredients. 
 - **Habit Score Monitoring:** Keep a close eye on the Habit Score metric to ensure it is accurately updating and punishing/rewarding the correct behaviors over time.
 - **Family Feature:** The family connectivity feature needs to be thoroughly tested for edge cases.
-
-Please pull the `feature_enhancements` branch to get all these updates and help verify these untested edge cases!
