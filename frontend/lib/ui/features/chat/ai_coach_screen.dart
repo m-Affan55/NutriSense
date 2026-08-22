@@ -15,6 +15,7 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import 'clinic_finder_screen.dart';
+import 'voice_mode_overlay.dart';
 
 enum VoiceAssistantState {
   idle,
@@ -46,6 +47,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   final FlutterTts _flutterTts = FlutterTts();
   VoiceAssistantState _voiceState = VoiceAssistantState.idle;
   bool _isVoiceModeOn = false;
+  bool _isVoiceModeOverlayVisible = false;
   Timer? _silenceTimer;
   bool _isSttInitialized = false;
 
@@ -221,6 +223,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void _toggleVoiceMode() {
     setState(() {
       _isVoiceModeOn = !_isVoiceModeOn;
+      _isVoiceModeOverlayVisible = _isVoiceModeOn;
     });
     
     if (_isVoiceModeOn) {
@@ -446,10 +449,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: RamadanBackgroundWrapper(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
+      body: Stack(
+        children: [
+          RamadanBackgroundWrapper(
+            child: SafeArea(
+              bottom: false,
+              child: Column(
             children: [
               // Header
               Padding(
@@ -705,6 +710,24 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
             ],
           ),
         ),
+      ),
+      if (_isVoiceModeOverlayVisible)
+        VoiceModeOverlay(
+          voiceState: _voiceState,
+          recognizedText: _controller.text,
+          onClose: () {
+            setState(() {
+              _isVoiceModeOn = false;
+              _isVoiceModeOverlayVisible = false;
+            });
+            _stopVoiceFeaturesCleanly();
+          },
+          onStopAudio: () {
+            _flutterTts.stop();
+            setState(() => _voiceState = VoiceAssistantState.idle);
+          },
+        ),
+      ],
       ),
     );
   }

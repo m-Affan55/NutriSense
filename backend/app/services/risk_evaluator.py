@@ -10,7 +10,7 @@ class RiskEvaluationResponse(BaseModel):
 
 def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_message: str = "") -> dict:
     # Heuristic fast check for acute critical symptoms in message
-    msg_lower = (user_message + " " + coach_reply).lower()
+    msg_lower = user_message.lower()
     critical_keywords = ["350", "400", "500", "dizzy", "faint", "chest pain", "hypoglycemia", "severe pain", "ambulance", "emergency", "بے ہوش", "چکر", "سینے میں درد"]
     has_acute_symptom = any(k in msg_lower for k in critical_keywords)
 
