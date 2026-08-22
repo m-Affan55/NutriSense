@@ -71,7 +71,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
-                      _buildAddMealTab(isRamadan), // Central elevated button
+                      _buildNavItem(1, Icons.restaurant_menu_rounded, Icons.restaurant_menu_outlined, 'Meals', isRamadan),
                       _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
                       _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
                     ],
@@ -126,38 +126,6 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAddMealTab(bool isRamadan) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = 1;
-        });
-      },
-      child: Container(
-        height: 56,
-        width: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: isRamadan
-                ? [const Color(0xFF00D2FF), const Color(0xFFFFD166)]
-                : [const Color(0xFF00E676), const Color(0xFF00BCD4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(80),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        child: const Icon(Icons.restaurant_menu_rounded, color: Colors.black, size: 28),
       ),
     );
   }
