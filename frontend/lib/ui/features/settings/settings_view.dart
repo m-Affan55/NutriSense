@@ -386,14 +386,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_t('delConfirmTitle')),
-        content: Text(_t('delConfirmBody')),
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(_t('delConfirmTitle'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(_t('delConfirmBody'), style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_t('delCancelBtn'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(_t('delCancelBtn'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(_t('delConfirmBtn')),
+            child: Text(_t('delConfirmBtn'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
