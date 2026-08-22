@@ -59,5 +59,18 @@
         </intent>
         <!-- Required to check if Health Connect is installed on the device -->
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Required by url_launcher to check for map and phone apps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
     </queries>
 </manifest>
