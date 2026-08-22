@@ -219,18 +219,19 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         ),
                       const SizedBox(height: 16),
                       
-                      // Standard AI Disclaimer
+                      // AI Disclaimer when confidence is low
+                      if (data['recognition_confidence'] == 'low')
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withAlpha(30),
+                            color: Colors.orange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.orange.withAlpha(100)),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.info_outline, color: Colors.orange),
+                              const Icon(Icons.info_outline, color: Colors.orange, size: 18),
                               const SizedBox(width: 8),
                               const Expanded(
                                 child: Text('AI is unsure about this food. Tap the pencil icon above to correct it.', style: TextStyle(fontSize: 12)),

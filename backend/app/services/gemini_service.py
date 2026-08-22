@@ -1,39 +1,24 @@
 import base64
 import json
-from google import genai
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
+from app.services.gemini_pool import gemini_pool
 
 class GeminiService:
     @staticmethod
     def scan_meal(image_bytes: bytes, mime_type: str, profile: dict = None) -> dict:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
-        profile_context = ""
-        if profile:
-            profile_context = f"""
-            The user's health profile:
-            - Age: {profile.get('age', 'N/A')}
-            - Goal: {profile.get('goal', 'N/A')}
-            - Daily Calorie Target: {profile.get('daily_calorie_target', 'N/A')} kcal
-            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
-            - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
-            """
-            
-        prompt = f"""
-        Analyze the uploaded photo of a meal.
-        {profile_context}
-        Perform the following:
-        1. Identify all food items visible on the plate.
-        2. Estimate the portions and weights in grams.
-        3. Calculate the calories and macronutrients (protein_g, carbs_g, fat_g in grams) for each item and the total meal.
-        4. Cross-reference the identified ingredients against the user's medical conditions (e.g. high sodium for blood pressure, sugar content for diabetes) and dietary restrictions (e.g. vegetarian, halal) to generate safety warnings if any conflict occurs.
-        5. Provide helpful coaching suggestions matching their goal (e.g. fat loss, muscle gain).
-        Note: The schema requires a recognition_confidence (high/low), local_name, and cooking_method_note. Provide reasonable values.
+        system_instruction = """
+        You are a precise food and meal image recognition system.
+        Look directly at the visual elements in the photograph and identify the authentic name of the dish shown.
+        Base your recognition strictly on the actual food visible in the image.
+        Provide accurate portion sizes in grams, calories, and macronutrients (protein_g, carbs_g, fat_g).
+        Set recognition_confidence to 'high' if the image is clear and identifiable, or 'low' if blurry or unclear.
         """
+
+        prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[
                 types.Part.from_bytes(
@@ -43,6 +28,8 @@ class GeminiService:
                 prompt
             ],
             config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.0,
                 response_mime_type="application/json",
                 response_schema=MealScanResponse,
             ),
@@ -58,8 +45,6 @@ class GeminiService:
         if not profile:
             return []
             
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         prompt = f"""
         You are an expert nutritionist and medical safety evaluator.
         
@@ -82,7 +67,7 @@ class GeminiService:
         []
         """
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[prompt],
             config=types.GenerateContentConfig(
@@ -97,8 +82,6 @@ class GeminiService:
 
     @staticmethod
     def estimate_food_macros(query: str) -> dict:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         prompt = f"""
         You are an expert nutritionist database. 
         The user searched for the following food item: "{query}".
@@ -115,7 +98,7 @@ class GeminiService:
         - "fat_g": Float
         """
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[prompt],
             config=types.GenerateContentConfig(
@@ -126,8 +109,6 @@ class GeminiService:
 
     @staticmethod
     def generate_coaching_summary(score: float, profile: dict = None) -> str:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -144,7 +125,7 @@ class GeminiService:
         reflecting on their score and giving one piece of actionable advice tailored to their profile.
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
             )
@@ -159,8 +140,6 @@ class GeminiService:
 
     @staticmethod
     def generate_food_swaps(recent_meals: list[str], profile: dict = None) -> list[dict]:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -185,7 +164,7 @@ class GeminiService:
         - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
@@ -198,8 +177,6 @@ class GeminiService:
 
     @staticmethod
     def generate_grocery_list(recent_meals: list[str], profile: dict = None) -> list[dict]:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -226,7 +203,7 @@ class GeminiService:
             - "checked": boolean (always false)
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
@@ -251,4 +228,3 @@ class GeminiService:
                     ]
                 }
             ]
-

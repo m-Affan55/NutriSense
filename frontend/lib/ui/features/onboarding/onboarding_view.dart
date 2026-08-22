@@ -394,6 +394,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               try {
                 // Try requesting permission natively
                 final success = await HealthService.instance.requestPermissions();
+                if (!mounted) return;
                 if (success) {
                   CustomToast.show(context, 'Health Tracking Enabled!');
                   _nextPage(); // auto advance on success
@@ -401,6 +402,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                   throw Exception('Permission denied or app missing');
                 }
               } catch (e) {
+                if (!mounted) return;
                 // If it fails (likely due to missing Health Connect), show prompt
                 if (Platform.isAndroid) {
                   _showInstallPrompt(

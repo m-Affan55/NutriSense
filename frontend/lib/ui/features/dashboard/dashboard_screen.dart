@@ -573,10 +573,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       decoration: BoxDecoration(
         color: const Color(0xFF161A22),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5), width: 1.5),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.2),
+            color: theme.colorScheme.primary.withValues(alpha: 0.2),
             blurRadius: 30,
             spreadRadius: 5,
           )
@@ -1006,7 +1006,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                     child: Container(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 0.6),
                       child: Center(
                         child: _buildOnboardingOverlayPopup(theme),
                       ),

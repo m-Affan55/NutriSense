@@ -19,6 +19,7 @@ import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
 import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
+import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -385,14 +386,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_t('delConfirmTitle')),
-        content: Text(_t('delConfirmBody')),
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(_t('delConfirmTitle'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(_t('delConfirmBody'), style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(_t('delCancelBtn'))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(_t('delCancelBtn'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(_t('delConfirmBtn')),
+            child: Text(_t('delConfirmBtn'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1130,6 +1140,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const FamilyView()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Nearby Clinics & Hospitals Section
+                    ListTile(
+                      leading: const Icon(Icons.local_hospital_outlined, color: Colors.redAccent),
+                      title: Text(
+                        _language == 'ur' ? 'قریبی کلینکس اور ہسپتال' : 'Nearby Clinics & Hospitals',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _language == 'ur'
+                            ? 'سرکاری و نجی طبی مراکز اور ہنگامی نگہداشت'
+                            : 'Find subsidized & emergency medical care near you',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ClinicFinderScreen()),
                         );
                       },
                     ),

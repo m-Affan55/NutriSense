@@ -166,9 +166,8 @@ class ReportService:
     def _generate_ai_narrative(user_info: dict, health_profile: dict, stats: dict, daily_stats: list, language: str) -> str:
         """Invokes Gemini to create a rich weekly progress analysis."""
         try:
-            from google import genai
             from google.genai import types
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            from app.services.gemini_pool import gemini_pool
 
             conditions = ', '.join(health_profile.get('medical_conditions', [])) or 'None'
             allergies = ', '.join(health_profile.get('allergens', [])) or 'None'
@@ -210,7 +209,7 @@ class ReportService:
             3. 🎯 3 Key Action Steps for Next Week
             """
 
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(

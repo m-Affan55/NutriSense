@@ -8,11 +8,16 @@ class RiskEvaluationResponse(BaseModel):
     level: str  # 'none', 'warning', 'critical'
     message: str # the text to show to the user, if warning/critical
 
-def evaluate_health_risk(coach_reply: str, profile: dict, meals: list) -> dict:
-    if not profile or not profile.get("medical_conditions"):
+def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_message: str = "") -> dict:
+    # Heuristic fast check for acute critical symptoms in message
+    msg_lower = (user_message + " " + coach_reply).lower()
+    critical_keywords = ["350", "400", "500", "dizzy", "faint", "chest pain", "hypoglycemia", "severe pain", "ambulance", "emergency", "بے ہوش", "چکر", "سینے میں درد"]
+    has_acute_symptom = any(k in msg_lower for k in critical_keywords)
+
+    if not (profile and profile.get("medical_conditions")) and not has_acute_symptom:
         return {"level": "none", "message": ""}
         
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    from app.services.gemini_pool import gemini_pool
     
     meals_context = ""
     if meals:
@@ -23,34 +28,34 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list) -> dict:
         
     system_instruction = f"""
     You are an independent medical safety evaluator agent for NutriSense.
-    Your job is to read the AI Coach's generated reply, the user's medical conditions, and their recent food intake, and decide if there is a 'warning' or 'critical' health risk that warrants escalation.
+    Your job is to read the user's message, the AI Coach's reply, the user's medical conditions, and their recent food intake, and decide if there is a 'warning' or 'critical' health risk that warrants escalation.
 
-    User's Medical Conditions: {', '.join(profile.get('medical_conditions', []))}
+    User's Message: "{user_message}"
+    User's Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'Not specified (evaluate from message)'}
     User's Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
     {meals_context}
 
-    Coach's reply to evaluate:
+    Coach's reply:
     \"\"\"
     {coach_reply}
     \"\"\"
 
     RULES:
-    1. If there is NO direct conflict with their medical conditions, return level="none" and message="".
-    2. If there is a pattern of poor choices that conflict with their medical condition (e.g. high sugar for a diabetic, high sodium for hypertension), return level="warning" and a concise message (under 30 words) suggesting they consult a professional.
-    3. If there is a severe, immediate risk (e.g. allergic reaction), return level="critical" and a strong message.
-    4. DO NOT provide medical diagnoses.
+    1. If the user mentions very high/low blood glucose (e.g. >= 300 mg/dL), severe dizziness, or chest tightness, return level="critical" or "warning" and an urgent safety warning.
+    2. If there is a pattern of poor choices that conflict with their medical condition (e.g. high sugar for a diabetic, high sodium for hypertension), return level="warning".
+    3. If there is NO conflict, return level="none" and message="".
+    4. Keep message under 30 words. DO NOT provide medical diagnoses.
     """
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=[system_instruction],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=RiskEvaluationResponse,
-        ),
-    )
-    
     try:
+        response = gemini_pool.generate_content(
+            contents=[system_instruction],
+            model="gemini-3.6-flash",
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=RiskEvaluationResponse,
+            ),
+        )
         data = json.loads(response.text)
         level = data.get("level", "none").lower()
         if level not in ["none", "warning", "critical"]:
@@ -61,8 +66,9 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list) -> dict:
         }
     except Exception as e:
         print(f"Risk Evaluator Error: {str(e)}")
-        # Fallback safety alert if API fails but user has conditions
-        return {
-            "level": "warning", 
-            "message": "Automated safety check temporarily unavailable. Please consult your doctor before following this advice given your medical conditions."
-        }
+        if has_acute_symptom:
+            return {
+                "level": "warning",
+                "message": "Noticeable health symptoms or blood sugar spike reported. Please consult a doctor immediately."
+            }
+        return {"level": "none", "message": ""}
