@@ -1,6 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from pydantic import BaseModel
 from app.services.gemini_service import GeminiService
+from app.services.gemini_pool import RateLimitExceeded
+from app.services.usda_service import UsdaService
 from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
 
@@ -28,7 +30,44 @@ async def scan_meal(
             profile=profile
         )
         
+        if not scan_result.get("is_food", True):
+            raise HTTPException(status_code=400, detail="NO_FOOD_DETECTED")
+            
+        # 4. Fetch USDA macros for each item and recalculate totals
+        total_calories = 0.0
+        total_protein = 0.0
+        total_carbs = 0.0
+        total_fat = 0.0
+        
+        for item in scan_result.get("items", []):
+            usda_macros = await UsdaService.fetch_macros_per_100g(item.get("name", ""))
+            
+            # Pass the baseline to frontend so it can recalculate live when grams change
+            item["macros_per_100g"] = usda_macros 
+            
+            grams = float(item.get("estimated_weight_g", 0))
+            ratio = grams / 100.0
+            
+            item["calories"] = round(usda_macros["calories"] * ratio)
+            item["protein_g"] = round(usda_macros["protein_g"] * ratio, 1)
+            item["carbs_g"] = round(usda_macros["carbs_g"] * ratio, 1)
+            item["fat_g"] = round(usda_macros["fat_g"] * ratio, 1)
+            
+            total_calories += item["calories"]
+            total_protein += item["protein_g"]
+            total_carbs += item["carbs_g"]
+            total_fat += item["fat_g"]
+            
+        scan_result["total_calories"] = round(total_calories)
+        scan_result["total_protein_g"] = round(total_protein, 1)
+        scan_result["total_carbs_g"] = round(total_carbs, 1)
+        scan_result["total_fat_g"] = round(total_fat, 1)
+        
         return scan_result
+    except RateLimitExceeded:
+        raise HTTPException(status_code=429, detail="RATE_LIMITED")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

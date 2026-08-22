@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -23,6 +24,8 @@ class ScanMealScreen extends StatefulWidget {
 class _ScanMealScreenState extends State<ScanMealScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+  String _loadingText = 'AI Analyzing Meal Plate...';
+  Timer? _loadingTimer;
   File? _selectedImage;
   String _language = 'en';
 
@@ -83,12 +86,39 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
     }
   }
 
+  void _startLoadingPhases() {
+    setState(() {
+      _isLoading = true;
+      _loadingText = 'Uploading image...';
+    });
+    
+    int phase = 0;
+    final phases = [
+      'Analyzing image with AI...',
+      'Detecting objects & patterns...',
+      'Consulting nutrition database...',
+      'Finalizing results...'
+    ];
+    
+    _loadingTimer?.cancel();
+    _loadingTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+      if (!mounted || !_isLoading) {
+        timer.cancel();
+        return;
+      }
+      if (phase < phases.length) {
+        setState(() {
+          _loadingText = phases[phase];
+        });
+        phase++;
+      }
+    });
+  }
+
   Future<void> _uploadAndScanImage() async {
     if (_selectedImage == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    _startLoadingPhases();
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -107,6 +137,12 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
+      if (response.statusCode == 400 && response.body.contains("NO_FOOD_DETECTED")) {
+        throw Exception('No food detected in this image. Please take a clear picture of your meal.');
+      }
+      if (response.statusCode == 429) {
+        throw Exception('Our AI is a bit busy right now. Please try again in a few seconds.');
+      }
       if (response.statusCode != 200) {
         throw Exception('Server returned status code ${response.statusCode}: ${response.body}');
       }
@@ -121,6 +157,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         CustomToast.show(context, 'Plate analysis failed: ${e.toString()}');
       }
     } finally {
+      _loadingTimer?.cancel();
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -388,14 +425,103 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           final displayName = _language == 'ur' && item['local_name'] != null 
                               ? item['local_name'] 
                               : item['name'] ?? 'Ingredient';
+                          
+                          // Convert grams to an integer for the text field
+                          final initialGrams = (item['estimated_weight_g'] as num).toInt();
+                          final controller = TextEditingController(text: initialGrams.toString());
 
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            subtitle: Text('${item['estimated_weight_g']}g • ${item['calories']} kcal'),
-                            trailing: Text(
-                              'P:${item['protein_g']}g F:${item['fat_g']}g C:${item['carbs_g']}g',
-                              style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(150), fontSize: 11),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'P:${item['protein_g']}g F:${item['fat_g']}g C:${item['carbs_g']}g',
+                                        style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(180), fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 1,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('${item['calories']} kcal', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange)),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          SizedBox(
+                                            width: 45,
+                                            height: 28,
+                                            child: TextField(
+                                              controller: controller,
+                                              keyboardType: TextInputType.number,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              decoration: InputDecoration(
+                                                contentPadding: EdgeInsets.zero,
+                                                filled: true,
+                                                fillColor: theme.colorScheme.surface,
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                              ),
+                                              onChanged: (val) {
+                                                final newGrams = double.tryParse(val);
+                                                if (newGrams != null) {
+                                                  setDialogState(() {
+                                                    item['estimated_weight_g'] = newGrams;
+                                                    // Recalculate totals
+                                                    double tCal = 0, tPro = 0, tCarb = 0, tFat = 0;
+                                                    for (var i in items) {
+                                                      final double g = (i['estimated_weight_g'] as num).toDouble();
+                                                      final Map<String, dynamic> macros100g = i['macros_per_100g'] ?? {
+                                                        "calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0
+                                                      };
+                                                      final double r = g / 100.0;
+                                                      
+                                                      i['calories'] = (macros100g['calories'] * r).round();
+                                                      i['protein_g'] = double.parse((macros100g['protein_g'] * r).toStringAsFixed(1));
+                                                      i['carbs_g'] = double.parse((macros100g['carbs_g'] * r).toStringAsFixed(1));
+                                                      i['fat_g'] = double.parse((macros100g['fat_g'] * r).toStringAsFixed(1));
+                                                      
+                                                      tCal += i['calories'];
+                                                      tPro += i['protein_g'];
+                                                      tCarb += i['carbs_g'];
+                                                      tFat += i['fat_g'];
+                                                    }
+                                                    data['total_calories'] = tCal.round();
+                                                    data['total_protein_g'] = double.parse(tPro.toStringAsFixed(1));
+                                                    data['total_carbs_g'] = double.parse(tCarb.toStringAsFixed(1));
+                                                    data['total_fat_g'] = double.parse(tFat.toStringAsFixed(1));
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text('g', style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(150), fontSize: 12)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -529,7 +655,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                     const CircularProgressIndicator(),
                     const SizedBox(height: 24),
                     Text(
-                      'AI Analyzing Meal Plate...',
+                      _loadingText,
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
