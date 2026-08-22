@@ -437,77 +437,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  void _showAddMealOptions() {
-    final theme = Theme.of(context);
-    
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF161A22),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        final optionTitle = _language == 'ur' ? 'غذا شامل کریں' : 'Add Meal Options';
-        final scanLabel = _language == 'ur' ? 'غذا اسکین کریں' : 'Scan Meal with AI';
-        final manualLabel = _language == 'ur' ? 'خود غذا لاگ کریں' : 'Log Meal Manually';
-        
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  optionTitle, 
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.camera_alt, color: Color(0xFF00E676)),
-                  title: Text(scanLabel, style: const TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    MainNavigationScreen.of(context).currentIndex = 1;
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.edit_note, color: Colors.blueAccent),
-                  title: Text(manualLabel, style: const TextStyle(color: Colors.white)),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    final reload = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(builder: (_) => const ManualLogScreen()),
-                    );
-                    if (reload == true) {
-                      _loadData();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  void _showAddMealOptions() async {
+    final reload = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ManualLogScreen()),
     );
+    if (reload == true) {
+      _loadData();
+    }
   }
 
   String _getFormattedDate() {
     final now = DateTime.now();
     final weekdaysEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final monthsEn = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    
     final weekdaysUr = ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'];
-    final monthsUr = [
-      'جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون',
-      'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'
-    ];
+    final monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final monthsUr = ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'];
 
     if (_language == 'ur') {
       return '${weekdaysUr[now.weekday - 1]}، ${now.day} ${monthsUr[now.month - 1]} ${now.year}';
@@ -535,12 +479,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       'en': {
         'greeting': '$greeting, $_userName',
         'todayMeals': 'Today\'s Meals',
-        'addMeal': 'Add Meal',
-        'noMeals': 'No meals logged today. Use Scan Meal to log!',
+        'addMeal': 'Log Meal',
+        'noMeals': 'No meals logged today. Tap Log Meal with AI to begin!',
         'hydration': 'Hydration',
         'mlLogged': '$_waterLogged ml logged',
         'goalText': 'Goal: $_waterGoal ml',
-        'scanMeal': 'Scan Meal',
+        'scanMeal': 'Log Meal with AI',
         'protein': 'Protein',
         'carbs': 'Carbs',
         'fat': 'Fat',
@@ -551,11 +495,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         'greeting': '$greeting، $_userName',
         'todayMeals': 'آج کی غذائیں',
         'addMeal': 'غذا شامل کریں',
-        'noMeals': 'آج کوئی غذا شامل نہیں کی گئی۔ لاگ کرنے کے لیے غذا اسکین کریں!',
+        'noMeals': 'آج کوئی غذا شامل نہیں کی گئی۔ لاگ کرنے کے لیے غذا لاگ کریں!',
         'hydration': 'پانی کا استعمال',
         'mlLogged': '$_waterLogged ملی لیٹر لاگ کیا گیا',
         'goalText': 'ہدف: $_waterGoal ملی لیٹر',
-        'scanMeal': 'غذا اسکین کریں',
+        'scanMeal': 'غذا لاگ کریں',
         'protein': 'پروٹین',
         'carbs': 'کاربس',
         'fat': 'چربی',
@@ -986,7 +930,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.camera_alt, color: Colors.white),
+                                    const Icon(Icons.restaurant, color: Colors.white),
                                     const SizedBox(width: 8),
                                     Text(_t('scanMeal'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                                   ],
