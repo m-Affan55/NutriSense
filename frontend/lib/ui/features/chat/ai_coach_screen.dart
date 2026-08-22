@@ -810,13 +810,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              message,
-              style: TextStyle(
-                color: isUser ? Colors.white : Colors.white.withAlpha(220),
-                height: 1.4,
-              ),
-            ),
+            _buildFormattedMessage(message, isUser, theme),
             if (escalationAlert != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -893,6 +887,141 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFormattedMessage(String message, bool isUser, ThemeData theme) {
+    final lines = message.split('\n');
+    List<Widget> lineWidgets = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i].trimRight();
+      if (line.trim().isEmpty) {
+        lineWidgets.add(const SizedBox(height: 6));
+        continue;
+      }
+
+      // Check for bullet point (* or -)
+      bool isBullet = false;
+      if (line.trimLeft().startsWith('* ') || line.trimLeft().startsWith('- ') || line.trimLeft().startsWith('• ')) {
+        isBullet = true;
+        line = line.trimLeft();
+        line = line.substring(2).trimLeft();
+      } else if (RegExp(r'^\d+\.\s').hasMatch(line.trimLeft())) {
+        final trimmed = line.trimLeft();
+        final match = RegExp(r'^(\d+\.)\s').firstMatch(trimmed)!;
+        final prefix = match.group(1)!;
+        final content = trimmed.substring(match.end).trimLeft();
+        lineWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$prefix ',
+                  style: TextStyle(
+                    color: isUser ? Colors.white70 : const Color(0xFF00D2FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+                Expanded(child: _buildInlineFormattedText(content, isUser, theme)),
+              ],
+            ),
+          ),
+        );
+        continue;
+      }
+
+      if (isBullet) {
+        lineWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '• ',
+                  style: TextStyle(
+                    color: isUser ? Colors.white70 : const Color(0xFF00D2FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                Expanded(child: _buildInlineFormattedText(line, isUser, theme)),
+              ],
+            ),
+          ),
+        );
+      } else {
+        lineWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: _buildInlineFormattedText(line, isUser, theme),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lineWidgets,
+    );
+  }
+
+  Widget _buildInlineFormattedText(String text, bool isUser, ThemeData theme) {
+    final baseColor = isUser ? Colors.white : Colors.white.withValues(alpha: 0.92);
+    final boldColor = isUser ? Colors.white : const Color(0xFFFFD166);
+
+    List<InlineSpan> spans = [];
+    final pattern = RegExp(r'\*\*(.*?)\*\*|\*(.*?)\*');
+    int lastMatchEnd = 0;
+
+    for (final match in pattern.allMatches(text)) {
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastMatchEnd, match.start),
+          style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.4),
+        ));
+      }
+
+      if (match.group(1) != null) {
+        // Bold (**text**)
+        spans.add(TextSpan(
+          text: match.group(1),
+          style: TextStyle(
+            color: boldColor,
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
+        ));
+      } else if (match.group(2) != null) {
+        // Italic (*text*)
+        spans.add(TextSpan(
+          text: match.group(2),
+          style: TextStyle(
+            color: baseColor,
+            fontStyle: FontStyle.italic,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
+        ));
+      }
+
+      lastMatchEnd = match.end;
+    }
+
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastMatchEnd),
+        style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.4),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
     );
   }
 
