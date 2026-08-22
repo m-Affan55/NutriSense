@@ -77,17 +77,20 @@ class GeminiService:
         []
         """
         
-        response = gemini_pool.generate_content(
-            model='gemini-3.6-flash',
-            contents=[prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
-        )
-        
         try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+                max_retries=1, # Fail fast so we don't timeout the barcode scanner
+            )
+            
             return json.loads(response.text)
-        except Exception:
+        except Exception as e:
+            # Silently fallback if AI is down or rate-limited, don't break the scanner
+            print(f"Allergy evaluation failed: {e}")
             return []
 
     @staticmethod

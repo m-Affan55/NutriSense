@@ -34,23 +34,6 @@ class BarcodeService:
             except Exception:
                 pass
 
-        # 3. Fallback to Gemini AI estimation for barcodes
-        try:
-            gemini_result = GeminiService.estimate_food_macros(f"Packaged food with barcode {barcode}")
-            if gemini_result and gemini_result.get("name") and gemini_result.get("calories", 0) > 0:
-                return {
-                    "product_name": gemini_result.get("name", "Packaged Food"),
-                    "calories": round(gemini_result.get("calories", 0)),
-                    "protein_g": round(gemini_result.get("protein_g", 0), 1),
-                    "carbs_g": round(gemini_result.get("carbs_g", 0), 1),
-                    "fat_g": round(gemini_result.get("fat_g", 0), 1),
-                    "ingredients": "Nutritional estimate based on standard food database.",
-                    "allergens": "Check packaging label",
-                    "image_url": None
-                }
-        except Exception:
-            pass
-
         raise HTTPException(status_code=404, detail="Product not found in OpenFoodFacts database.")
 
     @staticmethod

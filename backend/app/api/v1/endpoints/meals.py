@@ -17,7 +17,7 @@ async def scan_meal(
         # 1. Fetch user's health profile to get conditions and allergies context
         supabase = get_supabase_admin_client()
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
-        profile = profile_response.data
+        profile = profile_response.data if profile_response else None
         
         # 2. Read image details
         image_bytes = await image.read()
@@ -84,17 +84,27 @@ async def scan_barcode(req: BarcodeRequest):
         # 1. Fetch user's health profile
         supabase = get_supabase_admin_client()
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-        profile = profile_response.data
+        profile = profile_response.data if profile_response else None
         
-        # 2. Identify product and calculate nutritional breakdown with Gemini AI
-        product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
+        # 2. Fetch product data from OpenFoodFacts via BarcodeService
+        product_data = await BarcodeService.fetch_product_data(req.barcode)
+        
+        # 3. Evaluate allergies using Gemini Service
+        allergy_warnings = GeminiService.evaluate_ingredients(
+            ingredients=product_data.get("ingredients", ""),
+            allergens=product_data.get("allergens", ""),
+            profile=profile
+        )
         
         return {
             "product": product_data,
-            "allergy_warnings": product_data.get("allergy_warnings", [])
+            "allergy_warnings": allergy_warnings
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Unable to identify food item at this moment.")
+        print(f"ERROR IN SCAN-BARCODE: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/weekly-report")

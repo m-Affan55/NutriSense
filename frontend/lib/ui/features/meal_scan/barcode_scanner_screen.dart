@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +7,7 @@ import '../../../core/api_client.dart';
 import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import 'manual_log_screen.dart';
+import '../../../core/reminder_manager.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -49,6 +49,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     });
     
     try {
+      try {
+        await _controller.stop();
+      } catch (_) {
+        // Ignore camera stop errors, this happens if already stopped on Android
+      }
+      
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('Not logged in');
       
@@ -61,32 +67,38 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           'barcode': cleanCode,
           'user_id': user.id,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
-          _showProductResultDialog(data);
+          await _showProductResultDialog(data);
         }
       } else {
         throw Exception('Unable to analyze item');
       }
     } catch (e) {
       if (mounted) {
+        CustomToast.show(context, 'Debug: $e');
         _failedBarcodes.add(cleanCode);
-        _showNotFoundDialog(cleanCode);
+        await _showNotFoundDialog(cleanCode);
       }
     } finally {
       if (mounted) {
         setState(() {
           _isProcessing = false;
         });
+        try {
+          await _controller.start();
+        } catch (e) {
+          // Non-fatal, camera restart failed
+        }
       }
     }
   }
   
-  void _showNotFoundDialog(String barcode) {
-    showDialog(
+  Future<void> _showNotFoundDialog(String barcode) async {
+    return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
@@ -98,7 +110,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller.start();
             },
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
@@ -121,13 +132,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
   
-  void _showProductResultDialog(Map<String, dynamic> data) {
+  Future<void> _showProductResultDialog(Map<String, dynamic> data) async {
     String selectedMealType = 'snack';
     final product = data['product'] ?? {};
     final List<dynamic> warnings = data['allergy_warnings'] ?? [];
     final theme = Theme.of(context);
     
-    showDialog(
+    return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
@@ -152,6 +163,20 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (product['image_url'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          product['image_url'],
+                          height: 140,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const SizedBox(height: 0),
+                        ),
+                      ),
+                    ),
                   if (warnings.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -186,7 +211,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedMealType,
+                    initialValue: selectedMealType,
                     dropdownColor: const Color(0xFF1E232E),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -226,6 +251,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Text('Ingredients', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text(product['ingredients'] ?? 'Not listed', style: TextStyle(fontSize: 13, color: Colors.white70)),
                 ],
               ),
             ),
@@ -233,7 +262,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _controller.start();
                 },
                 child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
@@ -252,16 +280,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         'total_fat_g': (product['fat_g'] as num?)?.toInt() ?? 0,
                         'logged_at': DateTime.now().toIso8601String(),
                       });
+                      
+                      await ReminderManager.recordMealLogged(selectedMealType, DateTime.now());
+                      await ReminderManager.updateAndCheckStreak();
                     }
                     
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.pop(context);
-                      Navigator.pop(context, true);
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
                       SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food');
                     }
                   } catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       CustomToast.show(context, 'Failed to log food');
                     }
                   }
@@ -331,8 +361,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  void _showManualInputDialog() {
-    showModalBottomSheet(
+  Future<void> _showManualInputDialog() async {
+    await _controller.stop();
+    if (!mounted) return;
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF161A22),
@@ -401,6 +433,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         ),
       ),
     );
+    if (mounted && !_isProcessing) {
+      _controller.start();
+    }
   }
 
   @override
@@ -443,6 +478,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildBarcodeIcon(color: theme.colorScheme.primary, size: 64),
@@ -454,20 +490,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'You can still lookup any product barcode by entering its number manually.',
+                        'You can still lookup any product barcode by using the button at the bottom of the screen.',
                         style: TextStyle(color: Colors.white.withAlpha(160), fontSize: 13),
                         textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _showManualInputDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Enter Barcode Manually', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
