@@ -13,6 +13,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../navigation/main_navigation_screen.dart';
+import 'barcode_scanner_screen.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -29,13 +30,6 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   String? _selectedFamilyMemberId = FamilyViewModel.instance.activeMember?.id;
   bool _isLogging = false;
   String _language = 'en';
-
-  // Live estimated macros state
-  int? _estimatedCalories;
-  double? _estimatedProtein;
-  double? _estimatedCarbs;
-  double? _estimatedFat;
-  String? _standardizedName;
 
   @override
   void initState() {
@@ -77,6 +71,23 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       setState(() {
         _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
       });
+    }
+  }
+
+  Future<void> _openBarcodeScanner() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (result == true) {
+      if (mounted) {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context, true);
+        } else {
+          try {
+            MainNavigationScreen.of(context).currentIndex = 0;
+          } catch (_) {}
+        }
+      }
     }
   }
 
@@ -170,9 +181,6 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           Navigator.pop(context, true);
         } else {
           _nameController.clear();
-          setState(() {
-            _estimatedCalories = null;
-          });
           try {
             MainNavigationScreen.of(context).currentIndex = 0;
           } catch (_) {}
@@ -187,6 +195,28 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         setState(() => _isLogging = false);
       }
     }
+  }
+
+  Widget _buildBarcodeIcon({Color? color, double size = 22}) {
+    final c = color ?? Colors.white;
+    return SizedBox(
+      width: size,
+      height: size * 0.75,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(width: 2.5, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 1.0, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 3.5, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 1.5, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 2.0, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 3.0, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 1.0, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+          Container(width: 2.5, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(0.5))),
+        ],
+      ),
+    );
   }
 
   @override
@@ -233,9 +263,21 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             automaticallyImplyLeading: Navigator.canPop(context),
             backgroundColor: Colors.transparent,
             elevation: 0,
+            actions: [
+              IconButton(
+                tooltip: _language == 'ur' ? 'بارکوڈ اسکین کریں' : 'Scan Barcode',
+                icon: _buildBarcodeIcon(
+                  color: isRamadan ? const Color(0xFF00D2FF) : theme.colorScheme.primary,
+                  size: 22,
+                ),
+                onPressed: _openBarcodeScanner,
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 150),
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             child: Form(
               key: _formKey,
               child: Column(
@@ -315,6 +357,17 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         borderSide: BorderSide(
                           color: isRamadan ? const Color(0xFF00D2FF) : theme.colorScheme.primary,
                           width: 1.5,
+                        ),
+                      ),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.only(right: 6.0),
+                        child: IconButton(
+                          tooltip: _language == 'ur' ? 'بارکوڈ اسکین کریں' : 'Scan Barcode',
+                          icon: _buildBarcodeIcon(
+                            color: isRamadan ? const Color(0xFF00D2FF) : theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                          onPressed: _openBarcodeScanner,
                         ),
                       ),
                     ),
@@ -489,7 +542,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
