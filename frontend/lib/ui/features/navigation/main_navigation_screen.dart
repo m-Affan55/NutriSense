@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../dashboard/dashboard_screen.dart';
-import '../meal_scan/scan_meal_screen.dart';
+import '../meal_scan/manual_log_screen.dart';
 import '../chat/ai_coach_screen.dart';
 import '../predictive_coaching/coaching_screen.dart';
 import '../../../core/ramadan_controller.dart';
@@ -29,7 +29,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _screens = [
     const DashboardScreen(),
-    const ScanMealScreen(),
+    const ManualLogScreen(),
     const AiCoachScreen(),
     CoachingScreen(key: coachingKey),
   ];
@@ -71,7 +71,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
-                      _buildScanTab(isRamadan), // Central elevated button
+                      _buildAddMealTab(isRamadan), // Central elevated button
                       _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
                       _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
                     ],
@@ -130,7 +130,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildScanTab(bool isRamadan) {
+  Widget _buildAddMealTab(bool isRamadan) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -157,7 +157,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             )
           ],
         ),
-        child: const Icon(Icons.camera_alt, color: Colors.white, size: 28),
+        child: const Icon(Icons.restaurant_menu_rounded, color: Colors.black, size: 28),
       ),
     );
   }
