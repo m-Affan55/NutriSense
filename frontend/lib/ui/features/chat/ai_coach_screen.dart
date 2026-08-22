@@ -117,12 +117,14 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     final speechStatus = await Permission.speech.request();
 
     if (micStatus.isPermanentlyDenied || speechStatus.isPermanentlyDenied) {
-      _showSettingsDialog();
+      if (mounted) _showSettingsDialog();
       return false;
     }
 
     if (!micStatus.isGranted || !speechStatus.isGranted) {
-      CustomToast.show(context, 'Microphone permission is required for voice features.');
+      if (mounted) {
+        CustomToast.show(context, 'Microphone permission is required for voice features.');
+      }
       return false;
     }
 
@@ -159,10 +161,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     }
 
     final hasPermission = await _requestPermissions();
-    if (!hasPermission) return;
+    if (!hasPermission || !mounted) return;
 
     if (!_isSttInitialized) {
-      CustomToast.show(context, 'Speech recognition not available on this device.');
+      if (mounted) {
+        CustomToast.show(context, 'Speech recognition not available on this device.');
+      }
       return;
     }
 
@@ -194,7 +198,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           });
         }
       },
-      localeId: _language == 'ur' ? 'ur-PK' : 'en-US',
+      listenOptions: stt.SpeechListenOptions(
+        listenMode: stt.ListenMode.dictation,
+      ),
     );
   }
 
@@ -480,7 +486,23 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                         ],
                       ),
                     ),
-                    // Removed Voice Mode Toggle from here to place in input bar
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                        ),
+                        child: const Icon(Icons.local_hospital_rounded, color: Colors.redAccent, size: 18),
+                      ),
+                      tooltip: _language == 'ur' ? 'قریبی کلینکس اور ہسپتال' : 'Nearby Clinics & Hospitals',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ClinicFinderScreen()),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

@@ -62,8 +62,8 @@ def chat_with_coach(req: CoachRequest):
         Be concise, supportive, actionable, and focus on practical recommendations. Respond in English or Urdu depending on the user's input language.
         """
         
-        # 4. Generate response using GenAI client
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        # 4. Generate response using GeminiPool with auto-failover
+        from app.services.gemini_pool import gemini_pool
         
         # Convert history to format compatible with GenAI content list
         contents = []
@@ -79,43 +79,48 @@ def chat_with_coach(req: CoachRequest):
             "parts": [{"text": req.message}]
         })
         
-        # Call gemini-3.6-flash directly with system instruction config
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
+        response = gemini_pool.generate_content(
             contents=contents,
+            model="gemini-3.6-flash",
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
             ),
         )
         
-        coach_reply = response.text
+        coach_reply = response.text if response and response.text else "I am here to guide your nutrition. How else can I assist?"
         
         # 5. Evaluate Health Risk (Independent agentic pass)
         escalation_alert = None
-        if profile and profile.get("medical_conditions"):
-            from app.services.risk_evaluator import evaluate_health_risk
-            risk = evaluate_health_risk(coach_reply, profile, meals)
-            
-            if risk["level"] in ("warning", "critical"):
-                # Save risk flag to DB
-                try:
-                    supabase.table('risk_flags').insert({
-                        "user_id": req.user_id,
-                        "level": risk["level"],
-                        "message": risk["message"],
-                        "coach_reply": coach_reply,
-                        "is_resolved": False
-                    }).execute()
-                except Exception as e:
-                    print(f"Failed to log risk flag to DB: {e}")
-                
-                escalation_alert = {
+        from app.services.risk_evaluator import evaluate_health_risk
+        risk = evaluate_health_risk(coach_reply, profile or {}, meals or [], user_message=req.message)
+        
+        if risk["level"] in ("warning", "critical"):
+            # Save risk flag to DB
+            try:
+                supabase.table('risk_flags').insert({
+                    "user_id": req.user_id,
                     "level": risk["level"],
                     "message": risk["message"],
-                    "show_doctor_button": True
-                }
+                    "coach_reply": coach_reply,
+                    "is_resolved": False
+                }).execute()
+            except Exception as e:
+                print(f"Failed to log risk flag to DB: {e}")
+            
+            escalation_alert = {
+                "level": risk["level"],
+                "message": risk["message"],
+                "show_doctor_button": True
+            }
 
         return {"response": coach_reply, "escalation_alert": escalation_alert}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Graceful emergency fallback if network/quota fails across all keys
+        emergency_msg = "Please note: If you are experiencing unusual dizziness, severe fatigue, or extreme blood sugar fluctuations, please hydrate with plain water and consult a qualified physician immediately."
+        escalation = {
+            "level": "warning",
+            "message": "Potential health risk detected. Please seek medical advice.",
+            "show_doctor_button": True
+        }
+        return {"response": emergency_msg, "escalation_alert": escalation}

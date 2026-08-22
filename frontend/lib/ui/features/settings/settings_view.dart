@@ -19,6 +19,7 @@ import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
 import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
+import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -1130,6 +1131,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const FamilyView()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Nearby Clinics & Hospitals Section
+                    ListTile(
+                      leading: const Icon(Icons.local_hospital_outlined, color: Colors.redAccent),
+                      title: Text(
+                        _language == 'ur' ? 'قریبی کلینکس اور ہسپتال' : 'Nearby Clinics & Hospitals',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _language == 'ur'
+                            ? 'سرکاری و نجی طبی مراکز اور ہنگامی نگہداشت'
+                            : 'Find subsidized & emergency medical care near you',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ClinicFinderScreen()),
                         );
                       },
                     ),

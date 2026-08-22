@@ -185,7 +185,7 @@ class ClinicFinderScreen extends StatefulWidget {
   /// Pass the risk level so we can surface the right UI tone.
   final String riskLevel; // 'warning' | 'critical'
 
-  const ClinicFinderScreen({super.key, required this.riskLevel});
+  const ClinicFinderScreen({super.key, this.riskLevel = 'warning'});
 
   @override
   State<ClinicFinderScreen> createState() => _ClinicFinderScreenState();
@@ -196,7 +196,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   late TabController _tabController;
   
   bool _isLoading = true;
-  String _statusMessage = "Finding clinics near you...";
+  final String _statusMessage = "Finding clinics near you...";
   
   List<_Clinic> _dynamicClinics = [];
   bool _usingDynamic = false;
@@ -223,7 +223,10 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       }
 
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high, timeLimit: const Duration(seconds: 10));
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ));
           
       await _fetchOverpassClinics(position.latitude, position.longitude);
       

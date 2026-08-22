@@ -1,3 +1,4 @@
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -8,8 +9,26 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_API_KEY_01: Optional[str] = None
+    GEMINI_API_KEY_02: Optional[str] = None
+    GEMINI_API_KEY_03: Optional[str] = None
+    GEMINI_API_KEYS: Optional[str] = None
+    
+    def get_gemini_keys(self) -> List[str]:
+        keys = []
+        for candidate in [self.GEMINI_API_KEY_01, self.GEMINI_API_KEY_02, self.GEMINI_API_KEY_03]:
+            if candidate and candidate.strip() and candidate.strip() not in keys:
+                keys.append(candidate.strip())
+        if self.GEMINI_API_KEYS:
+            for k in self.GEMINI_API_KEYS.split(','):
+                if k.strip() and k.strip() not in keys:
+                    keys.append(k.strip())
+        if self.GEMINI_API_KEY and self.GEMINI_API_KEY.strip() and self.GEMINI_API_KEY.strip() not in keys:
+            keys.append(self.GEMINI_API_KEY.strip())
+        return keys if keys else [""]
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
+

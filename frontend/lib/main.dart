@@ -7,7 +7,6 @@ import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 import 'ui/features/auth/update_password_screen.dart';
 import 'ui/features/navigation/main_navigation_screen.dart';
-import 'ui/features/onboarding/onboarding_view.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

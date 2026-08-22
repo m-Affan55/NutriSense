@@ -1,15 +1,13 @@
 import base64
 import json
-from google import genai
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
+from app.services.gemini_pool import gemini_pool
 
 class GeminiService:
     @staticmethod
     def scan_meal(image_bytes: bytes, mime_type: str, profile: dict = None) -> dict:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -33,7 +31,7 @@ class GeminiService:
         Note: The schema requires a recognition_confidence (high/low), local_name, and cooking_method_note. Provide reasonable values.
         """
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[
                 types.Part.from_bytes(
@@ -58,8 +56,6 @@ class GeminiService:
         if not profile:
             return []
             
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         prompt = f"""
         You are an expert nutritionist and medical safety evaluator.
         
@@ -82,7 +78,7 @@ class GeminiService:
         []
         """
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[prompt],
             config=types.GenerateContentConfig(
@@ -97,8 +93,6 @@ class GeminiService:
 
     @staticmethod
     def estimate_food_macros(query: str) -> dict:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         prompt = f"""
         You are an expert nutritionist database. 
         The user searched for the following food item: "{query}".
@@ -115,7 +109,7 @@ class GeminiService:
         - "fat_g": Float
         """
         
-        response = client.models.generate_content(
+        response = gemini_pool.generate_content(
             model='gemini-3.6-flash',
             contents=[prompt],
             config=types.GenerateContentConfig(
@@ -126,8 +120,6 @@ class GeminiService:
 
     @staticmethod
     def generate_coaching_summary(score: float, profile: dict = None) -> str:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -144,7 +136,7 @@ class GeminiService:
         reflecting on their score and giving one piece of actionable advice tailored to their profile.
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
             )
@@ -159,8 +151,6 @@ class GeminiService:
 
     @staticmethod
     def generate_food_swaps(recent_meals: list[str], profile: dict = None) -> list[dict]:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -185,7 +175,7 @@ class GeminiService:
         - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
@@ -198,8 +188,6 @@ class GeminiService:
 
     @staticmethod
     def generate_grocery_list(recent_meals: list[str], profile: dict = None) -> list[dict]:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -226,7 +214,7 @@ class GeminiService:
             - "checked": boolean (always false)
         """
         try:
-            response = client.models.generate_content(
+            response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
@@ -251,4 +239,3 @@ class GeminiService:
                     ]
                 }
             ]
-
