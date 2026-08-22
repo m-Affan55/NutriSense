@@ -12,6 +12,7 @@ class FoodItem(BaseModel):
     cooking_method_note: str
 
 class MealScanResponse(BaseModel):
+    is_food: bool
     meal_name: str
     items: List[FoodItem]
     total_calories: int

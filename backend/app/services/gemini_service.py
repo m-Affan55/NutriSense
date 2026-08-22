@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
@@ -7,12 +8,21 @@ from app.services.gemini_pool import gemini_pool
 
 class GeminiService:
     @staticmethod
+    def _parse_gemini_json(raw_text: str) -> dict:
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text.strip())
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            raise RuntimeError("Model returned malformed JSON")
+
+    @staticmethod
     def scan_meal(image_bytes: bytes, mime_type: str, profile: dict = None) -> dict:
         system_instruction = """
         You are a precise food and meal image recognition system.
         Look directly at the visual elements in the photograph and identify the authentic name of the dish shown.
         Base your recognition strictly on the actual food visible in the image.
-        Provide accurate portion sizes in grams, calories, and macronutrients (protein_g, carbs_g, fat_g).
+        If the image does not contain food, or you cannot identify any food item with reasonable confidence, set is_food to false and leave nutrition fields empty/0.
+        Otherwise, set is_food to true and provide an initial estimate of portion sizes in grams.
         Set recognition_confidence to 'high' if the image is clear and identifiable, or 'low' if blurry or unclear.
         """
 
@@ -36,7 +46,7 @@ class GeminiService:
         )
         
         try:
-            return json.loads(response.text)
+            return GeminiService._parse_gemini_json(response.text)
         except Exception as e:
             raise RuntimeError(f"Failed to parse meal scan results. Please try again. Detailed error: {str(e)}")
 

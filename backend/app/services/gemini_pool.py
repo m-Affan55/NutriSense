@@ -7,6 +7,10 @@ from app.core.config import settings
 
 logger = logging.getLogger("gemini_pool")
 
+class RateLimitExceeded(Exception):
+    """Raised when all API keys have exhausted their quotas."""
+    pass
+
 class GeminiPool:
     """
     Manages a pool of Gemini API keys with automatic round-robin 
@@ -70,6 +74,6 @@ class GeminiPool:
                     with self._lock:
                         self._current_index = (self._current_index + 1) % total_keys
 
-        raise RuntimeError(f"All Gemini API keys in pool exhausted or failed. Last error: {last_error}")
+        raise RateLimitExceeded(f"All Gemini API keys in pool exhausted or failed. Last error: {last_error}")
 
 gemini_pool = GeminiPool.get_instance()

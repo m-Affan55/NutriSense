@@ -116,11 +116,19 @@ def chat_with_coach(req: CoachRequest):
         return {"response": coach_reply, "escalation_alert": escalation_alert}
         
     except Exception as e:
+        print(f"Chat error: {e}")
         # Graceful emergency fallback if network/quota fails across all keys
-        emergency_msg = "Please note: If you are experiencing unusual dizziness, severe fatigue, or extreme blood sugar fluctuations, please hydrate with plain water and consult a qualified physician immediately."
-        escalation = {
-            "level": "warning",
-            "message": "Potential health risk detected. Please seek medical advice.",
-            "show_doctor_button": True
-        }
-        return {"response": emergency_msg, "escalation_alert": escalation}
+        msg_lower = req.message.lower()
+        critical_keywords = ["350", "400", "500", "dizzy", "faint", "chest pain", "hypoglycemia", "severe pain", "ambulance", "emergency", "بے ہوش", "چکر", "سینے میں درد"]
+        has_acute = any(k in msg_lower for k in critical_keywords)
+        
+        if has_acute:
+            emergency_msg = "Please note: If you are experiencing unusual dizziness, severe fatigue, or extreme blood sugar fluctuations, please hydrate with plain water and consult a qualified physician immediately."
+            escalation = {
+                "level": "warning",
+                "message": "Potential health risk detected. Please seek medical advice.",
+                "show_doctor_button": True
+            }
+            return {"response": emergency_msg, "escalation_alert": escalation}
+        else:
+            return {"response": "I am experiencing technical difficulties right now. Please try again in a few moments.", "escalation_alert": None}
