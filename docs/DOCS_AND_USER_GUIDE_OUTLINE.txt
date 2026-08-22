@@ -1,0 +1,198 @@
+================================================================================
+          NUTRISENSE - PROJECT DETAIL & USER GUIDE DOCUMENTATION OUTLINE
+================================================================================
+
+This document contains a complete breakdown of topics, diagrams, specifications, 
+and user walkthroughs needed for creating:
+1. Technical Project Detail Document (Software Engineering / Design Spec)
+2. Comprehensive User Guide & Manual (End-User App Usage Guide)
+
+--------------------------------------------------------------------------------
+PART 1: TECHNICAL PROJECT DETAIL DOCUMENT (SOFTWARE SPECIFICATION & ARCHITECTURE)
+--------------------------------------------------------------------------------
+
+1. EXECUTIVE SUMMARY & PROJECT INTRODUCTION
+   * Project Title: NutriSense - AI-Powered Nutrition, Fasting & Clinical Health Companion
+   * Purpose & Problem Statement:
+     - Tackling lifestyle-related chronic diseases (Diabetes, Hypertension, Obesity).
+     - Bridging the gap in personalized nutrition for South Asian / Desi diets and global cuisines.
+     - Fasting management for religious observances (Ramadan Mode with Sehri/Iftar timings).
+     - Multi-member family dietary tracking from a single primary account.
+   * Target Audience: Health-conscious individuals, patients managing medical conditions, families, and fasting practitioners.
+   * Key Value Propositions:
+     - Zero-guesswork AI Meal Logging with automatic calorie and macronutrient estimation.
+     - Real-time Multi-Key Failover Pool for Gemini LLMs (high availability).
+     - Emergency Clinic & Hospital Finder with 1-tap route navigation.
+     - Complete offline-first architecture with SQLite caching and Supabase background sync.
+
+2. SYSTEM ARCHITECTURE & TECH STACK SPECIFICATION
+   * Frontend Architecture:
+     - Framework: Flutter 3.x (Dart) with responsive multi-platform support (Android, iOS, Web).
+     - State Management: Provider / ListenableBuilder / Singleton ViewModels (e.g., FamilyViewModel, RamadanController).
+     - Local Storage: SQLite (`sqflite`), `shared_preferences` for offline caching.
+     - Networking: `http`, `connectivity_plus`, custom `ApiClient`.
+     - Health Platform: Google Health Connect / Apple HealthKit integration (`health` package).
+     - Audio / Speech: `flutter_tts` for bilingual Urdu/English voice responses.
+   * Backend Architecture:
+     - Framework: FastAPI (Python 3.11+ ASGI asynchronous web framework).
+     - Authentication & Database: Supabase PostgreSQL with Row Level Security (RLS) policies.
+     - AI / LLM Engine: Google GenAI SDK (`gemini-2.5-flash` / `gemini-3.6-flash`).
+     - Multi-Key Failover Pool: Custom round-robin key rotator handling HTTP 429 rate limits dynamically.
+     - External APIs: OpenFoodFacts API (Barcode Scanner), OpenStreetMap / Overpass API (Live Clinic Finder), Aladhan Prayer API (Ramadan Timings).
+     - PDF Generation: `reportlab` for weekly clinical summary receipts.
+
+3. RECOMMENDED SOFTWARE ENGINEERING DIAGRAMS
+   * Diagram 1: High-Level System Architecture Diagram (Layered Architecture)
+     - Presentation Layer: Flutter UI screens (Dashboard, AI Coach, Meals, Stats, Family, Settings).
+     - Service / Controller Layer: SyncService, ReminderManager, RamadanController, FamilyViewModel.
+     - Backend API Gateway: FastAPI REST Endpoints (`/meals`, `/coach`, `/health`, `/family`, `/profile`).
+     - AI & External Service Layer: Gemini API Pool, OpenFoodFacts, Overpass API, Aladhan API.
+     - Data Persistence Layer: Supabase PostgreSQL (Cloud) & SQLite (Local Mobile Cache).
+   * Diagram 2: Use Case Diagram (UML)
+     - Actors: Primary User, Family Dependent, AI Health Coach, Emergency Services / Clinics.
+     - Use Cases:
+       * Log Meal via Natural Language AI (Auto Macro Calculation)
+       * Interact with AI Coach (Text & TTS Voice Q&A in English/Urdu)
+       * Scan Barcode & Evaluate Allergen / Medical Conflicts
+       * Manage Multi-Member Family Profiles & Dietary Rules
+       * Enable / Configure Ramadan Fasting Mode & View Timers
+       * Discover Nearby Hospitals & Emergency Clinics
+       * Sync Activity Data from Google Health Connect
+       * Export Weekly Clinical Nutritional PDF Report
+       * Offline Meal Logging & Auto-Sync on Network Reconnection
+   * Diagram 3: Entity-Relationship Diagram (ERD / Database Schema)
+     - Table: `users` (id, email, created_at, last_sign_in)
+     - Table: `health_profiles` (user_id, age, gender, height_cm, weight_kg, goal, daily_calorie_target, daily_water_target_ml, medical_conditions[], dietary_restrictions[], created_at, updated_at)
+     - Table: `family_members` (id, primary_user_id, name, relationship, age, gender, daily_calorie_target, medical_conditions[], dietary_restrictions[], color_hex, created_at)
+     - Table: `meal_logs` (id, user_id, family_member_id, meal_type, notes, total_calories, total_protein_g, total_carbs_g, total_fat_g, logged_at, is_synced)
+     - Table: `chat_history` (id, user_id, sender, message, response_metadata, timestamp)
+     - Table: `water_logs` (id, user_id, amount_ml, logged_at)
+     - Table: `habit_scores` (id, user_id, score, streak_days, last_calculated_at)
+   * Diagram 4: Sequence Diagram 1 - AI Meal Logging & Auto Macro Estimation
+     - Participant Lifecycle: User -> Flutter UI -> FastAPI Backend -> Gemini Multi-Key Pool -> SQLite Cache -> Supabase Cloud DB.
+     - Flow: User types query -> App queries `/meals/search-food` -> Gemini estimates calories/protein/carbs/fat -> Response rendered in UI -> User confirms -> SQLite stores local row -> SyncService pushes to Supabase asynchronously.
+   * Diagram 5: Sequence Diagram 2 - Gemini Multi-Key Failover Flow
+     - Participant Lifecycle: Backend Client -> GeminiPool -> Key #1 -> (429 Rate Limit) -> Auto Key Failover -> Key #2 -> (Success 200 OK) -> Response returned.
+   * Diagram 6: Component Diagram
+     - Modules: UI Component Library, Auth Module, Meal Analytics Engine, Health Connect Bridge, Voice Engine, Fasting Engine, Geo-Clinic Service.
+   * Diagram 7: State Machine / Activity Diagram - Offline-First Sync Workflow
+     - States: Network Available vs Network Disconnected -> Write to SQLite (Pending) -> Network Listener Detects Online -> Background SyncWorker Triggered -> Push to Supabase -> Mark Row as Synced.
+   * Diagram 8: Deployment Diagram
+     - Hardware & Cloud Nodes: Mobile Device (Flutter APK / iOS), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
+
+4. CORE FUNCTIONAL MODULE SPECIFICATIONS
+   * Module 1: AI Auto-Macro Estimator (`manual_log_screen.dart` + `gemini_service.py`)
+     - Accepts natural language food descriptions in English and Urdu.
+     - Extracts dish items, portions, and computes macros without requiring user numerical inputs.
+     - Fast local fallback lookup dictionary for instant zero-latency responses.
+   * Module 2: Multi-Key Gemini Failover Pool (`gemini_pool.py`)
+     - Dynamic rotation across multiple Gemini API keys.
+     - Automatic catch of `429 RESOURCE_EXHAUSTED` with exponential backoff and seamless failover.
+   * Module 3: Multi-Family Health Tracking (`family_viewmodel.dart` + `family_view.dart`)
+     - Supports adding dependents (Children, Parents, Spouse, Siblings).
+     - Individualized calorie targets, allergy alerts, and dashboard switching per dependent.
+   * Module 4: Ramadan Fasting Intelligence (`ramadan_controller.dart`)
+     - Calculates precise local Sehri / Iftar times based on GPS coordinates.
+     - Live fasting progress ring and fast hydration presets (500ml Iftar, 250ml Taraweeh, 500ml Sehri).
+   * Module 5: Real-Time AI Clinical Chat & Voice Coach (`ai_coach_screen.dart`)
+     - Rich Markdown styling (Bold, Bullets, Numbered Lists).
+     - Text-To-Speech (TTS) bilingual playback in English and Urdu.
+     - Heuristic Medical Risk Evaluator for flagging emergency symptoms (Chest pain, Severe breathlessness, Hypoglycemia).
+   * Module 6: Emergency Clinic & Hospital Finder (`clinic_finder_screen.dart` + `overpass_service.py`)
+     - Queries OpenStreetMap Overpass API for hospitals/clinics within 5-15km radius.
+     - Displays contact numbers, distances, emergency status, and 1-tap Google Maps directions.
+   * Module 7: Weekly Clinical Report & PDF Export (`report_service.py`)
+     - Aggregates 7-day caloric balance, macro compliance, habit consistency scores.
+     - Generates downloadable clinical PDF receipts for doctor appointments.
+
+5. SECURITY, COMPLIANCE & NON-FUNCTIONAL REQUIREMENTS
+   * Authentication: Supabase JWT token verification, encrypted local credential store.
+   * Data Privacy & Security: PostgreSQL Row Level Security (RLS) ensuring users only read/write their own records.
+   * Performance: < 600ms AI macro estimations, 60fps smooth Flutter UI rendering.
+   * Offline Resilience: 100% app functionality available offline with local SQLite database.
+
+
+--------------------------------------------------------------------------------
+PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
+--------------------------------------------------------------------------------
+
+1. GETTING STARTED & ACCOUNT SETUP
+   * Installation: Installing NutriSense APK on Android or running on Web/iOS.
+   * Sign Up & Sign In:
+     - Creating an account with Email & Password.
+     - Secure password reset and recovery.
+   * Interactive Onboarding Flow:
+     - Setting up user metrics (Age, Gender, Height, Weight, Activity Level).
+     - Defining Primary Fitness Goal (Fat Loss, Muscle Gain, Healthy Lifestyle, Maintenance).
+     - Selecting Medical Conditions (Diabetes, Hypertension, PCOS, High Cholesterol, None).
+     - Selecting Dietary Restrictions (Halal, Vegetarian, Vegan, Nut Allergy, Gluten Free, Lactose Intolerant).
+     - Automatic Calculation of Daily Calorie Target and Water Intake.
+
+2. EXPLORING THE MAIN DASHBOARD
+   * Personalized Header: Dynamic greeting and active date display.
+   * Calorie & Nutrition Ring: Visualizing consumed calories vs daily target.
+   * Macronutrient Breakdown: Live tracking of Protein, Carbohydrates, and Fats with progress bars.
+   * Activity & Steps Sync: Real-time sync with Google Health Connect (Steps, Active Calories, Distance).
+   * Today's Meals Timeline: Chronological list of logged meals with calorie badges and delete/edit actions.
+   * Hydration Tracker: Quick 1-tap water logging (+250ml, +500ml, custom amount) with goal tracking.
+   * Habit Health Score: AI-computed consistency rating (0 to 100) with streak rewards.
+
+3. LOGGING MEALS WITH AI (ZERO-EFFORT NUTRITION)
+   * How to Log a Meal:
+     1. Tap the "Meals" tab in the bottom navigation bar (or "+ Add Meal" on the dashboard).
+     2. Type what you ate in plain English or Urdu (e.g., "2 Aloo Parathas and 1 cup Chai", "1 plate Chicken Biryani with Raita", "Oatmeal with almonds").
+     3. Select the Meal Category (Breakfast, Lunch, Dinner, Snack).
+     4. (Optional) Tap any of the Quick Suggestion Chips for instant 1-tap logging.
+     5. Tap "Log Meal with AI" — The AI instantly estimates calories, protein, carbs, and fats and logs the meal!
+   * Custom Macro Adjustments:
+     - Tap "Edit Values" on the AI Macro card to fine-tune exact grams or calories if desired.
+
+4. INTERACTING WITH THE AI HEALTH COACH & VOICE ASSISTANT
+   * Asking Nutritional Questions:
+     - Chat with the AI coach about healthy alternatives, food swaps, and diet planning.
+   * Voice Interaction (Text-To-Speech):
+     - Tap the 🔊 Speaker icon on any AI message to listen to the coach read the advice aloud in natural English or Urdu.
+   * Clinic & Hospital 1-Tap Access:
+     - Tap the red 🏥 Hospital icon in the AI Coach header to view nearby healthcare facilities immediately.
+
+5. RAMADAN FASTING MODE
+   * Activating Ramadan Mode:
+     - Toggle "Ramadan Mode" from the top banner or Settings view.
+   * Sehri & Iftar Timings:
+     - Live countdown timers showing hours and minutes remaining until Iftar / Sehri based on local prayer times.
+   * Ramadan Hydration Presets:
+     - Quick chips for Iftar (500ml), Taraweeh (250ml), and Sehri (500ml) to ensure hydration goals during non-fasting hours.
+   * Ramadan Meal Categorization:
+     - Meal slots dynamically change to Sehri, Iftar, and Post-Taraweeh Snack.
+
+6. MANAGING FAMILY & DEPENDENT PROFILES
+   * Adding Family Members:
+     - Go to Settings -> Family Profiles -> Tap "+ Add Family Member".
+     - Enter Name, Relationship (Child, Spouse, Parent, Sibling), Age, Medical Conditions & Dietary Rules.
+   * Logging Meals for Dependents:
+     - Select the family member from the dropdown when logging any meal.
+   * Switching Active Dashboard View:
+     - Switch the dashboard view to view nutrition, calorie progress, and meals specifically for any child or family member.
+
+7. EMERGENCY CLINIC & HOSPITAL FINDER
+   * How to Find Nearby Medical Care:
+     - Open Settings -> "Nearby Clinics & Hospitals" (or tap Hospital icon in AI Coach).
+     - Allows GPS location access to fetch all certified clinics and hospitals within 5km to 15km.
+     - View Hospital Name, Emergency Status, Distance in km, and tap "Get Directions" to open Google Maps navigation.
+
+8. GROCERY LIST & WEEKLY HEALTH REPORT
+   * AI Smart Grocery Generator:
+     - Open Settings -> "Smart Grocery List" to view a categorized grocery list based on your past week's meals and healthy swaps.
+   * Exporting PDF Report:
+     - Open Settings -> "Export Weekly Summary (PDF)".
+     - Generates a clinical nutritional PDF receipt showing weekly compliance, calorie averages, and dietitian summary.
+
+9. APP SETTINGS, LANGUAGE & ACCOUNT MANAGEMENT
+   * Language Switcher: Toggle between English and Urdu with 1 tap.
+   * Dark Mode Theme: High-contrast Dark theme for battery saving and eye comfort.
+   * Changing Password: Secure password update screen in Settings.
+   * Deleting Account: Account deletion option with explicit safety confirmation dialog.
+
+================================================================================
+                              END OF OUTLINE
+================================================================================

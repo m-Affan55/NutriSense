@@ -69,7 +69,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           _showProductResultDialog(data);
         }
       } else {
-        throw Exception(jsonDecode(response.body)['detail'] ?? 'Failed to fetch product');
+        throw Exception('Unable to analyze item');
       }
     } catch (e) {
       if (mounted) {
@@ -92,8 +92,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E232E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Product Not Found', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text('Barcode "$barcode" is not in our database yet. Would you like to describe it with AI?'),
+        title: const Text('Item Not Recognized', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('We could not automatically identify this item. Would you like to describe what you are eating so AI can calculate the calories and nutrition?'),
         actions: [
           TextButton(
             onPressed: () {
@@ -114,7 +114,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.black,
             ),
-            child: const Text('Log with AI', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Describe Meal with AI', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -558,7 +558,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   children: [
                     CircularProgressIndicator(color: Color(0xFF00E676)),
                     SizedBox(height: 16),
-                    Text('Fetching product info...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Analyzing with AI...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),

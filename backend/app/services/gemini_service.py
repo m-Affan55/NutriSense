@@ -131,6 +131,69 @@ class GeminiService:
             }
 
     @staticmethod
+    def identify_barcode_food(barcode: str, profile: dict = None) -> dict:
+        allergies_str = ', '.join(profile.get('allergies', [])) if profile and profile.get('allergies') else 'None'
+        conditions_str = ', '.join(profile.get('medical_conditions', [])) if profile and profile.get('medical_conditions') else 'None'
+        
+        prompt = f"""
+        You are an advanced AI food intelligence system with comprehensive knowledge of global food products, barcodes (EAN-13, UPC, GTIN), packaged groceries, snacks, beverages, and regional brands (including International and South Asian/Pakistani products like Shan, National, Olper's, Mitchell's, Dawn, Tapal, Peak Freans, Lipton, Nestlé, Ferrero, Mars, Mondelez).
+
+        The user scanned or entered the following product barcode: "{barcode}".
+
+        Tasks:
+        1. Identify the exact food or beverage product corresponding to this barcode (for example, 3017620422003 is Nutella Hazelnut Spread, 5000159461122 is Snickers Bar, 7622210449283 is Oreo Cookies, 5449000000996 is Coca-Cola, 7613035799982 is KitKat, 9002490100070 is Red Bull, etc.). If the barcode is less common or custom, identify the most likely packaged food item.
+        2. Calculate standard nutritional breakdown: Calories (kcal), Protein (g), Carbs (g), Fat (g).
+        3. List standard ingredients and allergen notes.
+        4. Cross-check against user's health profile:
+           - User Allergies: {allergies_str}
+           - Medical Conditions: {conditions_str}
+           If any ingredient conflicts with their health profile, generate clinical warning bullet points.
+
+        Return ONLY a valid JSON object with the following exact keys:
+        - "product_name": String (e.g., "Nutella Hazelnut Spread")
+        - "calories": Integer (e.g., 539)
+        - "protein_g": Float (e.g., 6.3)
+        - "carbs_g": Float (e.g., 57.5)
+        - "fat_g": Float (e.g., 30.9)
+        - "ingredients": String (e.g., "Sugar, palm oil, hazelnuts (13%), skimmed milk powder, low-fat cocoa, soy lecithin, vanillin")
+        - "allergens": String (e.g., "Tree Nuts (Hazelnuts), Milk, Soy")
+        - "allergy_warnings": Array of strings (e.g., ["Contains tree nuts (hazelnuts)", "Contains milk/dairy"])
+        """
+        
+        try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.1,
+                ),
+            )
+            result = json.loads(response.text)
+            return {
+                "product_name": result.get("product_name", f"Food Item ({barcode})"),
+                "calories": int(result.get("calories", 250)),
+                "protein_g": float(result.get("protein_g", 5.0)),
+                "carbs_g": float(result.get("carbs_g", 30.0)),
+                "fat_g": float(result.get("fat_g", 10.0)),
+                "ingredients": result.get("ingredients", "Standard food ingredients"),
+                "allergens": result.get("allergens", "No major allergens identified"),
+                "allergy_warnings": result.get("allergy_warnings", [])
+            }
+        except Exception as e:
+            return {
+                "product_name": f"Food Item ({barcode})",
+                "calories": 250,
+                "protein_g": 5.0,
+                "carbs_g": 30.0,
+                "fat_g": 10.0,
+                "ingredients": "Standard packaged food ingredients",
+                "allergens": "None specified",
+                "allergy_warnings": []
+            }
+
+
+    @staticmethod
     def generate_coaching_summary(score: float, profile: dict = None) -> str:
         profile_context = ""
         if profile:

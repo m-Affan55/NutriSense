@@ -86,22 +86,16 @@ async def scan_barcode(req: BarcodeRequest):
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
         profile = profile_response.data
         
-        # 2. Fetch product data from OpenFoodFacts
-        product_data = await BarcodeService.fetch_product_data(req.barcode)
-        
-        # 3. Check for allergies using Gemini
-        warnings = GeminiService.evaluate_ingredients(
-            ingredients=product_data["ingredients"],
-            allergens=product_data["allergens"],
-            profile=profile
-        )
+        # 2. Identify product and calculate nutritional breakdown with Gemini AI
+        product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
         
         return {
             "product": product_data,
-            "allergy_warnings": warnings
+            "allergy_warnings": product_data.get("allergy_warnings", [])
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Unable to identify food item at this moment.")
+
 
 @router.get("/weekly-report")
 def get_weekly_report(user_id: str, language: str = "en"):
