@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -18,32 +17,25 @@ class BarcodeScannerScreen extends StatefulWidget {
 }
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
-  MobileScannerController? _controller;
+  late final MobileScannerController _controller;
   final TextEditingController _manualBarcodeController = TextEditingController();
   
   bool _isProcessing = false;
-  bool _isCameraSupported = false;
+  bool _torchEnabled = false;
   final Set<String> _failedBarcodes = {};
   
   @override
   void initState() {
     super.initState();
-    // Only initialize hardware camera scanner on supported mobile OS (Android / iOS / macOS)
-    _isCameraSupported = !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
-    if (_isCameraSupported) {
-      try {
-        _controller = MobileScannerController(
-          formats: const [BarcodeFormat.all],
-        );
-      } catch (e) {
-        _isCameraSupported = false;
-      }
-    }
+    _controller = MobileScannerController(
+      formats: const [BarcodeFormat.all],
+      detectionSpeed: DetectionSpeed.normal,
+    );
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _controller.dispose();
     _manualBarcodeController.dispose();
     super.dispose();
   }
@@ -106,7 +98,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller?.start();
+              _controller.start();
             },
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
@@ -160,7 +152,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Allergy Warnings Banner
                   if (warnings.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -189,7 +180,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       ),
                     ),
                     
-                  // Meal Category Selector
                   const Text(
                     'Meal Category',
                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
@@ -219,7 +209,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Macro Summary Card
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -244,7 +233,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _controller?.start();
+                  _controller.start();
                 },
                 child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
@@ -266,8 +255,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     }
                     
                     if (mounted) {
-                      Navigator.pop(context); // close dialog
-                      Navigator.pop(context, true); // close scanner screen
+                      Navigator.pop(context);
+                      Navigator.pop(context, true);
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
                       SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food');
                     }
@@ -342,171 +331,240 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
+  void _showManualInputDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161A22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildBarcodeIcon(color: Theme.of(context).colorScheme.primary, size: 28),
+                const SizedBox(width: 10),
+                const Text(
+                  'Enter Barcode Number',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _manualBarcodeController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: 'e.g. 3017620422003',
+                hintStyle: TextStyle(color: Colors.white.withAlpha(60), letterSpacing: 1),
+                filled: true,
+                fillColor: const Color(0xFF1E232E),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withAlpha(20))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)),
+              ),
+              onSubmitted: (val) {
+                Navigator.pop(ctx);
+                _processBarcode(val);
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _processBarcode(_manualBarcodeController.text);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Lookup Product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Barcode Scanner', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
+        title: const Text('Scan Barcode', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Toggle Flash',
+            icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: _torchEnabled ? Colors.yellow : Colors.white),
+            onPressed: () async {
+              await _controller.toggleTorch();
+              setState(() => _torchEnabled = !_torchEnabled);
+            },
+          ),
+          IconButton(
+            tooltip: 'Switch Camera',
+            icon: const Icon(Icons.cameraswitch, color: Colors.white),
+            onPressed: () => _controller.switchCamera(),
+          ),
+          IconButton(
+            tooltip: 'Type Barcode Manually',
+            icon: const Icon(Icons.keyboard, color: Colors.white),
+            onPressed: _showManualInputDialog,
+          ),
+        ],
       ),
-      body: _isCameraSupported && _controller != null
-          ? Stack(
-              children: [
-                MobileScanner(
-                  controller: _controller!,
-                  onDetect: (capture) {
-                    if (_isProcessing) return;
-                    
-                    final List<Barcode> barcodes = capture.barcodes;
-                    if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                      final scannedValue = barcodes.first.rawValue!;
-                      if (!_failedBarcodes.contains(scannedValue)) {
-                        _processBarcode(scannedValue);
-                      }
-                    }
-                  },
-                ),
-                
-                // Loading Overlay
-                if (_isProcessing)
-                  Container(
-                    color: Colors.black54,
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Fetching product info...', style: TextStyle(color: Colors.white, fontSize: 16)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                // Target box overlay
-                if (!_isProcessing)
-                  Center(
-                    child: Container(
-                      width: 260,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF00E676), width: 2.5),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-              ],
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withAlpha(20),
-                      shape: BoxShape.circle,
-                    ),
-                    child: _buildBarcodeIcon(color: theme.colorScheme.primary, size: 64),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Enter or Scan Barcode',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Query OpenFoodFacts & Gemini allergen database directly by entering any product barcode number below.',
-                    style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  // Barcode Input Field
-                  TextField(
-                    controller: _manualBarcodeController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. 3017620422003',
-                      hintStyle: TextStyle(color: Colors.white.withAlpha(60), letterSpacing: 1),
-                      filled: true,
-                      fillColor: const Color(0xFF161A22),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withAlpha(20))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withAlpha(20))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5)),
-                    ),
-                    onSubmitted: (val) => _processBarcode(val),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Search Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isProcessing ? null : () => _processBarcode(_manualBarcodeController.text),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: _isProcessing
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5))
-                          : const Text('Lookup Product & Macros', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Quick Sample Barcodes
-                  Text(
-                    'Quick Test Products:',
-                    style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ActionChip(
-                        label: const Text('Nutella Spread (3017620422003)', style: TextStyle(fontSize: 11, color: Colors.white70)),
-                        backgroundColor: const Color(0xFF161A22),
-                        onPressed: () {
-                          _manualBarcodeController.text = '3017620422003';
-                          _processBarcode('3017620422003');
-                        },
+                      _buildBarcodeIcon(color: theme.colorScheme.primary, size: 64),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Camera Unavailable or No Hardware Detected',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
                       ),
-                      ActionChip(
-                        label: const Text('Snickers Bar (5000159461122)', style: TextStyle(fontSize: 11, color: Colors.white70)),
-                        backgroundColor: const Color(0xFF161A22),
-                        onPressed: () {
-                          _manualBarcodeController.text = '5000159461122';
-                          _processBarcode('5000159461122');
-                        },
+                      const SizedBox(height: 12),
+                      Text(
+                        'You can still lookup any product barcode by entering its number manually.',
+                        style: TextStyle(color: Colors.white.withAlpha(160), fontSize: 13),
+                        textAlign: TextAlign.center,
                       ),
-                      ActionChip(
-                        label: const Text('Oreo Cookies (7622210449283)', style: TextStyle(fontSize: 11, color: Colors.white70)),
-                        backgroundColor: const Color(0xFF161A22),
-                        onPressed: () {
-                          _manualBarcodeController.text = '7622210449283';
-                          _processBarcode('7622210449283');
-                        },
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _showManualInputDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Enter Barcode Manually', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
+                  ),
+                ),
+              );
+            },
+            onDetect: (capture) {
+              if (_isProcessing) return;
+              
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                final scannedValue = barcodes.first.rawValue!;
+                if (!_failedBarcodes.contains(scannedValue)) {
+                  _processBarcode(scannedValue);
+                }
+              }
+            },
+          ),
+          
+          if (!_isProcessing)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 270,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF00E676), width: 2.5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Container(
+                            height: 1.5,
+                            width: 250,
+                            color: const Color(0xFF00E676).withAlpha(180),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(160),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Align barcode inside the frame',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
             ),
+
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 30,
+            child: SizedBox(
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _showManualInputDialog,
+                icon: const Icon(Icons.keyboard, color: Colors.black),
+                label: const Text(
+                  'Enter Barcode Manually',
+                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 6,
+                ),
+              ),
+            ),
+          ),
+
+          if (_isProcessing)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF00E676)),
+                    SizedBox(height: 16),
+                    Text('Fetching product info...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
