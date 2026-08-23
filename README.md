@@ -1,120 +1,140 @@
-# NutriSense — AI Nutrition Coach
+# NutriSense - AI-Powered Nutrition & Metabolic Health Assistant
 
-A Vision-Powered Personal Nutritionist.
-
-## Overview
-NutriSense transforms daily health management by shifting from a passive calorie tracker to a proactive, intelligent nutrition platform. Instead of manual food logging, users snap a photo of their meal, allowing the AI to understand food composition, calculate macronutrients, and deliver context-aware, proactive coaching in real time.
+NutriSense is a full-stack, AI-powered health and nutrition management platform specifically designed for the Pakistani & South Asian demographic with international standards. It features AI-powered coaching with clinical safety guardrails, camera & barcode plate scanning, intelligent Ramadan fasting routines, family profile management, smart grocery generation, cross-platform health sync, offline SQLite synchronization with idempotency keys, adaptive notifications, and bilingual (English / Urdu Nastaleeq) localization.
 
 ---
 
-## Complete Feature Matrix
+## 🌟 Core Features & Modules
 
-### Core Features
-*   **Conversational Onboarding:** Chat-style profile capture gathering age, weight, height, gender, goal (fat loss, muscle gain, maintenance), activity level, medical/dietary restrictions (IBS, diabetes, hypertension, halal/vegetarian), budget, and food preferences.
-*   **Personalized Diet Plan:** Tailored daily breakdown covering breakfast, lunch, dinner, snacks, water intake, total calories, macronutrients (protein, carbs, fats), and micronutrients.
-*   **Meal Photo Recognition:** Core centerpiece feature — instant plate scanning to detect food items, calculate macros/calories, and log meals automatically.
-*   **Barcode Scanner:** Rapid lookup and verification for packaged foods and beverages via USDA FoodData Central and Nutritionix.
-*   **AI Nutrition Chat:** Specialized conversational assistant capable of answering contextual queries (e.g., *"I want to gain 5kg"*, *"I only have eggs and bread"*, *"I'm fasting"*) adapted to user health profiles.
-*   **Daily Progress Dashboard:** Unified daily tracking of calories, macros, hydration, weight trends, steps, sleep, and completed workouts.
-*   **AI Weekly Report:** Dynamic narrative weekly summaries that highlight behavioral trends (e.g., *"Sugar intake up 18% vs last week"*) beyond static charts.
-*   **Allergy & Medical Safety Alerts:** Real-time safety engine that flags scanned ingredients conflicting with health conditions or allergies defined during onboarding.
-*   **Offline Mode + Background Sync:** Offline-first caching via local storage to log meals and view dashboards without internet, auto-syncing to Supabase upon reconnection.
-*   **Data Export & Account Deletion:** Direct in-app privacy controls to download health records or erase user accounts.
+### 1. 🤖 AI Multi-Agent Coaching & Clinical Safety
+* **3-Step Clinical Pipeline**: User health profile & 7-day meal history retrieval (RAG) $\to$ Gemini Contextual Coaching $\to$ Independent Risk Evaluator.
+* **Risk Escalation**: Proactively detects high-risk patterns for diabetics and hypertensive users without alarmism.
+* **Care Locator**: Integrated "Find Affordable Care" button linking users to nearby government hospitals and private clinics with 1-tap call/directions.
 
-### Recommended Differentiators
-*   **Predictive Coaching:** Forecasts behavioral patterns (e.g., *"You usually exceed targets on Fridays; here are 3 dinner alternatives"*) to correct habits before they occur.
-*   **Habit Score:** Composite metric assessing nutrition balance, hydration consistency, protein goals, and routine adherence.
-*   **Food Swap AI:** Recommends macro-equivalent, lower-calorie substitutes for scanned indulgent foods (e.g., burger to chicken wrap).
-*   **Apple Health / Google Fit Sync:** Automated background ingestion of steps, active calories, sleep duration, and exercise logs.
-*   **Smart Grocery List Generator:** Converts active meal plans into organized, categorized shopping lists.
-*   **Push Notification Engine:** Actionable alerts via Firebase Cloud Messaging for water reminders, habit nudges, and predictive coaching warnings.
-*   **In-App Onboarding Tutorial:** Step-by-step first-launch walkthrough highlighting core scanning and tracking capabilities.
-*   **Subscription Tiers (Free / Pro):** Tiered access model distinguishing core tracking from premium predictive coaching and advanced menu analysis.
+### 2. 📸 Multimodal Plate & Barcode Scanner
+* **Gemini Vision Photo Logging**: Automatically recognizes Pakistani dishes (Daal, Biryani, Bhindi, Nihari, Haleem, Paratha, etc.) with South Asian portion calibrations (*katori, roti, naan*) and tarka oil/ghee estimations.
+* **Non-blocking Live Corrections**: Quick text-to-macro search and food name editing.
+* **Barcode Scanner**: `mobile_scanner` + OpenFoodFacts integration with automated allergy and medical cross-referencing.
 
-### Stretch Features
-*   **Nutrition Vision:** Instant estimation and macro breakdown of multi-item buffets and large spreads from a single photograph.
-*   **Restaurant Menu Helper:** Real-time camera analysis of physical dining menus highlighting target-aligned dishes.
-*   **Dining Out Mode:** Fast-food and restaurant chain meal recommendations customized to remaining daily macros.
-*   **Budget Diet Mode:** Full weekly meal plan optimization constrained to strict spending budgets (e.g., 1500 PKR).
-*   **Ramadan Mode:** Dynamic diet timing and hydration schedules optimized for Suhoor and Iftar fasts.
-*   **Voice Input:** Voice-driven logging and query prompts for hands-free interactions.
-*   **Urdu / Roman-Urdu Support:** Multi-language UI and AI translation localization.
-*   **Family / Dependent Profiles:** Multi-profile management to oversee nutrition for family members from a single account.
-*   **Dietitian / Doctor Export Report:** One-touch medical-grade PDF report export for consultations.
-*   **Dark Mode:** Full dark theme UI support.
-*   **Referral / Invite-a-Friend Loop:** Social accountability loops for paired tracking.
+### 3. 🌙 Comprehensive Ramadan Mode
+* **Fasting Schedule Clocks**: Live countdowns for Sehri and Iftar calculated for local timezones (`Asia/Karachi`).
+* **Dynamic Meal Slots**: Re-maps meal slots to *Sehri*, *Iftar*, *Post-Iftar Dinner*, and *Taraweeh Snack*.
+* **Specialized Ramadan Hydration**: Split hydration targets across Iftar, Taraweeh, and Sehri.
+* **Fasting Health Rules & Ramadan AI Coach**: Suppresses daytime eating reminders while fasting, triggers Sehri countdown (30 min prior) and Iftar sunset alarms, and provides fasting-specialized coaching prompts.
 
----
+### 4. 👨‍👩‍👧‍👦 Family Profiles (خاندانی پروفائلز)
+* **Multi-Dependent Management**: Manage nutrition for children, elderly parents, spouses, and siblings under a single account.
+* **Automated Macro Targets**: Smart calculations customized for child development vs. elderly metabolic conditions (e.g. lower carbs for diabetic parents).
+* **1-Tap Dashboard Switcher**: Top avatar pill bar (`[🧑 Me] [👧 Ayesha] [👴 Abu]`) that dynamically switches the dashboard calorie ring, macro targets, and filtered meal history.
+* **Per-Dependent Meal Logging**: Attribute camera scans or manual logs to specific family members.
 
-## Technology Stack
+### 5. 📊 Backend Report Service & PDF Weekly Report
+* **Analytics Engine**: 7-day adherence scoring (0–100), macro distribution trends, and clinical narrative reviews generated by Gemini.
+* **Zero-Dependency PDF Generator**: Pure-Python PDF 1.4 binary stream generator (`GET /api/v1/reports/weekly/pdf`) that outputs downloadable PDF reports directly to the user's `Downloads` folder.
 
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Frontend** | Flutter (Android / iOS) | Single-codebase mobile UI with Riverpod state management |
-| **Backend** | FastAPI (Python) | High-performance asynchronous AI orchestration and business logic |
-| **Database** | Supabase (PostgreSQL) | Relational persistence with Row-Level Security (RLS) policies |
-| **Authentication** | Supabase Auth | JWT-based auth supporting email, OTP, and social logins |
-| **Storage** | Supabase Storage | Cloud object storage for meal uploads and profile images |
-| **Realtime** | Supabase Realtime | Live dashboard syncing across connected clients |
-| **Core AI & Vision** | Google Gemini / OpenAI | Multimodal plate scanning, text reasoning, and coaching synthesis |
-| **Food Databases** | USDA FoodData Central / Nutritionix | Nutritional verification and standardized macro indexing |
-| **Data Visualization** | `fl_chart` | Smooth cross-platform nutritional charts and trends |
-| **Notifications** | Firebase Cloud Messaging (FCM) | Automated push notifications and predictive reminders |
-| **Deployment** | Python Virtualenv, Railway / Localhost, Supabase Cloud | Direct backend hosting, managed database, and mobile APK builds |
+### 6. 🔔 Smarter Notification System
+* **Adaptive Meal Reminders**: Learns typical eating hours using exponential smoothing and sends personalized prompts.
+* **Streak Milestone Celebrations**: Instant heads-up celebration alerts on 3, 5, 7, 10, 14, and 30-day streaks.
+* **Evening Streak Saver (8:30 PM)**: Scheduled daily to protect active logging streaks before midnight.
+* **AI Clinical Risk Alerts**: Immediate high-priority alerts for urgent health anomalies detected by the AI Coach.
+
+### 7. 🛒 Smart Grocery List Generator
+* **Automated Shopping Lists**: Converts logged meals and weekly plans into categorized, checkable grocery lists with bilingual names.
+
+### 8. 📱 Cross-Platform Health Sync Dashboard
+* **Physical Activity Overlay**: Synchronizes daily steps, active calories burned, sleep, and heart rate across Android (Health Connect), iOS (Apple Health), and Windows/Web (simulation telemetry).
+
+### 9. 📴 Offline-First SQLite Sync Engine
+* **Idempotent Dual-Write Cache**: SQLite local storage (`nutrisense_offline.db`) storing meal/water logs with UUID v4 `sync_id` idempotency keys preventing duplicate uploads during network reconnections.
 
 ---
 
-## Project Structure
+## 📂 Project Architecture
 
 ```text
-ai-nutrition-coach/
-├── frontend/                         # Flutter Mobile Client
-│   ├── lib/
-│   │   ├── main.dart                 # Entry point (initializes app & runs NutriSenseApp)
-│   │   ├── data/                     # Data layer: API clients, repositories, Supabase
-│   │   │   ├── models/               # API & serialization models
-│   │   │   ├── repositories/         # Repo implementations (caching, offline sync)
-│   │   │   └── services/             # Remote API services (Supabase client wrappers)
-│   │   ├── domain/                   # Domain layer: pure business rules
-│   │   │   └── models/               # Clean domain data entities
-│   │   ├── shared/                   # Reusable assets shared across layers
-│   │   │   ├── services/             # Local database, logging, shared utility services
-│   │   │   └── widgets/              # Reusable UI widgets (custom buttons, cards)
-│   │   └── ui/                       # Presentation layer (MVVM)
-│   │       ├── core/                 # Shared UI elements, global themes, constants
-│   │       └── features/             # Feature-sliced folders containing Views & ViewModels
-│   │           ├── onboarding/       # Conversational profile builder
-│   │           ├── auth/             # Authentication screens
-│   │           ├── dashboard/        # Daily nutrition metrics & progress tracking
-│   │           ├── meal_scan/        # Meal photo scanning & food recognition UI
-│   │           ├── diet_plan/        # Customized diet and hydration scheduler
-│   │           ├── coach_chat/       # Personal AI nutrition coach conversation
-│   │           ├── weekly_report/    # AI-generated weekly behavioral trends
-│   │           ├── predictive_coaching/ # Habit forecasting and alerts
-│   │           ├── grocery_list/     # Smart grocery shopping organizer
-│   │           ├── health_sync/      # Apple Health & Google Fit integrations
-│   │           ├── family_profiles/  # Multi-profile dependent configuration
-│   │           ├── subscription/     # Subscription tiers & paywall
-│   │           ├── settings/         # App settings & privacy controls
-│   │           └── notifications/    # Push notifications handler
-│   ├── assets/                       # Static images, icons, and logo assets
-│   └── pubspec.yaml
-│
-├── backend/                          # FastAPI AI Microservice
+NutriSense/
+├── backend/
 │   ├── app/
-│   │   ├── main.py                   # Server entrypoint
-│   │   ├── api/v1/                   # Modular API routers (vision, chat, coaching, reports)
-│   │   ├── core/                     # Environment configuration and JWT security validators
-│   │   ├── services/                 # AI Vision, LLM prompt runners, and macro lookup services
-│   │   ├── models/                   # Pydantic schemas and serialization models
-│   │   └── db/                       # Supabase client connector
+│   │   ├── api/v1/endpoints/  # FastAPI REST routes (auth, meals, chat, health, reports, grocery)
+│   │   ├── core/              # Config, security, logging
+│   │   ├── models/            # Pydantic schemas
+│   │   └── services/          # AI Coach, Vision Scanner, ReportService (PDF), OpenFoodFacts
 │   ├── requirements.txt
-│   └── .env.example
-│
+│   └── main.py
+├── frontend/
+│   ├── lib/
+│   │   ├── core/              # OfflineCache, SyncService, RamadanController, ReminderManager, HealthService
+│   │   ├── data/models/       # FamilyMember, HealthProfile, MealLog, ActivityData
+│   │   ├── shared/widgets/    # IslamicDecorations, CustomToast, AnimatedRings
+│   │   └── ui/features/       # Dashboard, MealScan, AICoach, WeeklyReport, FamilyProfiles, HealthSync, Settings
+│   └── pubspec.yaml
 ├── supabase/
-│   ├── migrations/                   # SQL migration scripts & RLS policies
-│   └── schema.sql                    # Base PostgreSQL schema
-│
-├── docs/                             # Project proposal and architecture documentation
-├── README.md
-└── .gitignore
+│   ├── migrations/            # 001_initial_schema.sql, 002_family_profiles.sql
+│   └── schema.sql             # Consolidated PostgreSQL schema with RLS
+└── walkthrough.md             # Complete technical verification & setup guide
+```
+
+---
+
+## 🛠️ Getting Started
+
+### 1. Database Setup (Supabase)
+Execute [`supabase/schema.sql`](file:///d:/AI%20Hackathon/NutriSense/supabase/schema.sql) and [`supabase/migrations/002_family_profiles.sql`](file:///d:/AI%20Hackathon/NutriSense/supabase/migrations/002_family_profiles.sql) in your **Supabase SQL Editor** to initialize all tables (`profiles`, `health_profiles`, `family_members`, `meal_logs`, `water_logs`, `chat_history`, `risk_flags`) and Row Level Security policies.
+
+### 2. Backend Setup (FastAPI)
+```bash
+cd backend
+python -m venv venv
+.\venv\Scripts\activate      # Windows
+# source venv/bin/activate   # macOS/Linux
+
+pip install -r requirements.txt
+```
+
+Create `.env` in `backend/`:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+GEMINI_API_KEY=your-gemini-api-key
+```
+
+Run server:
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+Interactive Swagger docs: `http://localhost:8000/docs`
+
+### 3. Frontend Setup (Flutter)
+```bash
+cd frontend
+flutter pub get
+```
+
+Create `.env` in `frontend/`:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+BACKEND_URL=http://localhost:8000/api/v1
+```
+
+Run app:
+```bash
+flutter run
+```
+
+---
+
+## 🧪 Testing & Code Quality
+
+- **Flutter Static Analysis**:
+  ```bash
+  cd frontend && flutter analyze
+  ```
+  *(Expected: `No issues found!`)*
+
+- **Automated Test Suite**:
+  ```bash
+  cd frontend && flutter test
+  ```
+  *(Expected: `All tests passed!`)*
