@@ -57,122 +57,144 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D0F14),
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.8),
-            radius: 1.2,
-            colors: [
-              theme.colorScheme.primary.withAlpha(20),
-              const Color(0xFF0D0F14),
-            ],
+      backgroundColor: const Color(0xFF090B0F),
+      body: Stack(
+        children: [
+          // 1. Food Background Image with calibrated opacity
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.20,
+              child: Image.asset(
+                'assets/splash_bg.jpg',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            // Center Logo and Tagline
-            Center(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // App Logo image
-                      Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(20),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(80),
-                          child: Image.asset(
-                            'assets/Logo.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              // Fallback if image asset fails to load
-                              return Image.asset(
-                                'assets/Logo_Without_bg.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return CircleAvatar(
-                                    backgroundColor: theme.colorScheme.primary,
-                                    child: const Icon(
-                                      Icons.spa,
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // App Name
-                      Text(
-                        'NutriSense',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Tagline
-                      Text(
-                        'AI-Powered Personal Nutritionist',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withAlpha(150),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
+
+          // 2. Dark Vignette & Gradient Overlay for readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF090B0F).withValues(alpha: 0.45),
+                    const Color(0xFF090B0F).withValues(alpha: 0.70),
+                    const Color(0xFF090B0F).withValues(alpha: 0.88),
+                  ],
                 ),
               ),
             ),
-            // Loading progress bar at bottom
-            Positioned(
-              bottom: 80,
-              left: 40,
-              right: 40,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
+          ),
+
+          // 3. Center Logo and Tagline
+          Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 140,
-                      child: LinearProgressIndicator(
-                        minHeight: 4,
-                        backgroundColor: theme.colorScheme.primary.withAlpha(30),
-                        valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                    // Glowing Container with New Logo
+                    Container(
+                      width: 150,
+                      height: 150,
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF141923).withValues(alpha: 0.8),
+                        border: Border.all(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00E676).withValues(alpha: 0.2),
+                            blurRadius: 35,
+                            spreadRadius: 2,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            blurRadius: 25,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/Logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.eco,
+                            size: 70,
+                            color: theme.colorScheme.primary,
+                          );
+                        },
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 32),
+                    // App Name
                     Text(
-                      'Optimizing your meal plans...',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withAlpha(100),
+                      'NutriSense',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF00E676),
+                        fontSize: 30,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Tagline
+                    Text(
+                      'AI-Powered Personal Nutritionist',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 14,
+                        letterSpacing: 0.6,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // 4. Loading progress bar at bottom
+          Positioned(
+            bottom: 70,
+            left: 40,
+            right: 40,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        minHeight: 4,
+                        backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.15),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Optimizing your meal plans...',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
