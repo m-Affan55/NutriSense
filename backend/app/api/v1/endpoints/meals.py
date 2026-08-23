@@ -86,14 +86,27 @@ async def scan_barcode(req: BarcodeRequest):
         # 1. Fetch user's health profile
         supabase = get_supabase_admin_client()
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-        profile = profile_response.data
+        profile = profile_response.data if profile_response else None
         
-        # 2. Identify product and calculate nutritional breakdown with Gemini AI
-        product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
+        # 2. Try OpenFoodFacts first
+        product_data = await BarcodeService.fetch_product_data(req.barcode)
+        
+        if product_data:
+            logger.info(f"Barcode '{req.barcode}' successfully resolved via OpenFoodFacts.")
+            allergy_warnings = GeminiService.evaluate_ingredients(
+                ingredients=product_data.get("ingredients", ""),
+                allergens=product_data.get("allergens", ""),
+                profile=profile
+            )
+        else:
+            # 3. Fallback: OpenFoodFacts did not have the item -> Use Gemini AI identification
+            logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts. Falling back to Gemini AI identification...")
+            product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
+            allergy_warnings = product_data.get("allergy_warnings", [])
         
         return {
             "product": product_data,
-            "allergy_warnings": product_data.get("allergy_warnings", [])
+            "allergy_warnings": allergy_warnings
         }
     except Exception as e:
         logger.error(f"Barcode scan failed for '{req.barcode}': {type(e).__name__}: {e}")

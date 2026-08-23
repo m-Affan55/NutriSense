@@ -13,7 +13,7 @@ class BarcodeService:
         url_v2 = f"{BarcodeService.BASE_URL}/{barcode}.json"
         url_v0 = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
         
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=3.0, follow_redirects=True) as client:
             # 1. Try OpenFoodFacts API v2
             try:
                 response = await client.get(url_v2, headers=BarcodeService.HEADERS)
@@ -34,24 +34,7 @@ class BarcodeService:
             except Exception:
                 pass
 
-        # 3. Fallback to Gemini AI estimation for barcodes
-        try:
-            gemini_result = GeminiService.estimate_food_macros(f"Packaged food with barcode {barcode}")
-            if gemini_result and gemini_result.get("name") and gemini_result.get("calories", 0) > 0:
-                return {
-                    "product_name": gemini_result.get("name", "Packaged Food"),
-                    "calories": round(gemini_result.get("calories", 0)),
-                    "protein_g": round(gemini_result.get("protein_g", 0), 1),
-                    "carbs_g": round(gemini_result.get("carbs_g", 0), 1),
-                    "fat_g": round(gemini_result.get("fat_g", 0), 1),
-                    "ingredients": "Nutritional estimate based on standard food database.",
-                    "allergens": "Check packaging label",
-                    "image_url": None
-                }
-        except Exception:
-            pass
-
-        raise HTTPException(status_code=404, detail="Product not found in OpenFoodFacts database.")
+        return None
 
     @staticmethod
     def _parse_off_product(product: dict) -> dict:

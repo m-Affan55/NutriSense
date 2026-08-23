@@ -77,15 +77,15 @@ class GeminiService:
         []
         """
         
-        response = gemini_pool.generate_content(
-            model='gemini-3.6-flash',
-            contents=[prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
-        )
-        
         try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+                max_retries=1,
+            )
             return json.loads(response.text)
         except Exception:
             return []
