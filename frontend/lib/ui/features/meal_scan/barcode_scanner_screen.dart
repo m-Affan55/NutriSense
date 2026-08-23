@@ -61,7 +61,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           'barcode': cleanCode,
           'user_id': user.id,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 60));
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -69,12 +69,22 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           _showProductResultDialog(data);
         }
       } else {
-        throw Exception('Unable to analyze item');
+        if (mounted) {
+          _showNotFoundDialog(cleanCode);
+        }
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
-        _failedBarcodes.add(cleanCode);
-        _showNotFoundDialog(cleanCode);
+        final msg = e.toString().toLowerCase();
+        final isTimeout = msg.contains('timeout') || msg.contains('timed out');
+        if (!isTimeout) {
+          _failedBarcodes.add(cleanCode);
+        }
+        if (isTimeout) {
+          _showTimeoutDialog();
+        } else {
+          _showNotFoundDialog(cleanCode);
+        }
       }
     } finally {
       if (mounted) {
@@ -115,6 +125,51 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               foregroundColor: Colors.black,
             ),
             child: const Text('Describe Meal with AI', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTimeoutDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.wifi_off_rounded, color: Colors.orangeAccent, size: 22),
+            SizedBox(width: 8),
+            Text('Connection Timed Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          'The AI is taking longer than expected. Please check your internet connection and try again.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _controller.start();
+            },
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Clear any cached failure so user can retry the same barcode
+              _failedBarcodes.clear();
+              _controller.start();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orangeAccent,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -552,14 +607,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           if (_isProcessing)
             Container(
               color: Colors.black54,
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(color: Color(0xFF00E676)),
-                    SizedBox(height: 16),
-                    Text('Analyzing with AI...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 40),
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161A22),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: Color(0xFF00E676)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Identifying Product...',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'AI is looking up this barcode.\nThis may take up to 20 seconds.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white.withAlpha(160), fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

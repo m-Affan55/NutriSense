@@ -80,6 +80,8 @@ class SearchFoodRequest(BaseModel):
 
 @router.post("/scan-barcode")
 async def scan_barcode(req: BarcodeRequest):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         # 1. Fetch user's health profile
         supabase = get_supabase_admin_client()
@@ -94,6 +96,7 @@ async def scan_barcode(req: BarcodeRequest):
             "allergy_warnings": product_data.get("allergy_warnings", [])
         }
     except Exception as e:
+        logger.error(f"Barcode scan failed for '{req.barcode}': {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail="Unable to identify food item at this moment.")
 
 

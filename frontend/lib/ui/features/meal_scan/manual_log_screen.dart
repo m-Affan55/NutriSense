@@ -113,7 +113,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'query': query}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
