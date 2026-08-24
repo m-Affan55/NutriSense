@@ -162,9 +162,95 @@ async def scan_barcode(req: BarcodeRequest):
                     "source": product_data.get("source", "database")
                 }
 
-        # ── PATH B: Not in DB — single Gemini AI call ────────────────────────
+        # ── PATH B: Not in DB — Fallback 1: OpenFoodFacts -> Fallback 2: Gemini AI ───
         else:
-            logger.info(f"Barcode '{req.barcode}' not in local DB — sending to Gemini AI")
+            logger.info(f"Barcode '{req.barcode}' not in local DB — trying OpenFoodFacts API...")
+            off_data = None
+            try:
+                off_data = await BarcodeService.fetch_product_data(req.barcode)
+            except Exception as off_err:
+                logger.warning(f"OpenFoodFacts lookup failed for '{req.barcode}': {off_err}")
+
+            if off_data and off_data.get("product_name") and off_data.get("product_name") != "Scanned Packaged Food":
+                logger.info(f"Barcode '{req.barcode}' resolved via OpenFoodFacts: {off_data.get('product_name')}")
+                
+                # Check macro completeness of OpenFoodFacts result
+                cal = off_data.get("calories")
+                fat = off_data.get("fat_g")
+                carbs = off_data.get("carbs_g")
+                protein = off_data.get("protein_g")
+                
+                is_off_complete = False
+                if fat is not None and carbs is not None and protein is not None:
+                    try:
+                        f, c, p = float(fat), float(carbs), float(protein)
+                        cal_val = float(cal) if cal is not None else 0.0
+                        if cal_val > 50 and f == 0.0 and c == 0.0 and p == 0.0:
+                            is_off_complete = False  # Anomaly in OpenFoodFacts data
+                        elif cal_val <= 25 and f == 0.0 and c == 0.0 and p == 0.0:
+                            is_off_complete = True   # Legitimate zero-calorie item (Tea, Water, etc.)
+                        elif f > 0 or c > 0 or p > 0:
+                            is_off_complete = True   # Valid positive macros
+                    except (ValueError, TypeError):
+                        is_off_complete = False
+
+                if not is_off_complete:
+                    # Macros are NULL or anomalous in OpenFoodFacts -> Call Gemini to fill macros & evaluate health in 1 call
+                    logger.info(f"OpenFoodFacts entry for '{req.barcode}' has missing/null macros — enriching via Gemini AI...")
+                    enriched = GeminiService.fill_macros_and_evaluate(
+                        product_name=off_data.get("product_name", "Packaged Food"),
+                        ingredients=off_data.get("ingredients", ""),
+                        allergens=off_data.get("allergens", ""),
+                        profile=profile
+                    )
+                    if enriched and enriched.get("calories", 0) > 0:
+                        off_data["calories"] = enriched["calories"]
+                        off_data["protein_g"] = enriched["protein_g"]
+                        off_data["carbs_g"] = enriched["carbs_g"]
+                        off_data["fat_g"] = enriched["fat_g"]
+                        if enriched.get("ingredients"):
+                            off_data["ingredients"] = enriched["ingredients"]
+                        if enriched.get("allergens"):
+                            off_data["allergens"] = enriched["allergens"]
+                        off_data["allergy_warnings"] = enriched.get("allergy_warnings", [])
+                        off_data["source"] = "openfoodfacts_enriched"
+                    else:
+                        off_data["calories"] = off_data.get("calories") or 0
+                        off_data["protein_g"] = off_data.get("protein_g") or 0.0
+                        off_data["carbs_g"] = off_data.get("carbs_g") or 0.0
+                        off_data["fat_g"] = off_data.get("fat_g") or 0.0
+                        off_data["allergy_warnings"] = []
+                        off_data["source"] = "openfoodfacts"
+                else:
+                    # OpenFoodFacts macros are complete -> Single call for clinical health & allergy evaluation
+                    ai_warnings = GeminiService.evaluate_ingredients(
+                        ingredients=off_data.get("ingredients", ""),
+                        allergens=off_data.get("allergens", ""),
+                        profile=profile,
+                        macros={
+                            "calories":  off_data.get("calories", 0),
+                            "carbs_g":   off_data.get("carbs_g", 0.0),
+                            "fat_g":     off_data.get("fat_g", 0.0),
+                            "protein_g": off_data.get("protein_g", 0.0),
+                        },
+                    )
+                    off_data["allergy_warnings"] = ai_warnings
+                    off_data["source"] = "openfoodfacts"
+
+                # Cache into local DB so future lookups are instant
+                try:
+                    FoodDBService.cache_food(req.barcode, off_data)
+                except Exception:
+                    pass
+
+                return {
+                    "product": off_data,
+                    "allergy_warnings": off_data.get("allergy_warnings", []),
+                    "source": off_data.get("source", "openfoodfacts")
+                }
+
+            # ── Fallback 2: Not in OpenFoodFacts -> Gemini AI Identification ──
+            logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts — falling back to Gemini AI...")
             try:
                 product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
                 try:
