@@ -5,6 +5,7 @@ from app.services.gemini_pool import RateLimitExceeded
 from app.services.usda_service import UsdaService
 from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
+from app.services.food_db_service import FoodDBService
 
 router = APIRouter()
 
@@ -89,7 +90,6 @@ async def scan_barcode(req: BarcodeRequest):
         profile = profile_response.data if profile_response else None
 
         # 2. Try local SQLite database first (instant, no API cost)
-        from app.services.food_db_service import FoodDBService
         db_row = FoodDBService.lookup(req.barcode)
 
         if db_row is not None:

@@ -36,7 +36,7 @@ class GeminiPool:
         key = self._keys[index % len(self._keys)]
         return genai.Client(
             api_key=key,
-            http_options=types.HttpOptions(timeout=60_000),
+            http_options=types.HttpOptions(timeout=10_000),
         )
 
     def generate_content(
