@@ -87,27 +87,38 @@ async def scan_barcode(req: BarcodeRequest):
         supabase = get_supabase_admin_client()
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
         profile = profile_response.data if profile_response else None
+
+        # 2. Try local SQLite database first (instant, no API cost)
+        from app.services.food_db_service import FoodDBService
+        db_row = FoodDBService.lookup(req.barcode)
+
+        if db_row is not None:
+            logger.info(f"Barcode '{req.barcode}' found in local DB: {db_row.get('product_name')}")
+            product_data = FoodDBService.format_result(db_row, profile=profile)
+            return {
+                "product": product_data,
+                "allergy_warnings": product_data.get("allergy_warnings", []),
+                "source": "database"
+            }
+
+        # 3. Fallback to Gemini AI for unknown barcodes
+        logger.info(f"Barcode '{req.barcode}' not in local DB — using Gemini AI")
+        product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
         
-        # 2. Try OpenFoodFacts first
-        product_data = await BarcodeService.fetch_product_data(req.barcode)
-        
-        if product_data:
-            logger.info(f"Barcode '{req.barcode}' successfully resolved via OpenFoodFacts.")
-            allergy_warnings = GeminiService.evaluate_ingredients(
-                ingredients=product_data.get("ingredients", ""),
-                allergens=product_data.get("allergens", ""),
-                profile=profile
-            )
-        else:
-            # 3. Fallback: OpenFoodFacts did not have the item -> Use Gemini AI identification
-            logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts. Falling back to Gemini AI identification...")
-            product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
-            allergy_warnings = product_data.get("allergy_warnings", [])
-        
+        # Cache successful dynamic lookups into local SQLite DB
+        if product_data and not product_data.get("product_name", "").startswith("Food Item ("):
+            try:
+                logger.info(f"Caching newly identified barcode '{req.barcode}' to local foods.db")
+                FoodDBService.cache_food(req.barcode, product_data)
+            except Exception as e:
+                logger.error(f"Failed to cache barcode: {e}")
+
         return {
             "product": product_data,
-            "allergy_warnings": allergy_warnings
+            "allergy_warnings": product_data.get("allergy_warnings", []),
+            "source": "ai"
         }
+
     except Exception as e:
         logger.error(f"Barcode scan failed for '{req.barcode}': {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail="Unable to identify food item at this moment.")

@@ -29,7 +29,7 @@ class GeminiService:
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
         
         response = gemini_pool.generate_content(
-            model='gemini-3.6-flash',
+            model='gemini-3.7-flash',
             contents=[
                 types.Part.from_bytes(
                     data=image_bytes,
@@ -79,7 +79,7 @@ class GeminiService:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -112,7 +112,7 @@ class GeminiService:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -162,7 +162,7 @@ class GeminiService:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -212,7 +212,7 @@ class GeminiService:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
             )
             return response.text.strip()
@@ -251,7 +251,7 @@ class GeminiService:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -290,7 +290,7 @@ class GeminiService:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

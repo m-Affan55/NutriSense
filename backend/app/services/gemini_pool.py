@@ -36,13 +36,13 @@ class GeminiPool:
         key = self._keys[index % len(self._keys)]
         return genai.Client(
             api_key=key,
-            http_options=types.HttpOptions(timeout=10_000),
+            http_options=types.HttpOptions(timeout=60_000),
         )
 
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-3.6-flash",
+        model: str = "gemini-3.7-flash",
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None
     ) -> Any:
