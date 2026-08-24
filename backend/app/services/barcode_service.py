@@ -42,18 +42,28 @@ class BarcodeService:
     def _parse_off_product(product: dict) -> dict:
         nutriments = product.get("nutriments", {})
         
-        def safe_float(val) -> float:
+        def safe_float(val) -> Optional[float]:
+            if val is None:
+                return None
+            val_str = str(val).strip()
+            if not val_str or val_str.lower() in ('none', 'nan', 'null', ''):
+                return None
             try:
-                return float(val) if val is not None else 0.0
+                return float(val_str)
             except (ValueError, TypeError):
-                return 0.0
+                return None
 
-        # Extract macros (preferably per 100g or serving)
-        calories = safe_float(nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving") or (safe_float(nutriments.get("energy_100g")) / 4.184))
-        protein = safe_float(nutriments.get("proteins_100g") or nutriments.get("proteins_serving"))
-        carbs = safe_float(nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving"))
-        fat = safe_float(nutriments.get("fat_100g") or nutriments.get("fat_serving"))
-        
+        # Extract macros (preserve None if missing from OpenFoodFacts)
+        cal_raw = safe_float(nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving") or nutriments.get("energy-kcal"))
+        if cal_raw is None and nutriments.get("energy_100g") is not None:
+            e_kj = safe_float(nutriments.get("energy_100g"))
+            if e_kj is not None:
+                cal_raw = e_kj / 4.184
+
+        prot_raw = safe_float(nutriments.get("proteins_100g") or nutriments.get("proteins_serving") or nutriments.get("proteins"))
+        carbs_raw = safe_float(nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving") or nutriments.get("carbohydrates"))
+        fat_raw = safe_float(nutriments.get("fat_100g") or nutriments.get("fat_serving") or nutriments.get("fat"))
+
         ingredients = product.get("ingredients_text_en") or product.get("ingredients_text") or "Ingredients not listed"
         allergens = product.get("allergens_tags") or product.get("allergens") or "No allergens listed"
         if isinstance(allergens, list):
@@ -66,10 +76,10 @@ class BarcodeService:
         
         return {
             "product_name": display_name,
-            "calories": round(calories),
-            "protein_g": round(protein, 1),
-            "carbs_g": round(carbs, 1),
-            "fat_g": round(fat, 1),
+            "calories": round(cal_raw) if cal_raw is not None else None,
+            "protein_g": round(prot_raw, 1) if prot_raw is not None else None,
+            "carbs_g": round(carbs_raw, 1) if carbs_raw is not None else None,
+            "fat_g": round(fat_raw, 1) if fat_raw is not None else None,
             "ingredients": str(ingredients),
             "allergens": str(allergens),
             "image_url": image_url,
