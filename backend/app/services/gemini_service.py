@@ -163,16 +163,19 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
                     temperature=0.1,
                 ),
             )
-            return json.loads(response.text)
-        except Exception as e:
-            # Safe heuristic fallback
+            data = json.loads(response.text)
             return {
-                "name": query.title(),
-                "calories": 450,
-                "protein_g": 15.0,
-                "carbs_g": 55.0,
-                "fat_g": 18.0
+                "name": data.get("name", query.title()),
+                "calories": int(data.get("calories", 0)),
+                "protein_g": float(data.get("protein_g", 0.0)),
+                "carbs_g": float(data.get("carbs_g", 0.0)),
+                "fat_g": float(data.get("fat_g", 0.0)),
+                "is_fallback": False
             }
+        except Exception as e:
+            # Re-raise so the caller/API knows Gemini estimation failed
+            # rather than silently fabricating hardcoded nutrition data.
+            raise RuntimeError(f"Gemini macro estimation failed for '{query}': {str(e)}")
 
     @staticmethod
     def fill_macros_and_evaluate(

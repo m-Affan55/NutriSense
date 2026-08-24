@@ -91,49 +91,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     }
   }
 
-  Future<void> _logMealWithAI() async {
-    final query = _nameController.text.trim();
-    if (query.isEmpty) {
-      CustomToast.show(context, _language == 'ur' ? 'براہ کرم کھانے کا نام درج کریں' : 'Please enter your meal name first');
-      return;
-    }
-
+  Future<void> _saveMealToStorage({
+    required String mealName,
+    required int calories,
+    required double proteinG,
+    required double carbsG,
+    required double fatG,
+  }) async {
     setState(() => _isLogging = true);
-
-    int calories = 450;
-    double proteinG = 15.0;
-    double carbsG = 55.0;
-    double fatG = 18.0;
-    String finalMealName = query;
-
-    // 1. Calculate macros using Gemini AI / USDA backend engine
-    try {
-      final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'query': query}),
-      ).timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        calories = (data['calories'] as num?)?.toInt() ?? 450;
-        proteinG = (data['protein_g'] as num?)?.toDouble() ?? 15.0;
-        carbsG = (data['carbs_g'] as num?)?.toDouble() ?? 55.0;
-        fatG = (data['fat_g'] as num?)?.toDouble() ?? 18.0;
-        if (data['name'] != null && data['name'].toString().isNotEmpty) {
-          finalMealName = data['name'].toString();
-        }
-      }
-    } catch (_) {
-      // Offline fallback: Heuristic estimation based on typical meal portions
-      calories = 480;
-      proteinG = 16.0;
-      carbsG = 60.0;
-      fatG = 18.0;
-    }
-
-    // 2. Save meal to database (Offline-First)
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -143,7 +108,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         await supabase.from('meal_logs').insert({
           'user_id': user.id,
           'meal_type': _selectedMealType,
-          'notes': finalMealName,
+          'notes': mealName,
           'total_calories': calories,
           'total_protein_g': proteinG.round(),
           'total_carbs_g': carbsG.round(),
@@ -155,7 +120,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         await OfflineCache.instance.insertPendingMeal(
           userId: user.id,
           mealType: _selectedMealType,
-          notes: finalMealName,
+          notes: mealName,
           calories: calories,
           proteinG: proteinG.round(),
           carbsG: carbsG.round(),
@@ -175,7 +140,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ? 'غذا محفوظ ہو گئی! ($calories کیلوریز | ${proteinG.round()}g پروٹین)'
             : 'Meal Logged! ($calories kcal • ${proteinG.round()}g P • ${carbsG.round()}g C • ${fatG.round()}g F)';
         CustomToast.show(context, successMsg, isError: false);
-        SwapService.checkMealForSwaps(finalMealName);
+        SwapService.checkMealForSwaps(mealName);
 
         if (Navigator.canPop(context)) {
           Navigator.pop(context, true);
@@ -196,6 +161,241 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       }
     }
   }
+
+  void _showManualEntryFallbackDialog(String mealName) {
+    final calController = TextEditingController();
+    final proController = TextEditingController();
+    final carbController = TextEditingController();
+    final fatController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161A22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withAlpha(30),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.cloud_off, color: Colors.amber, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _language == 'ur' ? 'اے آئی تخمینہ دستیاب نہیں' : 'AI Engine Unavailable',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                            ),
+                            Text(
+                              _language == 'ur' ? 'براہ کرم دستی طور پر غذائی تفصیلات درج کریں:' : 'Please enter your meal macros manually to log accurately:',
+                              style: const TextStyle(fontSize: 12, color: Colors.white60),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(8),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.restaurant, color: Color(0xFF00E676), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            mealName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: calController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: _language == 'ur' ? 'کیلوریز (kcal) *' : 'Calories (kcal) *',
+                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: const Color(0xFF0D0F14),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'لازمی ہے' : 'Required') : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: proController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
+                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: const Color(0xFF0D0F14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: carbController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
+                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: const Color(0xFF0D0F14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: fatController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
+                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: const Color(0xFF0D0F14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E676),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          final cal = int.tryParse(calController.text.trim()) ?? 0;
+                          final pro = double.tryParse(proController.text.trim()) ?? 0.0;
+                          final carb = double.tryParse(carbController.text.trim()) ?? 0.0;
+                          final fat = double.tryParse(fatController.text.trim()) ?? 0.0;
+
+                          Navigator.pop(ctx);
+                          _saveMealToStorage(
+                            mealName: mealName,
+                            calories: cal,
+                            proteinG: pro,
+                            carbsG: carb,
+                            fatG: fat,
+                          );
+                        }
+                      },
+                      child: Text(
+                        _language == 'ur' ? 'کھانا محفوظ کریں' : 'Save Meal',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _logMealWithAI() async {
+    final query = _nameController.text.trim();
+    if (query.isEmpty) {
+      CustomToast.show(context, _language == 'ur' ? 'براہ کرم کھانے کا نام درج کریں' : 'Please enter your meal name first');
+      return;
+    }
+
+    setState(() => _isLogging = true);
+
+    // 1. Calculate macros using Gemini AI / USDA backend engine
+    try {
+      final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'query': query}),
+      ).timeout(const Duration(seconds: 35));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final int calories = (data['calories'] as num?)?.toInt() ?? 0;
+        final double proteinG = (data['protein_g'] as num?)?.toDouble() ?? 0.0;
+        final double carbsG = (data['carbs_g'] as num?)?.toDouble() ?? 0.0;
+        final double fatG = (data['fat_g'] as num?)?.toDouble() ?? 0.0;
+        final String finalMealName = (data['name'] != null && data['name'].toString().isNotEmpty)
+            ? data['name'].toString()
+            : query;
+
+        await _saveMealToStorage(
+          mealName: finalMealName,
+          calories: calories,
+          proteinG: proteinG,
+          carbsG: carbsG,
+          fatG: fatG,
+        );
+      } else {
+        throw Exception('AI server returned ${response.statusCode}');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLogging = false);
+        _showManualEntryFallbackDialog(query);
+      }
+    }
+  }
+
 
   Widget _buildBarcodeIcon({Color? color, double size = 22}) {
     final c = color ?? Colors.white;

@@ -101,25 +101,6 @@ Compare to barcode scanner which has `.timeout(const Duration(seconds: 60))` at 
 
 ---
 
-### Issue 4: USDA API failure silently returns all-zero macros that get used as real data
-
-- **Where**: [usda_service.py L60-71](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/usda_service.py#L60-L71) → consumed by [meals.py L43-60](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/api/v1/endpoints/meals.py#L43-L60)
-- **User action**: User scans a meal image → USDA API times out or returns no results
-- **What happens**:
-```python
-# usda_service.py returns:
-return {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
-
-# meals.py L49-55 uses these zeros:
-grams = float(item.get("estimated_weight_g", 0))
-ratio = grams / 100.0
-item["calories"] = round(usda_macros["calories"] * ratio)  # 0 * anything = 0
-```
-- **Bad outcome**: User scans a plate of Biryani → sees "0 calories, 0g protein" → logs it → dashboard shows they ate nothing → no escalation triggers even if the meal is dangerous for their condition.
-- **Severity**: **High**
-- **Fix**: If USDA returns all zeros, fall back to Gemini estimation for that food item, or flag the item in the UI as "nutrition data unavailable."
-
----
 
 ## Category 2: Input Validation & Malformed Data
 

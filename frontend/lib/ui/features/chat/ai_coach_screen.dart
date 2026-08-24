@@ -210,6 +210,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     _silenceTimer?.cancel();
     await _speechToText.stop();
     if (mounted) {
+      if (_isTyping) return;
       setState(() => _voiceState = VoiceAssistantState.processing);
       // Auto-send if there's text
       if (_controller.text.trim().isNotEmpty) {
@@ -306,11 +307,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   Future<void> _sendMessage() async {
-    // Note behavior #13: If typed manually while voice mode is ON, it will process normally
-    // but the TTS completion handler won't loop back to listening since it wasn't triggered 
-    // by Voice Mode mic tap initially, UNLESS we specifically structure it. 
-    // We will speak the text if _isVoiceModeOn, or let manual trigger just work.
-    
+    // Guard against concurrent submissions while AI is already generating a response
+    if (_isTyping) return;
+
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
@@ -345,7 +344,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         });
       }
 
-      // 2. Query Uvicorn chat endpoint
+      // 2. Query Uvicorn chat endpoint with a 35-second timeout
       final url = Uri.parse('${ApiClient.getBaseUrl()}/coach/chat');
       final response = await http.post(
         url,
@@ -355,7 +354,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           'message': text,
           'history': historyPayload,
         }),
-      );
+      ).timeout(const Duration(seconds: 35));
 
       if (response.statusCode != 200) {
         throw Exception('Server failed to respond: ${response.body}');
@@ -399,10 +398,20 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           _isTyping = false;
           _voiceState = VoiceAssistantState.error;
         });
-        CustomToast.show(context, 'Chat error: ${e.toString()}');
+
+        final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+        final errorToastMsg = isTimeout
+            ? (_language == 'ur'
+                ? 'سرور کا جواب دینے میں تاخیر ہو گئی۔ براہ کرم دوبارہ کوشش کریں۔'
+                : 'Connection timed out. Please check your internet and try again.')
+            : (_language == 'ur'
+                ? 'چیٹ میں خرابی پیش آ گئی۔'
+                : 'Could not reach AI Coach. Please try again.');
+
+        CustomToast.show(context, errorToastMsg, isError: true);
         
         if (_isVoiceModeOn) {
-          _speakText(_language == 'ur' ? 'معذرت، ایک خرابی پیش آ گئی۔' : 'Sorry, an error occurred.');
+          _speakText(_language == 'ur' ? 'معذرت، رابطہ نہیں ہو سکا۔' : 'Sorry, connection timed out.');
         } else {
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) setState(() => _voiceState = VoiceAssistantState.idle);
@@ -655,20 +664,23 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                           Expanded(
                             child: TextField(
                               controller: _controller,
+                              enabled: !_isTyping,
                               style: const TextStyle(color: Colors.white),
                               textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
                               decoration: InputDecoration(
-                                hintText: _voiceState == VoiceAssistantState.listening ? 'Listening...' : hint,
+                                hintText: _isTyping
+                                    ? (_language == 'ur' ? 'کوچ جواب تیار کر رہا ہے...' : 'Coach is thinking...')
+                                    : (_voiceState == VoiceAssistantState.listening ? 'Listening...' : hint),
                                 hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                                 border: InputBorder.none,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                               ),
-                              onSubmitted: (_) => _sendMessage(),
+                              onSubmitted: _isTyping ? null : (_) => _sendMessage(),
                             ),
                           ),
                           // Voice Mode Button (ChatGPT Style)
                           GestureDetector(
-                            onTap: _toggleVoiceMode,
+                            onTap: _isTyping ? null : _toggleVoiceMode,
                             child: Container(
                               height: 40,
                               width: 40,
@@ -688,17 +700,27 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                             height: 40,
                             width: 40,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              gradient: _isTyping
+                                  ? LinearGradient(
+                                      colors: [Colors.grey.shade800, Colors.grey.shade700],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: IconButton(
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                              onPressed: _sendMessage,
+                              icon: _isTyping
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                                    )
+                                  : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                              onPressed: _isTyping ? null : _sendMessage,
                             ),
                           ),
                         ],
@@ -1091,10 +1113,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
   Widget _buildQuickPromptChip(String text, Color accent) {
     return GestureDetector(
-      onTap: () {
-        _controller.text = text;
-        _sendMessage();
-      },
+      onTap: _isTyping
+          ? null
+          : () {
+              _controller.text = text;
+              _sendMessage();
+            },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(

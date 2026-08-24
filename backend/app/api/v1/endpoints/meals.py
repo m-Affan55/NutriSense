@@ -41,23 +41,47 @@ async def scan_meal(
         total_fat = 0.0
         
         for item in scan_result.get("items", []):
-            usda_macros = await UsdaService.fetch_macros_per_100g(item.get("name", ""))
-            
-            # Pass the baseline to frontend so it can recalculate live when grams change
-            item["macros_per_100g"] = usda_macros 
-            
             grams = float(item.get("estimated_weight_g", 0))
-            ratio = grams / 100.0
+            ratio = (grams / 100.0) if grams > 0 else 1.0
             
-            item["calories"] = round(usda_macros["calories"] * ratio)
-            item["protein_g"] = round(usda_macros["protein_g"] * ratio, 1)
-            item["carbs_g"] = round(usda_macros["carbs_g"] * ratio, 1)
-            item["fat_g"] = round(usda_macros["fat_g"] * ratio, 1)
+            usda_macros = await UsdaService.fetch_macros_per_100g(item.get("name", ""))
+            has_usda = usda_macros.get("calories", 0) > 0 or usda_macros.get("protein_g", 0) > 0 or usda_macros.get("carbs_g", 0) > 0 or usda_macros.get("fat_g", 0) > 0
             
-            total_calories += item["calories"]
-            total_protein += item["protein_g"]
-            total_carbs += item["carbs_g"]
-            total_fat += item["fat_g"]
+            if has_usda:
+                item["macros_per_100g"] = usda_macros
+                item["calories"] = round(usda_macros["calories"] * ratio)
+                item["protein_g"] = round(usda_macros["protein_g"] * ratio, 1)
+                item["carbs_g"] = round(usda_macros["carbs_g"] * ratio, 1)
+                item["fat_g"] = round(usda_macros["fat_g"] * ratio, 1)
+                item["macro_source"] = "usda"
+            else:
+                # USDA lookup did not have data (e.g. South Asian / regional dish)
+                # Keep Gemini's rich AI item estimates and derive per-100g baseline for frontend portion sliders
+                item_cal = float(item.get("calories", 0))
+                item_pro = float(item.get("protein_g", 0))
+                item_carb = float(item.get("carbs_g", 0))
+                item_fat = float(item.get("fat_g", 0))
+                
+                if grams > 0:
+                    item["macros_per_100g"] = {
+                        "calories": round((item_cal / grams) * 100.0, 1),
+                        "protein_g": round((item_pro / grams) * 100.0, 1),
+                        "carbs_g": round((item_carb / grams) * 100.0, 1),
+                        "fat_g": round((item_fat / grams) * 100.0, 1),
+                    }
+                else:
+                    item["macros_per_100g"] = {
+                        "calories": item_cal,
+                        "protein_g": item_pro,
+                        "carbs_g": item_carb,
+                        "fat_g": item_fat,
+                    }
+                item["macro_source"] = "ai_estimate"
+            
+            total_calories += item.get("calories", 0)
+            total_protein += item.get("protein_g", 0)
+            total_carbs += item.get("carbs_g", 0)
+            total_fat += item.get("fat_g", 0)
             
         scan_result["total_calories"] = round(total_calories)
         scan_result["total_protein_g"] = round(total_protein, 1)
@@ -291,8 +315,10 @@ async def search_food(req: SearchFoodRequest):
     try:
         macros = GeminiService.estimate_food_macros(req.query)
         return macros
+    except RateLimitExceeded:
+        raise HTTPException(status_code=429, detail="RATE_LIMITED")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))
 
 @router.get("/grocery-list/{user_id}")
 async def get_grocery_list(user_id: str):
