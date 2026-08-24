@@ -162,9 +162,47 @@ async def scan_barcode(req: BarcodeRequest):
                     "source": product_data.get("source", "database")
                 }
 
-        # ── PATH B: Not in DB — single Gemini AI call ────────────────────────
+        # ── PATH B: Not in DB — Fallback 1: OpenFoodFacts -> Fallback 2: Gemini AI ───
         else:
-            logger.info(f"Barcode '{req.barcode}' not in local DB — sending to Gemini AI")
+            logger.info(f"Barcode '{req.barcode}' not in local DB — trying OpenFoodFacts API...")
+            off_data = None
+            try:
+                off_data = await BarcodeService.fetch_product_data(req.barcode)
+            except Exception as off_err:
+                logger.warning(f"OpenFoodFacts lookup failed for '{req.barcode}': {off_err}")
+
+            if off_data and off_data.get("product_name") and off_data.get("product_name") != "Scanned Packaged Food":
+                logger.info(f"Barcode '{req.barcode}' resolved via OpenFoodFacts: {off_data.get('product_name')}")
+                
+                # Clinical health & allergy evaluation on OpenFoodFacts data
+                ai_warnings = GeminiService.evaluate_ingredients(
+                    ingredients=off_data.get("ingredients", ""),
+                    allergens=off_data.get("allergens", ""),
+                    profile=profile,
+                    macros={
+                        "calories":  off_data.get("calories", 0),
+                        "carbs_g":   off_data.get("carbs_g", 0.0),
+                        "fat_g":     off_data.get("fat_g", 0.0),
+                        "protein_g": off_data.get("protein_g", 0.0),
+                    },
+                )
+                off_data["allergy_warnings"] = ai_warnings
+                off_data["source"] = "openfoodfacts"
+
+                # Cache into local DB so future lookups are instant
+                try:
+                    FoodDBService.cache_food(req.barcode, off_data)
+                except Exception:
+                    pass
+
+                return {
+                    "product": off_data,
+                    "allergy_warnings": ai_warnings,
+                    "source": "openfoodfacts"
+                }
+
+            # ── Fallback 2: Not in OpenFoodFacts -> Gemini AI Identification ──
+            logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts — falling back to Gemini AI...")
             try:
                 product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
                 try:

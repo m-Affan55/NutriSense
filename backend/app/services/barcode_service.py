@@ -1,6 +1,5 @@
 import httpx
-from fastapi import HTTPException
-from app.services.gemini_service import GeminiService
+from typing import Optional
 
 class BarcodeService:
     BASE_URL = "https://world.openfoodfacts.org/api/v2/product"
@@ -9,11 +8,14 @@ class BarcodeService:
     }
 
     @staticmethod
-    async def fetch_product_data(barcode: str) -> dict:
-        url_v2 = f"{BarcodeService.BASE_URL}/{barcode}.json"
-        url_v0 = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+    async def fetch_product_data(barcode: str) -> Optional[dict]:
+        clean_code = str(barcode).strip()
+        url_v2 = f"{BarcodeService.BASE_URL}/{clean_code}.json"
+        url_v0 = f"https://world.openfoodfacts.org/api/v0/product/{clean_code}.json"
         
-        async with httpx.AsyncClient(timeout=3.0, follow_redirects=True) as client:
+        # 5.0s read timeout, 3.0s connect timeout for slow/unstable networks
+        timeout_config = httpx.Timeout(5.0, connect=3.0)
+        async with httpx.AsyncClient(timeout=timeout_config, follow_redirects=True) as client:
             # 1. Try OpenFoodFacts API v2
             try:
                 response = await client.get(url_v2, headers=BarcodeService.HEADERS)
@@ -55,18 +57,21 @@ class BarcodeService:
         ingredients = product.get("ingredients_text_en") or product.get("ingredients_text") or "Ingredients not listed"
         allergens = product.get("allergens_tags") or product.get("allergens") or "No allergens listed"
         if isinstance(allergens, list):
-            allergens = ", ".join([str(a).replace("en:", "") for a in allergens])
+            allergens = ", ".join([str(a).replace("en:", "").replace("fr:", "") for a in allergens])
             
-        product_name = product.get("product_name_en") or product.get("product_name") or product.get("generic_name") or "Scanned Packaged Food"
+        raw_name = product.get("product_name_en") or product.get("product_name") or product.get("generic_name") or "Scanned Packaged Food"
+        brand = product.get("brands") or ""
+        display_name = f"{brand} · {raw_name}" if (brand and brand.lower() not in raw_name.lower()) else raw_name
         image_url = product.get("image_url") or product.get("image_front_url")
         
         return {
-            "product_name": product_name,
+            "product_name": display_name,
             "calories": round(calories),
             "protein_g": round(protein, 1),
             "carbs_g": round(carbs, 1),
             "fat_g": round(fat, 1),
             "ingredients": str(ingredients),
             "allergens": str(allergens),
-            "image_url": image_url
+            "image_url": image_url,
+            "source": "openfoodfacts"
         }
