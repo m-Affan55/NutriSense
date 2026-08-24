@@ -42,7 +42,7 @@ class GeminiPool:
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-3.6-flash",
+        model: str = "gemini-3.7-flash",
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None
     ) -> Any:

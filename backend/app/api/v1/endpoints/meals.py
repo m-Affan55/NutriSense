@@ -5,6 +5,7 @@ from app.services.gemini_pool import RateLimitExceeded
 from app.services.usda_service import UsdaService
 from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
+from app.services.food_db_service import FoodDBService
 
 router = APIRouter()
 
@@ -87,29 +88,107 @@ async def scan_barcode(req: BarcodeRequest):
         supabase = get_supabase_admin_client()
         profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
         profile = profile_response.data if profile_response else None
-        
-        # 2. Try OpenFoodFacts first
-        product_data = await BarcodeService.fetch_product_data(req.barcode)
-        
-        if product_data:
-            logger.info(f"Barcode '{req.barcode}' successfully resolved via OpenFoodFacts.")
-            allergy_warnings = GeminiService.evaluate_ingredients(
-                ingredients=product_data.get("ingredients", ""),
-                allergens=product_data.get("allergens", ""),
-                profile=profile
-            )
+
+        # ── PATH A: Product exists in local DB ────────────────────────────────
+        db_row = FoodDBService.lookup(req.barcode)
+
+        if db_row is not None:
+            logger.info(f"Barcode '{req.barcode}' found in local DB: {db_row.get('product_name')}")
+            
+            # Check if DB row has complete valid macros (Tea/Water with 0.0 are accepted, NULL is not)
+            if FoodDBService.is_macro_complete(db_row):
+                logger.info(f"DB row has complete macros for '{req.barcode}'.")
+                product_data = FoodDBService.format_result(db_row, profile=profile)
+                
+                # Single call for clinical health evaluation
+                ai_warnings = GeminiService.evaluate_ingredients(
+                    ingredients=product_data.get("ingredients", ""),
+                    allergens=product_data.get("allergens", ""),
+                    profile=profile,
+                    macros={
+                        "calories":  product_data.get("calories"),
+                        "carbs_g":   product_data.get("carbs_g"),
+                        "fat_g":     product_data.get("fat_g"),
+                        "protein_g": product_data.get("protein_g"),
+                    },
+                )
+                keyword_warnings = product_data.get("allergy_warnings", [])
+                merged_warnings = ai_warnings if ai_warnings else keyword_warnings
+                product_data["allergy_warnings"] = merged_warnings
+
+                return {
+                    "product": product_data,
+                    "allergy_warnings": merged_warnings,
+                    "source": "database"
+                }
+
+            else:
+                # Macros are missing/NULL or anomalous in DB -> Single combined Gemini call (Fix 7)
+                logger.info(f"Incomplete macros for '{req.barcode}' — filling via combined Gemini call for: {db_row.get('product_name')}")
+                pname = db_row.get('product_name') or 'Packaged Food'
+                brand = db_row.get('brands') or ''
+                display_name = f"{brand} · {pname}" if (brand and brand.lower() not in pname.lower()) else pname
+
+                enriched = GeminiService.fill_macros_and_evaluate(
+                    product_name=display_name,
+                    ingredients=db_row.get('ingredients_text', ''),
+                    allergens=db_row.get('allergens_en', ''),
+                    profile=profile
+                )
+
+                if enriched and enriched.get("calories", 0) > 0:
+                    product_data = {
+                        'product_name':    display_name,
+                        'calories':        enriched["calories"],
+                        'protein_g':       enriched["protein_g"],
+                        'carbs_g':         enriched["carbs_g"],
+                        'fat_g':           enriched["fat_g"],
+                        'ingredients':     enriched.get("ingredients") or db_row.get('ingredients_text') or 'Standard ingredients',
+                        'allergens':       enriched.get("allergens") or db_row.get('allergens_en') or 'No major allergens',
+                        'allergy_warnings': enriched.get("allergy_warnings", []),
+                        'source':          'database_enriched',
+                    }
+                    try:
+                        FoodDBService.cache_food(req.barcode, product_data)
+                    except Exception:
+                        pass
+                else:
+                    # Fallback to whatever raw DB has if Gemini is rate limited
+                    product_data = FoodDBService.format_result(db_row, profile=profile)
+
+                return {
+                    "product": product_data,
+                    "allergy_warnings": product_data.get("allergy_warnings", []),
+                    "source": product_data.get("source", "database")
+                }
+
+        # ── PATH B: Not in DB — single Gemini AI call ────────────────────────
         else:
-            # 3. Fallback: OpenFoodFacts did not have the item -> Use Gemini AI identification
-            logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts. Falling back to Gemini AI identification...")
-            product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
-            allergy_warnings = product_data.get("allergy_warnings", [])
-        
-        return {
-            "product": product_data,
-            "allergy_warnings": allergy_warnings
-        }
+            logger.info(f"Barcode '{req.barcode}' not in local DB — sending to Gemini AI")
+            try:
+                product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
+                try:
+                    FoodDBService.cache_food(req.barcode, product_data)
+                except Exception:
+                    pass
+            except Exception as gemini_err:
+                logger.error(f"Gemini failed for barcode '{req.barcode}': {gemini_err}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Could not identify this product. Please try again or enter the food details manually."
+                )
+
+            return {
+                "product": product_data,
+                "allergy_warnings": product_data.get("allergy_warnings", []),
+                "source": "ai",
+            }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Barcode scan failed for '{req.barcode}': {type(e).__name__}: {e}")
+        import logging
+        logging.getLogger(__name__).error(f"Barcode scan failed for '{req.barcode}': {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail="Unable to identify food item at this moment.")
 
 
