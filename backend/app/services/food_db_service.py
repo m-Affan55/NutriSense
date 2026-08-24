@@ -64,15 +64,64 @@ class FoodDBService:
         try:
             cur = conn.cursor()
             placeholders = ','.join('?' * len(candidates))
+            # Order so rows with complete macros come first (CASE WHEN NULL = 0, non-null = 1).
+            # This handles dataset duplicates where one row has macros and another doesn't.
             cur.execute(
-                f"SELECT * FROM foods WHERE code IN ({placeholders}) LIMIT 1",
+                f"""SELECT * FROM foods
+                    WHERE code IN ({placeholders})
+                    ORDER BY
+                        (CASE WHEN fat_g   IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN carbs_g IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN protein_g IS NOT NULL THEN 1 ELSE 0 END) DESC
+                    LIMIT 1""",
                 tuple(candidates)
             )
             row = cur.fetchone()
             return dict(row) if row else None
-
         except Exception:
             return None
+
+    @staticmethod
+    def is_macro_complete(food_row: Optional[dict]) -> bool:
+        """
+        Evaluates whether a database row has valid, complete nutritional macros.
+        Returns:
+          - False if any macro is NULL (missing data)
+          - False if Calories > 50 but all macros are 0.0 (corrupt/anomalous data)
+          - True  if legitimate zero-calorie item (Tea, Water, Coffee, Salt) with <= 25 kcal and 0.0 macros
+          - True  if real positive macros exist
+        """
+        if not food_row:
+            return False
+
+        fat = food_row.get('fat_g')
+        carbs = food_row.get('carbs_g')
+        protein = food_row.get('protein_g')
+        cal = food_row.get('calories_kcal')
+
+        # 1. Any macro is NULL -> genuinely missing in dataset
+        if fat is None or carbs is None or protein is None:
+            return False
+
+        try:
+            f, c, p = float(fat), float(carbs), float(protein)
+            cal_val = float(cal) if cal is not None else 0.0
+        except (ValueError, TypeError):
+            return False
+
+        # 2. Calories > 50 but all macros are 0.0 -> anomaly, needs AI correction
+        if cal_val > 50 and f == 0.0 and c == 0.0 and p == 0.0:
+            return False
+
+        # 3. Zero/low calorie items (Tea, Water, Black Coffee, Salt) with 0.0 macros -> legitimate
+        if cal_val <= 25 and f == 0.0 and c == 0.0 and p == 0.0:
+            return True
+
+        # 4. At least one positive macro value
+        if f > 0 or c > 0 or p > 0:
+            return True
+
+        return False
 
     @staticmethod
     def check_allergens(food_row: dict, profile: Optional[dict]) -> list[str]:

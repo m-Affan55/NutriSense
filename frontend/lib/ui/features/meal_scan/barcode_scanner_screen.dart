@@ -22,7 +22,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   
   bool _isProcessing = false;
   bool _torchEnabled = false;
-  final Set<String> _failedBarcodes = {};
+  DateTime? _lastScanTime;
+  String? _lastScannedCode;
   
   @override
   void initState() {
@@ -43,6 +44,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   Future<void> _processBarcode(String barcode) async {
     final cleanCode = barcode.trim();
     if (cleanCode.isEmpty || _isProcessing) return;
+
+    // Debounce exact same barcode if scanned within 2 seconds
+    final now = DateTime.now();
+    if (_lastScannedCode == cleanCode &&
+        _lastScanTime != null &&
+        now.difference(_lastScanTime!).inSeconds < 2) {
+      return;
+    }
+    _lastScannedCode = cleanCode;
+    _lastScanTime = now;
     
     setState(() {
       _isProcessing = true;
@@ -66,24 +77,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
-          _showProductResultDialog(data);
+          await _showProductResultDialog(data);
+        }
+      } else if (response.statusCode == 503) {
+        if (mounted) {
+          await _showServiceBusyDialog(cleanCode);
         }
       } else {
         if (mounted) {
-          _showNotFoundDialog(cleanCode);
+          await _showNotFoundDialog(cleanCode);
         }
       }
     } on Exception catch (e) {
       if (mounted) {
         final msg = e.toString().toLowerCase();
         final isTimeout = msg.contains('timeout') || msg.contains('timed out');
-        if (!isTimeout) {
-          _failedBarcodes.add(cleanCode);
-        }
         if (isTimeout) {
-          _showTimeoutDialog();
+          await _showTimeoutDialog();
         } else {
-          _showNotFoundDialog(cleanCode);
+          await _showNotFoundDialog(cleanCode);
         }
       }
     } finally {
@@ -95,8 +107,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     }
   }
   
-  void _showNotFoundDialog(String barcode) {
-    showDialog(
+  Future<void> _showNotFoundDialog(String barcode) async {
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
@@ -108,7 +120,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller.start();
             },
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
@@ -131,8 +142,52 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  void _showTimeoutDialog() {
-    showDialog(
+  Future<void> _showServiceBusyDialog(String barcode) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded, color: Colors.amberAccent, size: 22),
+            SizedBox(width: 8),
+            Text('AI Service Busy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          'Our AI identification engine is experiencing temporary peak traffic. You can retry in a moment or describe your meal directly.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ManualLogScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Describe with AI', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showTimeoutDialog() async {
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
@@ -153,16 +208,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller.start();
             },
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Clear any cached failure so user can retry the same barcode
-              _failedBarcodes.clear();
-              _controller.start();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orangeAccent,
@@ -176,7 +227,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
   
-  void _showProductResultDialog(Map<String, dynamic> data) {
+  Future<void> _showProductResultDialog(Map<String, dynamic> data) async {
     String selectedMealType = 'snack';
     final product = data['product'] ?? {};
     final List<dynamic> warnings = data['allergy_warnings'] ?? [];
@@ -288,7 +339,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _controller.start();
                 },
                 child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
@@ -302,9 +352,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         'meal_type': selectedMealType,
                         'notes': product['product_name'] ?? 'Packaged Food',
                         'total_calories': (product['calories'] as num?)?.toInt() ?? 0,
-                        'total_protein_g': (product['protein_g'] as num?)?.toInt() ?? 0,
-                        'total_carbs_g': (product['carbs_g'] as num?)?.toInt() ?? 0,
-                        'total_fat_g': (product['fat_g'] as num?)?.toInt() ?? 0,
+                        'total_protein_g': (product['protein_g'] as num?)?.toDouble() ?? 0.0,
+                        'total_carbs_g': (product['carbs_g'] as num?)?.toDouble() ?? 0.0,
+                        'total_fat_g': (product['fat_g'] as num?)?.toDouble() ?? 0.0,
                         'logged_at': DateTime.now().toIso8601String(),
                       });
                     }
@@ -535,9 +585,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
                 final scannedValue = barcodes.first.rawValue!;
-                if (!_failedBarcodes.contains(scannedValue)) {
-                  _processBarcode(scannedValue);
-                }
+                _processBarcode(scannedValue);
               }
             },
           ),

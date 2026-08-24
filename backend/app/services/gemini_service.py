@@ -51,38 +51,82 @@ class GeminiService:
             raise RuntimeError(f"Failed to parse meal scan results. Please try again. Detailed error: {str(e)}")
 
     @staticmethod
-    def evaluate_ingredients(ingredients: str, allergens: str, profile: dict = None) -> list[str]:
+    def evaluate_ingredients(
+        ingredients: str,
+        allergens: str,
+        profile: dict = None,
+        macros: dict = None,
+    ) -> list[str]:
+        """
+        Uses Gemini AI to evaluate a product's ingredients, allergens, and macros
+        against the user's health profile and medical conditions.
+        Supports both ingredient-based AND macro-based clinical triggers
+        (e.g., high carbs for Diabetes, high fat for Diarrhoea/Pancreatitis).
+        """
         if not profile:
             return []
-            
-        prompt = f"""
-        You are an expert nutritionist and medical safety evaluator.
-        
-        The user has scanned a packaged food product with the following details:
-        Ingredients: {ingredients}
-        Listed Allergens: {allergens}
-        
-        The user's health profile is:
-        - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
-        - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
-        
-        Task:
-        Analyze the ingredients and allergens against the user's health profile.
-        If there are ANY dangerous conflicts (e.g., the product contains peanuts and the user has a peanut allergy, or the product is high in sugar and the user is diabetic), list the specific warnings.
-        If there are no conflicts, return an empty list.
-        
-        Return ONLY a JSON array of strings representing the warnings. Examples:
-        ["CRITICAL: This product contains peanuts, which conflicts with your Peanut Allergy!"]
-        ["WARNING: Contains added sugars (fructose), which may not be suitable for your Diabetes."]
-        []
+
+        conditions_str = ', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'
+        restrictions_str = ', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'
+        allergies_str = ', '.join(profile.get('allergies', [])) if profile.get('allergies') else 'None'
+
+        macro_context = ""
+        if macros:
+            macro_context = f"""
+        Nutritional Values Per Serving:
+        - Calories: {macros.get('calories', 'Unknown')} kcal
+        - Carbohydrates: {macros.get('carbs_g', 'Unknown')} g
+        - Fat: {macros.get('fat_g', 'Unknown')} g
+        - Protein: {macros.get('protein_g', 'Unknown')} g
         """
-        
+
+        carbs_val = macros.get('carbs_g', '?') if macros else '?'
+        fat_val = macros.get('fat_g', '?') if macros else '?'
+
+        prompt = f"""You are an expert clinical nutritionist and medical safety evaluator.
+
+The user has scanned a packaged food product with the following details:
+Ingredients: {ingredients or 'Not specified'}
+Listed Allergens: {allergens or 'Not specified'}
+{macro_context}
+The user's health profile:
+- Medical Conditions: {conditions_str}
+- Known Allergies: {allergies_str}
+- Dietary Restrictions: {restrictions_str}
+
+Task:
+Analyze ALL of the above — ingredients, allergens, AND nutritional values — against the user's health profile.
+Use your full medical and nutritional knowledge to identify ANY conflicts. The examples below are illustrative, NOT exhaustive — apply clinical reasoning for ALL conditions the user has listed, even if they are not mentioned below.
+
+Clinical rules to apply (examples only):
+- Diabetes / High Blood Sugar: Warn if carbs > 45g per serving, or if ingredients contain added sugars (sugar, glucose, fructose, corn syrup, dextrose, honey, maltose, caramel).
+- Diarrhoea / IBS / Digestive Issues: Warn if fat > 15g per serving, or if product contains artificial sweeteners (sorbitol, mannitol, xylitol), high-fibre grains, spicy ingredients, lactose, or excessive caffeine.
+- Hypertension / High Blood Pressure: Warn if product contains salt, sodium, MSG, or soy sauce in significant quantities.
+- Celiac Disease / Gluten Intolerance: Warn if ingredients contain wheat, gluten, barley, rye, or malt.
+- Lactose Intolerance: Warn if ingredients contain milk, lactose, cream, cheese, whey, or butter.
+- Kidney Disease / Renal Failure: Warn if product is high in potassium, phosphorus, or sodium.
+- Heart Disease: Warn if product contains trans fats, saturated fats > 10g, or high sodium.
+- Peanut / Nut Allergy: Warn if allergens or ingredients mention peanuts, groundnuts, tree nuts, almonds, cashews, walnuts, hazelnuts.
+- Gout: Warn if product is high in purines (organ meats, shellfish, red meat extracts, yeast extract, beer).
+- PCOS / Insulin Resistance: Warn if product is high in refined carbs, added sugars, or trans fats.
+- Thyroid / Hypothyroidism: Warn if product contains raw cruciferous vegetables (broccoli, kale, soy) that can affect iodine uptake.
+- Any other condition the user has listed: Use your medical knowledge to determine if this product is safe or harmful.
+
+If there are NO conflicts, return an empty list [].
+
+Return ONLY a JSON array of warning strings. Be specific and mention actual values. Examples:
+["WARNING: High in carbohydrates ({carbs_val}g) — may spike blood sugar levels. Portion control is recommended for managing Diabetes / High Blood Sugar."]
+["CRITICAL: This product contains peanuts which conflicts with your Peanut Allergy!"]
+["WARNING: High fat content ({fat_val}g) — high-fat foods can worsen Diarrhoea and digestive discomfort."]
+[]
+"""
         try:
             response = gemini_pool.generate_content(
                 model='gemini-3.7-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    temperature=0.1,
                 ),
                 max_retries=1,
             )
@@ -131,7 +175,73 @@ class GeminiService:
             }
 
     @staticmethod
+    def fill_macros_and_evaluate(
+        product_name: str,
+        ingredients: str = "",
+        allergens: str = "",
+        profile: dict = None
+    ) -> dict:
+        """
+        Single combined Gemini AI call that:
+        1. Estimates accurate standard macros (calories, protein, carbs, fat) for product_name
+        2. Evaluates allergies and clinical health warnings against user's profile
+        This prevents doing 2 serial Gemini calls (Fix 7).
+        """
+        conditions_str = ', '.join(profile.get('medical_conditions', [])) if profile and profile.get('medical_conditions') else 'None'
+        restrictions_str = ', '.join(profile.get('dietary_restrictions', [])) if profile and profile.get('dietary_restrictions') else 'None'
+        allergies_str = ', '.join(profile.get('allergies', [])) if profile and profile.get('allergies') else 'None'
+
+        prompt = f"""You are an expert clinical nutritionist and food database.
+The user has scanned a food product with missing nutritional breakdown:
+Product: {product_name}
+Known Ingredients: {ingredients or 'Standard ingredients for this product'}
+Known Allergens: {allergens or 'Not specified'}
+
+User's Health Profile:
+- Medical Conditions: {conditions_str}
+- Known Allergies: {allergies_str}
+- Dietary Restrictions: {restrictions_str}
+
+Tasks:
+1. Estimate accurate nutritional values per standard serving/100g (Calories kcal, Protein g, Carbs g, Fat g).
+2. Apply clinical dietary rules against the calculated nutritional values and ingredients (e.g. Diabetes: warn if carbs > 45g or added sugar; Diarrhoea: warn if fat > 15g, artificial sweeteners, or lactose; Hypertension: sodium; Celiac: gluten; Allergies: peanuts, dairy, tree nuts).
+3. If conflicts exist, list specific clinical warnings in allergy_warnings array. If safe, return empty array [].
+
+Return ONLY a valid JSON object with exact keys:
+- "calories": Integer (kcal)
+- "protein_g": Float
+- "carbs_g": Float
+- "fat_g": Float
+- "ingredients": String
+- "allergens": String
+- "allergy_warnings": Array of strings
+"""
+        try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.7-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.1,
+                ),
+                max_retries=1,
+            )
+            result = json.loads(response.text)
+            return {
+                "calories":         int(result.get("calories", 0)),
+                "protein_g":        float(result.get("protein_g", 0.0)),
+                "carbs_g":          float(result.get("carbs_g", 0.0)),
+                "fat_g":            float(result.get("fat_g", 0.0)),
+                "ingredients":      result.get("ingredients", ingredients or "Standard ingredients"),
+                "allergens":        result.get("allergens", allergens or "No major allergens"),
+                "allergy_warnings": result.get("allergy_warnings", [])
+            }
+        except Exception:
+            return {}
+
+    @staticmethod
     def identify_barcode_food(barcode: str, profile: dict = None) -> dict:
+
         allergies_str = ', '.join(profile.get('allergies', [])) if profile and profile.get('allergies') else 'None'
         conditions_str = ', '.join(profile.get('medical_conditions', [])) if profile and profile.get('medical_conditions') else 'None'
         
@@ -181,16 +291,10 @@ class GeminiService:
                 "allergy_warnings": result.get("allergy_warnings", [])
             }
         except Exception as e:
-            return {
-                "product_name": f"Food Item ({barcode})",
-                "calories": 250,
-                "protein_g": 5.0,
-                "carbs_g": 30.0,
-                "fat_g": 10.0,
-                "ingredients": "Standard packaged food ingredients",
-                "allergens": "None specified",
-                "allergy_warnings": []
-            }
+            # Re-raise so the GeminiPool key rotation can handle 429s,
+            # and so callers can surface a proper error to the user
+            # instead of returning silent dummy/phantom nutrition data.
+            raise
 
 
     @staticmethod
