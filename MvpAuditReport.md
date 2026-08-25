@@ -5,7 +5,7 @@
 
 ---
 
-## Category 1: Network Failures
+## Category 1: Network Failures [Resolved ✅]
 
 ### Issue 1: `estimate_food_macros` silently returns fake hardcoded nutrition on ANY failure — user unknowingly logs wrong data
 
@@ -102,7 +102,7 @@ Compare to barcode scanner which has `.timeout(const Duration(seconds: 60))` at 
 ---
 
 
-## Category 2: Input Validation & Malformed Data
+## Category 2: Input Validation & Malformed Data [Resolved ✅]
 
 ### Issue 5: Onboarding accepts weight=0, height=0, age=0 — causes division by zero in BMR calculation
 
@@ -169,7 +169,8 @@ TextField(
     controller: _manualBarcodeController,
     keyboardType: TextInputType.number,  // Soft keyboard hint only, NOT validation
     // No inputFormatters, no regex validation
-```)
+)
+```
 The string is sent directly to the backend, which embeds it in SQL queries ([food_db_service.py L66-77](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/food_db_service.py#L66-L77)) and Gemini prompts ([gemini_service.py L248-271](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/gemini_service.py#L248-L271)).
 - **Bad outcome**: Prompt injection into Gemini (user sends crafted barcode string that manipulates the AI prompt). SQL is parameterized so SQLi is safe, but Gemini prompt injection is not defended.
 - **Severity**: **Medium**
@@ -704,7 +705,7 @@ The settings screen updates raw profile fields (weight, goal) but **does NOT rec
 
 ---
 
-### Issue 33: Settings age/weight/height/budget accept non-numeric and negative input — FormatException crash
+### Issue 33: Settings age/weight/height/budget accept non-numeric and negative input — FormatException crash [Resolved ✅]
 
 - **Where**: [settings_view.dart L139-142](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart#L139-L142)
 - **User action**: User types "abc" in the age field → taps "Save Targets"

@@ -167,7 +167,12 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       }
     } catch (e) {
       if (mounted) {
-        CustomToast.show(context, 'Failed to save meal: ${e.toString()}');
+        CustomToast.show(
+          context,
+          _language == 'ur'
+              ? 'کھانا محفوظ کرنے میں ناکامی۔ براہ کرم نیٹ ورک چیک کریں'
+              : 'Failed to save meal. Please check your connection and try again.',
+        );
       }
     } finally {
       if (mounted) {
