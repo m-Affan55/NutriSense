@@ -321,6 +321,7 @@ Return ONLY a valid JSON object with exact keys:
             response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',
                 contents=[prompt],
+                max_retries=1,
             )
             return response.text.strip()
         except Exception:
@@ -363,6 +364,7 @@ Return ONLY a valid JSON object with exact keys:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                 ),
+                max_retries=1,
             )
             return json.loads(response.text)
         except Exception:
