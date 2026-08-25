@@ -1,4 +1,4 @@
-![alt text](image.png)# NutriSense — Current Success & System Status
+# NutriSense — Current Success & System Status
 
 This document provides a comprehensive inventory of all features, services, database schemas, and verification results across the **NutriSense** platform.
 
@@ -11,12 +11,15 @@ This document provides a comprehensive inventory of all features, services, data
 * **Personalized Macro Targets**: Auto-computes and saves daily targets for calories, protein, carbs, and fats.
 * **Bilingual Localization**: Full cross-screen English and Urdu Nastaleeq translation with dynamic RTL/LTR adjustment.
 * **Pakistani Natural Radial Theme**: Vibrant Emerald Green and Islamic Gold radial gradient background with subtle nutrition background geometry.
+* **Input & Settings Validation (Category 2 & 11)**:
+  * Restricts Age (1–120), Weight (10–400 kg), Height (50–280 cm), and Budget (0–1,000,000 PKR) using text input formatters and strict range boundaries.
+  * Replaced raw developer/system database exception toasts with user-friendly, clean localized error messages.
 
 ### 2. Multimodal Meal & Hydration Tracking
 * **AI Image Scan-to-Log (Gemini Vision)**: Instant camera scanning calibrated for South Asian portion conventions (*katori, roti, naan*) and cooking oil/tarka macro calculations.
 * **Non-blocking Live Corrections**: Food name and portion editing with instant macro recalculation.
 * **Barcode Scanner**: `mobile_scanner` + OpenFoodFacts integration with automated allergy and medical cross-referencing.
-* **Manual Meal Logger**: Form with AI-powered search auto-fill.
+* **Manual Meal Logger**: Form with AI-powered search auto-fill and secure parsing timeouts.
 * **Advanced Hydration Selector**: Standard cups/bottles and dynamic milliliter logging with Ramadan-specific hydration schedules.
 
 ### 3. Ramadan Fasting Suite
@@ -53,9 +56,17 @@ This document provides a comprehensive inventory of all features, services, data
 ### 9. 📴 Offline-First SQLite Sync Engine
 * **Idempotent Dual-Write Cache**: SQLite local storage (`nutrisense_offline.db`) storing meal/water logs with UUID v4 `sync_id` idempotency keys preventing duplicate uploads during network reconnections.
 
-### 10. 🛡️ AI Agentic Safety Pipeline
+### 10. 🛡️ AI Agentic Safety & API Resilience (Category 1 & 3)
 * **3-Step Clinical Architecture**: Retrieval (RAG) $\to$ Contextual Coaching $\to$ Independent Risk Evaluator.
-* **Care Locator**: Integrated "Find Affordable Care" button linking users to nearby government hospitals and private clinics with 1-tap call/directions.
+* **Resilient Multi-Key & Multi-Model Pool**:
+  * Auto-cycles 4 models (`3.5-flash-lite`, `3.5-flash`, `3.7-flash`, `3.6-flash`) across 3 API keys.
+  * Automatically prioritizes `gemini-3.5-flash-lite` first to deliver responses in under 2 seconds.
+  * Tracks key availability statefully in memory (`True`/`False`), instantly disabling rate-limited keys for the day to avoid wasteful retries.
+  * Skips entire model loops immediately upon hitting network/congestion timeouts (504/503), preventing backend locks.
+  * Aligned timeouts: 30-second backend connection limits with 60–90 second frontend request tolerances.
+* **Hypoglycemia Fast-Detection**: Evaluates low blood sugar keywords and numeric readings (under 70 mg/dL) with regex to trigger immediate, non-alarmist safety warnings.
+* **Clinical Safety Dialog**: If a critical safety flag is detected, a blocking foreground modal overlays the screen, redirecting the user to care.
+* **Online/Offline Care Locator**: If location services or search APIs fail, the app triggers a clean warning card with a button to launch Google Maps deep-links for a fallback search (`hospital near me`) based on their GPS coordinates.
 
 ---
 
