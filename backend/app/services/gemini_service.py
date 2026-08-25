@@ -29,7 +29,7 @@ class GeminiService:
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
         
         response = gemini_pool.generate_content(
-            model='gemini-3.7-flash',
+            model='gemini-3.6-flash',
             contents=[
                 types.Part.from_bytes(
                     data=image_bytes,
@@ -122,7 +122,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -156,7 +156,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -221,7 +221,7 @@ Return ONLY a valid JSON object with exact keys:
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -275,7 +275,7 @@ Return ONLY a valid JSON object with exact keys:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -319,7 +319,7 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
             )
             return response.text.strip()
@@ -358,7 +358,7 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -397,7 +397,7 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

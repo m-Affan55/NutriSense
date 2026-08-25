@@ -354,7 +354,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           'message': text,
           'history': historyPayload,
         }),
-      ).timeout(const Duration(seconds: 35));
+      ).timeout(const Duration(seconds: 65));
 
       if (response.statusCode != 200) {
         throw Exception('Server failed to respond: ${response.body}');

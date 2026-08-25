@@ -82,7 +82,7 @@ def chat_with_coach(req: CoachRequest):
         
         response = gemini_pool.generate_content(
             contents=contents,
-            model="gemini-3.7-flash",
+            model="gemini-3.6-flash",
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
             ),
