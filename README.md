@@ -8,8 +8,9 @@ NutriSense is a full-stack, AI-powered health and nutrition management platform 
 
 ### 1. 🤖 AI Multi-Agent Coaching & Clinical Safety
 * **3-Step Clinical Pipeline**: User health profile & 7-day meal history retrieval (RAG) $\to$ Gemini Contextual Coaching $\to$ Independent Risk Evaluator.
-* **Risk Escalation**: Proactively detects high-risk patterns for diabetics and hypertensive users without alarmism.
-* **Care Locator**: Integrated "Find Affordable Care" button linking users to nearby government hospitals and private clinics with 1-tap call/directions.
+* **API Resilience & Stateful Key Rotation**: An automatic multi-key pool that statefully tracks API rate limits in memory, disables exhausted keys for the day, and skips congested models instantly to guarantee under 2-second response latencies.
+* **Risk Escalation**: Proactively detects high-risk patterns (including hypoglycemia and metabolic anomalies) and triggers persistent warning overlays.
+* **Care Locator**: Integrated clinic search that falls back online/offline to GPS-based Google Maps hospital search intents if local APIs or location services fail.
 
 ### 2. 📸 Multimodal Plate & Barcode Scanner
 * **Gemini Vision Photo Logging**: Automatically recognizes Pakistani dishes (Daal, Biryani, Bhindi, Nihari, Haleem, Paratha, etc.) with South Asian portion calibrations (*katori, roti, naan*) and tarka oil/ghee estimations.
