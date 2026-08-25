@@ -46,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   final int _waterGoal = 2500;
 
   List<Map<String, dynamic>> _todayMeals = [];
+  final Set<int> _expandedMealIndices = {};
   bool _isLoading = true;
   String _language = 'en';
   bool _needsOnboarding = false;
@@ -155,6 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           'notes': meal['notes'] ?? 'Meal Logged',
           'meal_type': meal['meal_type'] ?? 'breakfast',
           'total_calories': meal['total_calories'] ?? 0,
+          'logged_at': meal['logged_at'] ?? meal['created_at'],
         });
       }
 
@@ -213,6 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 'notes': m['notes'],
                 'meal_type': m['meal_type'],
                 'total_calories': m['calories'],
+                'logged_at': m['logged_at'] ?? DateTime.now().toIso8601String(),
                 'pending': true,
               });
             }
@@ -809,7 +812,28 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                               }
                             }
 
-                            return _buildMealCard(context, mealType, notes, calories, mealIcon);
+                            final loggedAt = meal['logged_at'];
+                            final isExpanded = _expandedMealIndices.contains(index);
+
+                            return _buildMealCard(
+                              context: context,
+                              type: mealType,
+                              rawType: rawType,
+                              desc: notes,
+                              kcal: calories,
+                              icon: mealIcon,
+                              loggedAt: loggedAt,
+                              isExpanded: isExpanded,
+                              onTap: () {
+                                setState(() {
+                                  if (_expandedMealIndices.contains(index)) {
+                                    _expandedMealIndices.remove(index);
+                                  } else {
+                                    _expandedMealIndices.add(index);
+                                  }
+                                });
+                              },
+                            );
                           },
                         ),
                       const SizedBox(height: 32),
@@ -991,38 +1015,184 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildMealCard(BuildContext context, String type, String desc, String kcal, IconData icon) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(25), width: 1),
+  Widget _buildMealCard({
+    required BuildContext context,
+    required String type,
+    required String rawType,
+    required String desc,
+    required String kcal,
+    required IconData icon,
+    required dynamic loggedAt,
+    required bool isExpanded,
+    required VoidCallback onTap,
+  }) {
+    // Format timestamp to 12-hour local time (e.g. 10:00 AM)
+    String timeStr = '';
+    if (loggedAt != null) {
+      try {
+        final dt = DateTime.parse(loggedAt.toString()).toLocal();
+        final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+        final minute = dt.minute.toString().padLeft(2, '0');
+        final period = dt.hour >= 12 ? 'PM' : 'AM';
+        timeStr = '$hour:$minute $period';
+      } catch (_) {
+        timeStr = '';
+      }
+    }
+
+    // Localized category name
+    String categoryName;
+    switch (rawType.toLowerCase()) {
+      case 'breakfast':
+        categoryName = _language == 'ur' ? 'ناشتہ' : 'Breakfast';
+        break;
+      case 'lunch':
+        categoryName = _language == 'ur' ? 'دوپہر کا کھانا' : 'Lunch';
+        break;
+      case 'dinner':
+        categoryName = _language == 'ur' ? 'رات کا کھانا' : 'Dinner';
+        break;
+      case 'snack':
+      case 'snacks':
+        categoryName = _language == 'ur' ? 'اسنیک' : 'Snack';
+        break;
+      case 'suhoor':
+      case 'sehri':
+        categoryName = _language == 'ur' ? 'سحری' : 'Suhoor';
+        break;
+      case 'iftar':
+      case 'aftari':
+        categoryName = _language == 'ur' ? 'افطاری' : 'Iftar';
+        break;
+      default:
+        categoryName = rawType.isNotEmpty ? (rawType[0].toUpperCase() + rawType.substring(1)) : 'Meal';
+    }
+
+    final detailText = timeStr.isNotEmpty
+        ? (_language == 'ur' ? '$timeStr پر $categoryName شامل کیا گیا' : '$categoryName added at $timeStr')
+        : (_language == 'ur' ? '$categoryName شامل کیا گیا' : '$categoryName logged today');
+
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: isExpanded ? primaryColor.withAlpha(18) : Colors.white.withAlpha(15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isExpanded ? primaryColor.withAlpha(80) : Colors.white.withAlpha(25),
+            width: isExpanded ? 1.5 : 1.0,
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withAlpha(30), shape: BoxShape.circle),
-                child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+          boxShadow: isExpanded
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withAlpha(25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withAlpha(30),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: primaryColor),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(type, style: Theme.of(context).textTheme.bodySmall),
+                            const SizedBox(height: 2),
+                            Text(
+                              desc,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            kcal,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Icon(
+                            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white38,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 250),
+                    crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 12),
+                        const Divider(color: Colors.white12, height: 1),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F1218),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.schedule_rounded, color: primaryColor, size: 16),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  detailText,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade300,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(type, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 2),
-                    Text(desc, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
-                  ],
-                ),
-              ),
-              Text(kcal, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-            ],
+            ),
           ),
         ),
       ),

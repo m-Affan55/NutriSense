@@ -40,50 +40,68 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
 
   Future<void> loadCoachingData() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
     try {
       // 1. Fetch Habit Score & Summary
-      final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
-      final scoreRes = await http.get(
-        Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes'),
-      );
-      
-      if (scoreRes.statusCode == 200) {
-        final data = jsonDecode(scoreRes.body);
-        _habitScore = data['score'] ?? 0;
-        _trend = List<double>.from(data['trend'] ?? []);
-        _coachingMessage = data['coaching_message'] ?? '';
+      try {
+        final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+        final scoreRes = await http.get(
+          Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes'),
+        ).timeout(const Duration(seconds: 20));
+        
+        if (scoreRes.statusCode == 200) {
+          final data = jsonDecode(scoreRes.body);
+          _habitScore = (data['score'] as num?)?.toInt() ?? 0;
+          if (data['trend'] is List) {
+            _trend = (data['trend'] as List)
+                .map((e) => (e is num) ? e.toDouble() : -1.0)
+                .toList();
+          }
+          _coachingMessage = data['coaching_message']?.toString() ?? '';
+        }
+      } catch (scoreErr) {
+        debugPrint('Habit score fetch error: $scoreErr');
       }
 
       // 2. Fetch Recent Meals for Food Swaps
-      final today = DateTime.now();
-      final sevenDaysAgo = today.subtract(const Duration(days: 7)).toIso8601String();
-      
-      final mealsRes = await Supabase.instance.client
-          .from('meal_logs')
-          .select('notes')
-          .eq('user_id', user.id)
-          .gte('logged_at', sevenDaysAgo)
-          .order('logged_at', ascending: false)
-          .limit(10);
-          
-      final recentMealNotes = mealsRes.map((m) => m['notes'].toString()).toList();
-      
-      if (recentMealNotes.isNotEmpty) {
-        final swapRes = await http.post(
-          Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_id': user.id,
-            'recent_meals': recentMealNotes,
-          }),
-        );
+      try {
+        final today = DateTime.now();
+        final sevenDaysAgo = today.subtract(const Duration(days: 7)).toIso8601String();
         
-        if (swapRes.statusCode == 200) {
-          final data = jsonDecode(swapRes.body);
-          _foodSwaps = data['swaps'] ?? [];
+        final mealsRes = await Supabase.instance.client
+            .from('meal_logs')
+            .select('notes')
+            .eq('user_id', user.id)
+            .gte('logged_at', sevenDaysAgo)
+            .order('logged_at', ascending: false)
+            .limit(10);
+            
+        final recentMealNotes = (mealsRes as List)
+            .map((m) => m['notes']?.toString() ?? '')
+            .where((n) => n.trim().isNotEmpty && n != 'null')
+            .toList();
+        
+        if (recentMealNotes.isNotEmpty) {
+          final swapRes = await http.post(
+            Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': user.id,
+              'recent_meals': recentMealNotes,
+            }),
+          ).timeout(const Duration(seconds: 20));
+          
+          if (swapRes.statusCode == 200) {
+            final data = jsonDecode(swapRes.body);
+            _foodSwaps = data['swaps'] ?? [];
+          }
         }
+      } catch (swapErr) {
+        debugPrint('Food swaps fetch error: $swapErr');
       }
 
       if (mounted) {
@@ -104,10 +122,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         }
       }
     } catch (e) {
-      debugPrint('Error loading coaching data: $e');
+      debugPrint('General error in loadCoachingData: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        CustomToast.show(context, 'Failed to load coaching data');
       }
     }
   }
@@ -207,7 +224,11 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                           const SizedBox(width: 16),
                           Expanded(
                             child: Text(
-                              _coachingMessage,
+                              _coachingMessage.isNotEmpty
+                                  ? _coachingMessage
+                                  : (_habitScore >= 50
+                                      ? "Great progress! Your daily intake consistency is building strong nutritional momentum. Keep logging your meals to optimize your habit score."
+                                      : "Consistency is key to reaching your dietary targets. Continue logging your breakfast, lunch, and dinner to unlock personalized coaching insights!"),
                               style: const TextStyle(height: 1.5, color: Colors.white, fontSize: 15),
                             ),
                           ),
@@ -232,9 +253,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                     const SizedBox(height: 40),
 
                     // Food Swaps
+                    Text('Recommended Swaps', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
                     if (_foodSwaps.isNotEmpty) ...[
-                      Text('Recommended Swaps', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
                       ValueListenableBuilder<bool>(
                         valueListenable: SwapService.highlightNotifier,
                         builder: (context, isHighlighted, _) {
@@ -244,7 +265,45 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                           );
                         }
                       ),
-                    ]
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF161A22),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withAlpha(30),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.swap_horiz_rounded, color: theme.colorScheme.primary, size: 22),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'No food swaps needed yet',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Log your recent meals to receive personalized, healthier alternative swaps tailored to your health goals.',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12, height: 1.4),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

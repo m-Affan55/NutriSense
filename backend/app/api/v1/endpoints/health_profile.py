@@ -1,21 +1,21 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from app.db.supabase_client import get_supabase_admin_client
 
 router = APIRouter()
 
 class OnboardingData(BaseModel):
-    user_id: str
-    age: int
-    gender: str
-    weight_kg: float
-    height_cm: float
-    goal: str
-    activity_level: str
-    medical_conditions: List[str]
-    dietary_restrictions: List[str]
-    daily_budget_pkr: int
+    user_id: str = Field(..., min_length=1, max_length=128)
+    age: int = Field(..., ge=6, le=120, description="Age in years (6 to 120)")
+    gender: str = Field(..., min_length=1, max_length=20)
+    weight_kg: float = Field(..., ge=15.0, le=400.0, description="Weight in kg (15 to 400)")
+    height_cm: float = Field(..., ge=50.0, le=280.0, description="Height in cm (50 to 280)")
+    goal: str = Field(default="maintain", max_length=50)
+    activity_level: str = Field(default="sedentary", max_length=50)
+    medical_conditions: List[str] = Field(default_factory=list)
+    dietary_restrictions: List[str] = Field(default_factory=list)
+    daily_budget_pkr: int = Field(default=1000, ge=0, le=1_000_000)
 
 @router.post("/onboarding")
 def create_health_profile(data: OnboardingData):
@@ -45,18 +45,21 @@ def create_health_profile(data: OnboardingData):
         else:
             daily_calories = tdee
 
-        # Calculate Macros
-        # Protein: 2g per kg of bodyweight
-        daily_protein_g = int(data.weight_kg * 2)
+        # Safety floor for daily calorie target
+        daily_calories = max(1000.0, daily_calories)
+
+        # Calculate Macros with minimum clinical floors
+        # Protein: 2g per kg of bodyweight (min 25g)
+        daily_protein_g = max(25, int(data.weight_kg * 2))
         
-        # Fat: 25% of total calories (9 calories per gram of fat)
-        daily_fat_g = int((daily_calories * 0.25) / 9)
+        # Fat: 25% of total calories (9 calories per gram of fat) (min 20g)
+        daily_fat_g = max(20, int((daily_calories * 0.25) / 9))
         
-        # Carbs: Remaining calories (4 calories per gram of carb)
+        # Carbs: Remaining calories (4 calories per gram of carb) (min 30g)
         calories_from_protein = daily_protein_g * 4
         calories_from_fat = daily_fat_g * 9
-        remaining_calories = daily_calories - calories_from_protein - calories_from_fat
-        daily_carbs_g = int(remaining_calories / 4)
+        remaining_calories = max(120.0, daily_calories - calories_from_protein - calories_from_fat)
+        daily_carbs_g = max(30, int(remaining_calories / 4))
 
         # Prepare DB payload
         db_payload = {

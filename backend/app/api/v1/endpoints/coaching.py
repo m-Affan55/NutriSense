@@ -20,13 +20,19 @@ def get_habit_score(user_id: str, offset_minutes: int = 0):
         profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
         profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
         if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
+            profile = {
+                'daily_calorie_target': 2000,
+                'daily_protein_g': 50,
+                'goal': 'General Health & Wellness',
+                'medical_conditions': [],
+                'dietary_restrictions': []
+            }
 
         # 2. Fetch last 30 days of meals (Using UTC to match Supabase TIMESTAMPTZ correctly)
         now_utc = datetime.datetime.now(datetime.timezone.utc)
         thirty_days_ago = (now_utc - datetime.timedelta(days=30)).isoformat()
         meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', thirty_days_ago).execute()
-        meals = meals_res.data
+        meals = meals_res.data or []
 
         # 3. Compute habit score components
         target_cal = profile.get('daily_calorie_target', 2000)

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
@@ -9,13 +9,13 @@ from google.genai import types
 router = APIRouter()
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., max_length=20)
+    content: str = Field(..., max_length=5000)
 
 class CoachRequest(BaseModel):
-    user_id: str
-    message: str
-    history: List[ChatMessage]
+    user_id: str = Field(..., min_length=1, max_length=128)
+    message: str = Field(..., min_length=1, max_length=3000, description="Chat message limited to 3000 characters")
+    history: List[ChatMessage] = Field(default_factory=list)
 
 @router.post("/chat")
 def chat_with_coach(req: CoachRequest):
@@ -65,9 +65,10 @@ def chat_with_coach(req: CoachRequest):
         # 4. Generate response using GeminiPool with auto-failover
         from app.services.gemini_pool import gemini_pool
         
-        # Convert history to format compatible with GenAI content list
+        # Convert bounded history (last 20 messages max) to format compatible with GenAI content list
         contents = []
-        for msg in req.history:
+        bounded_history = req.history[-20:] if req.history else []
+        for msg in bounded_history:
             contents.append({
                 "role": "user" if msg.role == "user" else "model",
                 "parts": [{"text": msg.content}]
