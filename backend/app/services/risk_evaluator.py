@@ -9,10 +9,27 @@ class RiskEvaluationResponse(BaseModel):
     message: str # the text to show to the user, if warning/critical
 
 def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_message: str = "") -> dict:
+    import re
     # Heuristic fast check for acute critical symptoms in message
     msg_lower = user_message.lower()
-    critical_keywords = ["350", "400", "500", "dizzy", "faint", "chest pain", "hypoglycemia", "severe pain", "ambulance", "emergency", "بے ہوش", "چکر", "سینے میں درد"]
+    critical_keywords = [
+        "350", "400", "500", "dizzy", "faint", "chest pain", "hypoglycemia", "severe pain", 
+        "ambulance", "emergency", "بے ہوش", "چکر", "سینے میں درد",
+        "low sugar", "blood sugar low", "shakiness", "shaking", "sweating", "confusion", 
+        "blurred vision", "لرزنا", "شوگر کم"
+    ]
     has_acute_symptom = any(k in msg_lower for k in critical_keywords)
+
+    # Regex search for numeric blood sugar readings below 70 mg/dL (e.g. "sugar: 55")
+    if not has_acute_symptom:
+        glucose_match = re.search(r'(?:sugar|glucose|reading|level|value|bs|bg)\b.*?\b([1-9]\d)\b', msg_lower)
+        if glucose_match:
+            try:
+                val = int(glucose_match.group(1))
+                if 10 <= val < 70:
+                    has_acute_symptom = True
+            except ValueError:
+                pass
 
     if not (profile and profile.get("medical_conditions")) and not has_acute_symptom:
         return {"level": "none", "message": ""}
@@ -50,7 +67,7 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
     try:
         response = gemini_pool.generate_content(
             contents=[system_instruction],
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=RiskEvaluationResponse,
@@ -66,9 +83,9 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
         }
     except Exception as e:
         print(f"Risk Evaluator Error: {str(e)}")
-        if has_acute_symptom:
+        if has_acute_symptom or (profile and profile.get("medical_conditions")):
             return {
                 "level": "warning",
-                "message": "Noticeable health symptoms or blood sugar spike reported. Please consult a doctor immediately."
+                "message": "Potential health risk or conflict detected. Please monitor your symptoms and consult a healthcare professional."
             }
         return {"level": "none", "message": ""}

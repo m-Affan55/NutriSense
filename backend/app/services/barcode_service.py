@@ -1,6 +1,5 @@
 import httpx
-from fastapi import HTTPException
-from app.services.gemini_service import GeminiService
+from typing import Optional
 
 class BarcodeService:
     BASE_URL = "https://world.openfoodfacts.org/api/v2/product"
@@ -9,11 +8,14 @@ class BarcodeService:
     }
 
     @staticmethod
-    async def fetch_product_data(barcode: str) -> dict:
-        url_v2 = f"{BarcodeService.BASE_URL}/{barcode}.json"
-        url_v0 = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+    async def fetch_product_data(barcode: str) -> Optional[dict]:
+        clean_code = str(barcode).strip()
+        url_v2 = f"{BarcodeService.BASE_URL}/{clean_code}.json"
+        url_v0 = f"https://world.openfoodfacts.org/api/v0/product/{clean_code}.json"
         
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        # 5.0s read timeout, 3.0s connect timeout for slow/unstable networks
+        timeout_config = httpx.Timeout(5.0, connect=3.0)
+        async with httpx.AsyncClient(timeout=timeout_config, follow_redirects=True) as client:
             # 1. Try OpenFoodFacts API v2
             try:
                 response = await client.get(url_v2, headers=BarcodeService.HEADERS)
@@ -34,56 +36,52 @@ class BarcodeService:
             except Exception:
                 pass
 
-        # 3. Fallback to Gemini AI estimation for barcodes
-        try:
-            gemini_result = GeminiService.estimate_food_macros(f"Packaged food with barcode {barcode}")
-            if gemini_result and gemini_result.get("name") and gemini_result.get("calories", 0) > 0:
-                return {
-                    "product_name": gemini_result.get("name", "Packaged Food"),
-                    "calories": round(gemini_result.get("calories", 0)),
-                    "protein_g": round(gemini_result.get("protein_g", 0), 1),
-                    "carbs_g": round(gemini_result.get("carbs_g", 0), 1),
-                    "fat_g": round(gemini_result.get("fat_g", 0), 1),
-                    "ingredients": "Nutritional estimate based on standard food database.",
-                    "allergens": "Check packaging label",
-                    "image_url": None
-                }
-        except Exception:
-            pass
-
-        raise HTTPException(status_code=404, detail="Product not found in OpenFoodFacts database.")
+        return None
 
     @staticmethod
     def _parse_off_product(product: dict) -> dict:
         nutriments = product.get("nutriments", {})
         
-        def safe_float(val) -> float:
+        def safe_float(val) -> Optional[float]:
+            if val is None:
+                return None
+            val_str = str(val).strip()
+            if not val_str or val_str.lower() in ('none', 'nan', 'null', ''):
+                return None
             try:
-                return float(val) if val is not None else 0.0
+                return float(val_str)
             except (ValueError, TypeError):
-                return 0.0
+                return None
 
-        # Extract macros (preferably per 100g or serving)
-        calories = safe_float(nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving") or (safe_float(nutriments.get("energy_100g")) / 4.184))
-        protein = safe_float(nutriments.get("proteins_100g") or nutriments.get("proteins_serving"))
-        carbs = safe_float(nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving"))
-        fat = safe_float(nutriments.get("fat_100g") or nutriments.get("fat_serving"))
-        
+        # Extract macros (preserve None if missing from OpenFoodFacts)
+        cal_raw = safe_float(nutriments.get("energy-kcal_100g") or nutriments.get("energy-kcal_serving") or nutriments.get("energy-kcal"))
+        if cal_raw is None and nutriments.get("energy_100g") is not None:
+            e_kj = safe_float(nutriments.get("energy_100g"))
+            if e_kj is not None:
+                cal_raw = e_kj / 4.184
+
+        prot_raw = safe_float(nutriments.get("proteins_100g") or nutriments.get("proteins_serving") or nutriments.get("proteins"))
+        carbs_raw = safe_float(nutriments.get("carbohydrates_100g") or nutriments.get("carbohydrates_serving") or nutriments.get("carbohydrates"))
+        fat_raw = safe_float(nutriments.get("fat_100g") or nutriments.get("fat_serving") or nutriments.get("fat"))
+
         ingredients = product.get("ingredients_text_en") or product.get("ingredients_text") or "Ingredients not listed"
         allergens = product.get("allergens_tags") or product.get("allergens") or "No allergens listed"
         if isinstance(allergens, list):
-            allergens = ", ".join([str(a).replace("en:", "") for a in allergens])
+            allergens = ", ".join([str(a).replace("en:", "").replace("fr:", "") for a in allergens])
             
-        product_name = product.get("product_name_en") or product.get("product_name") or product.get("generic_name") or "Scanned Packaged Food"
+        raw_name = product.get("product_name_en") or product.get("product_name") or product.get("generic_name") or "Scanned Packaged Food"
+        brand = product.get("brands") or ""
+        display_name = f"{brand} · {raw_name}" if (brand and brand.lower() not in raw_name.lower()) else raw_name
         image_url = product.get("image_url") or product.get("image_front_url")
         
         return {
-            "product_name": product_name,
-            "calories": round(calories),
-            "protein_g": round(protein, 1),
-            "carbs_g": round(carbs, 1),
-            "fat_g": round(fat, 1),
+            "product_name": display_name,
+            "calories": round(cal_raw) if cal_raw is not None else None,
+            "protein_g": round(prot_raw, 1) if prot_raw is not None else None,
+            "carbs_g": round(carbs_raw, 1) if carbs_raw is not None else None,
+            "fat_g": round(fat_raw, 1) if fat_raw is not None else None,
             "ingredients": str(ingredients),
             "allergens": str(allergens),
-            "image_url": image_url
+            "image_url": image_url,
+            "source": "openfoodfacts"
         }

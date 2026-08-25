@@ -52,3 +52,10 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Large dataset files — do NOT push to GitHub
+# Store locally or on server only
+backend/data/
+*.csv
+*.sqlite
+*.db

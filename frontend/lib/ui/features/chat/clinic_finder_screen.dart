@@ -200,6 +200,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   
   List<_Clinic> _dynamicClinics = [];
   bool _usingDynamic = false;
+  bool _locationError = false;
 
   @override
   void initState() {
@@ -210,6 +211,10 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   
   Future<void> _initLocationAndFetch() async {
     try {
+      setState(() {
+        _locationError = false;
+        _isLoading = true;
+      });
       final status = await Permission.location.request();
       if (!status.isGranted) {
         _useFallback("Location permission denied. Using fallback list.");
@@ -312,10 +317,11 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   
   void _useFallback(String msg) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
       setState(() {
         _usingDynamic = false;
         _isLoading = false;
+        _locationError = true;
       });
     }
   }
@@ -456,16 +462,79 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   }
 
   Widget _buildClinicList(List<_Clinic> clinics, ThemeData theme) {
-    if (clinics.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(
-            'No affordable clinics found in this category near your location. Try the other tab or search on Google Maps.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+    if (_locationError || clinics.isEmpty) {
+      final isGovernmentTab = clinics.isEmpty ? (theme.colorScheme.primary == Colors.red) : clinics.first.type == 'government';
+      final fallbackList = _allClinics.where((c) => isGovernmentTab ? c.type == 'government' : c.type == 'private').toList();
+
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(8),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.location_off_rounded, color: Colors.amberAccent, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Location Search Limited',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'We were unable to locate clinics dynamically around you. Launch Google Maps to find care near your current position instantly.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E676),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.map_rounded, size: 18),
+                    label: const Text('Open Google Maps', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=hospital+near+me');
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Regional Directory Fallbacks (Karachi/Lahore):',
+              style: TextStyle(color: Colors.white38, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...fallbackList.map((clinic) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ClinicCard(
+                  clinic: clinic,
+                  theme: theme,
+                  onCall: () => _call(context, clinic.phone),
+                  onDirections: () => _directions(context, clinic.lat, clinic.lng, clinic.name),
+                ),
+              )),
+        ],
       );
     }
     

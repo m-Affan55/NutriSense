@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -156,7 +157,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        CustomToast.show(context, 'Save failed: ${e.toString()}');
+        CustomToast.show(
+          context,
+          _language == 'ur'
+              ? 'معلومات محفوظ کرنے میں ناکامی۔ براہ کرم دوبارہ کوشش کریں'
+              : 'Failed to save settings. Please try again.',
+        );
       }
     } finally {
       if (mounted) {
@@ -662,17 +668,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _ageController,
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(3),
+                            ],
                             decoration: InputDecoration(labelText: _t('age'), border: const OutlineInputBorder()),
-                            validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return _t('required');
+                              final valInt = int.tryParse(val);
+                              if (valInt == null || valInt < 1 || valInt > 120) {
+                                return _language == 'ur' ? 'درست عمر (1-120)' : 'Enter valid age (1-120)';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextFormField(
                             controller: _weightController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              LengthLimitingTextInputFormatter(6),
+                            ],
                             decoration: InputDecoration(labelText: _t('weight'), border: const OutlineInputBorder()),
-                            validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return _t('required');
+                              final valDouble = double.tryParse(val);
+                              if (valDouble == null || valDouble < 10 || valDouble > 400) {
+                                return _language == 'ur' ? 'درست وزن (10-400)' : 'Enter valid weight (10-400)';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ],
@@ -683,9 +711,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _heightController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              LengthLimitingTextInputFormatter(6),
+                            ],
                             decoration: InputDecoration(labelText: _t('height'), border: const OutlineInputBorder()),
-                            validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return _t('required');
+                              final valDouble = double.tryParse(val);
+                              if (valDouble == null || valDouble < 50 || valDouble > 280) {
+                                return _language == 'ur' ? 'درست قد (50-280)' : 'Enter valid height (50-280)';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -693,8 +732,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _budgetController,
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(8),
+                            ],
                             decoration: InputDecoration(labelText: _t('budget'), border: const OutlineInputBorder()),
-                            validator: (val) => val == null || val.isEmpty ? _t('required') : null,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) return _t('required');
+                              final valInt = int.tryParse(val);
+                              if (valInt == null || valInt < 0 || valInt > 1000000) {
+                                return _language == 'ur' ? 'درست بجٹ (0-1,000,000)' : 'Enter valid budget (0-1,000,000)';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ],
