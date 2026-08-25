@@ -142,16 +142,19 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
         The user wants to log the following meal/food item: "{query}".
         
         Task:
-        1. Parse all items and quantities mentioned (e.g., "2 Aloo Parathas and 1 Chai").
-        2. Calculate the combined total nutritional values across all items in the meal description.
-        3. If quantity is not specified, assume 1 standard adult serving.
+        1. FIRST, determine if the input is a recognizable food or meal. If it is random gibberish, nonsense text, non-food objects, or anything that is NOT an edible food/drink/meal, set "is_food" to false.
+        2. If it IS a valid food/meal:
+           a. Parse all items and quantities mentioned (e.g., "2 Aloo Parathas and 1 Chai").
+           b. Calculate the combined total nutritional values across all items in the meal description.
+           c. If quantity is not specified, assume 1 standard adult serving.
         
         Return ONLY a valid JSON object with the following exact keys:
-        - "name": Standardized, appetizing name of the meal (e.g., "Aloo Parathas (2) with Milk Tea")
-        - "calories": Integer (total calories in kcal)
-        - "protein_g": Float (total protein in grams, rounded to 1 decimal place)
-        - "carbs_g": Float (total carbohydrates in grams, rounded to 1 decimal place)
-        - "fat_g": Float (total fat in grams, rounded to 1 decimal place)
+        - "is_food": Boolean (true if the input is a recognizable food/drink/meal, false if it is gibberish, random text, or non-food)
+        - "name": Standardized, appetizing name of the meal (e.g., "Aloo Parathas (2) with Milk Tea"). Use empty string "" if is_food is false.
+        - "calories": Integer (total calories in kcal). Use 0 if is_food is false.
+        - "protein_g": Float (total protein in grams, rounded to 1 decimal place). Use 0 if is_food is false.
+        - "carbs_g": Float (total carbohydrates in grams, rounded to 1 decimal place). Use 0 if is_food is false.
+        - "fat_g": Float (total fat in grams, rounded to 1 decimal place). Use 0 if is_food is false.
         """
         
         try:
@@ -164,13 +167,26 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
                 ),
             )
             data = json.loads(response.text)
+            
+            # Check if AI recognized it as food
+            is_food = data.get("is_food", True)
+            if not is_food:
+                return {
+                    "is_food": False,
+                    "name": "",
+                    "calories": 0,
+                    "protein_g": 0.0,
+                    "carbs_g": 0.0,
+                    "fat_g": 0.0,
+                }
+            
             return {
+                "is_food": True,
                 "name": data.get("name", query.title()),
                 "calories": int(data.get("calories", 0)),
                 "protein_g": float(data.get("protein_g", 0.0)),
                 "carbs_g": float(data.get("carbs_g", 0.0)),
                 "fat_g": float(data.get("fat_g", 0.0)),
-                "is_fallback": False
             }
         except Exception as e:
             # Re-raise so the caller/API knows Gemini estimation failed

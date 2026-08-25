@@ -123,6 +123,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           'total_protein_g': proteinG.round(),
           'total_carbs_g': carbsG.round(),
           'total_fat_g': fatG.round(),
+          'logged_at': DateTime.now().toUtc().toIso8601String(),
           'family_member_id': _selectedFamilyMemberId,
         });
       } else {
@@ -200,6 +201,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   }
 
   void _showManualEntryFallbackDialog(String mealName) {
+    final nameController = TextEditingController(text: mealName);
     final calController = TextEditingController();
     final proController = TextEditingController();
     final carbController = TextEditingController();
@@ -268,9 +270,15 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         const Icon(Icons.restaurant, color: Color(0xFF00E676), size: 18),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            mealName,
+                          child: TextFormField(
+                            controller: nameController,
                             style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'نام درکار ہے' : 'Name required') : null,
                           ),
                         ),
                       ],
@@ -364,7 +372,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
                           Navigator.pop(ctx);
                           _saveMealToStorage(
-                            mealName: mealName,
+                            mealName: nameController.text.trim(),
                             calories: cal,
                             proteinG: pro,
                             carbsG: carb,
@@ -408,6 +416,23 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Check if AI recognized it as food
+        final bool isFood = data['is_food'] ?? true;
+        if (!isFood) {
+          if (mounted) {
+            setState(() => _isLogging = false);
+            CustomToast.show(
+              context,
+              _language == 'ur'
+                  ? '❌ یہ کھانے کی چیز نہیں لگتی۔ براہ کرم کھانے کا نام درج کریں'
+                  : '❌ This doesn\'t seem like a food item. Please enter a valid food or meal name.',
+              isError: true,
+            );
+          }
+          return;
+        }
+        
         final int calories = (data['calories'] as num?)?.toInt() ?? 0;
         final double proteinG = (data['protein_g'] as num?)?.toDouble() ?? 0.0;
         final double carbsG = (data['carbs_g'] as num?)?.toDouble() ?? 0.0;
@@ -416,13 +441,16 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ? data['name'].toString()
             : query;
 
-        await _saveMealToStorage(
-          mealName: finalMealName,
-          calories: calories,
-          proteinG: proteinG,
-          carbsG: carbsG,
-          fatG: fatG,
-        );
+        if (mounted) {
+          setState(() => _isLogging = false);
+          _showAIMacroConfirmationDialog(
+            mealName: finalMealName,
+            calories: calories,
+            proteinG: proteinG,
+            carbsG: carbsG,
+            fatG: fatG,
+          );
+        }
       } else {
         throw Exception('AI server returned ${response.statusCode}');
       }
@@ -432,6 +460,192 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         _showManualEntryFallbackDialog(query);
       }
     }
+  }
+
+  /// Shows an editable confirmation bottom sheet with AI-estimated macros.
+  /// User can review, edit, and then save.
+  void _showAIMacroConfirmationDialog({
+    required String mealName,
+    required int calories,
+    required double proteinG,
+    required double carbsG,
+    required double fatG,
+  }) {
+    final nameCtrl = TextEditingController(text: mealName);
+    final calCtrl = TextEditingController(text: calories.toString());
+    final proCtrl = TextEditingController(text: proteinG.round().toString());
+    final carbCtrl = TextEditingController(text: carbsG.round().toString());
+    final fatCtrl = TextEditingController(text: fatG.round().toString());
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1A1E27),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with AI badge
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00E676).withAlpha(30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _language == 'ur' ? 'AI نے میکروز کا اندازہ لگایا ✓' : 'AI Estimated Macros ✓',
+                            style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _language == 'ur' ? 'ضرورت ہو تو ترمیم کریں، پھر محفوظ کریں' : 'Review & edit if needed, then save',
+                            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Meal name field
+                TextFormField(
+                  controller: nameCtrl,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    labelText: _language == 'ur' ? 'کھانے کا نام' : 'Meal Name',
+                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: const Color(0xFF0D0F14),
+                    prefixIcon: const Icon(Icons.restaurant_menu, color: Colors.white38, size: 18),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                // Calories field
+                TextFormField(
+                  controller: calCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: _language == 'ur' ? 'کیلوریز (kcal)' : 'Calories (kcal)',
+                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: const Color(0xFF0D0F14),
+                    prefixIcon: const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
+                  ),
+                  validator: (v) => (v == null || int.tryParse(v.trim()) == null) ? 'Enter a valid number' : null,
+                ),
+                const SizedBox(height: 12),
+                // Macro row: Protein | Carbs
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: proCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
+                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: const Color(0xFF0D0F14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: carbCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
+                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: const Color(0xFF0D0F14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Fat field
+                TextFormField(
+                  controller: fatCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
+                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: const Color(0xFF0D0F14),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Save button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline, size: 20),
+                    label: Text(
+                      _language == 'ur' ? 'کھانا محفوظ کریں' : 'Confirm & Save Meal',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E676),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        final name = nameCtrl.text.trim();
+                        final cal = int.tryParse(calCtrl.text.trim()) ?? 0;
+                        final pro = double.tryParse(proCtrl.text.trim()) ?? 0.0;
+                        final carb = double.tryParse(carbCtrl.text.trim()) ?? 0.0;
+                        final fat = double.tryParse(fatCtrl.text.trim()) ?? 0.0;
+
+                        Navigator.pop(ctx);
+                        _saveMealToStorage(
+                          mealName: name,
+                          calories: cal,
+                          proteinG: pro,
+                          carbsG: carb,
+                          fatG: fat,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildBarcodeIcon({Color? color, double size = 22}) {
@@ -655,6 +869,19 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                           controller: _nameController,
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                           maxLines: 2,
+                          textInputAction: TextInputAction.send,
+                          onFieldSubmitted: (_) {
+                            if (!_isLogging) {
+                              if (_nameController.text.trim().isEmpty) {
+                                CustomToast.show(
+                                  context,
+                                  _language == 'ur' ? 'براہ کرم کھانے کا نام درج کریں' : 'Please enter a meal description first',
+                                );
+                                return;
+                              }
+                              _logMealWithAI();
+                            }
+                          },
                           decoration: InputDecoration(
                             hintText: _language == 'ur'
                                 ? 'مثلاً: ۲ آلو کے پراٹھے اور ۱ کپ چائے...'
@@ -678,9 +905,38 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                             suffixIcon: Padding(
                               padding: const EdgeInsets.only(right: 6.0),
                               child: IconButton(
-                                tooltip: _language == 'ur' ? 'بارکوڈ اسکین کریں' : 'Scan Barcode',
-                                icon: _buildBarcodeIcon(color: accentColor, size: 20),
-                                onPressed: _openBarcodeScanner,
+                                tooltip: _language == 'ur' ? 'لاگ کریں' : 'Log with AI',
+                                icon: _isLogging
+                                    ? SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: accentColor,
+                                        ),
+                                      )
+                                    : Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: accentColor.withAlpha(30),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(Icons.send_rounded, color: accentColor, size: 18),
+                                      ),
+                                onPressed: _isLogging
+                                    ? null
+                                    : () {
+                                        if (_nameController.text.trim().isEmpty) {
+                                          CustomToast.show(
+                                            context,
+                                            _language == 'ur'
+                                                ? 'براہ کرم کھانے کا نام درج کریں'
+                                                : 'Please enter a meal description first',
+                                          );
+                                          return;
+                                        }
+                                        _logMealWithAI();
+                                      },
                               ),
                             ),
                           ),

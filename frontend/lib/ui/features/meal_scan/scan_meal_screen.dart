@@ -612,6 +612,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         'total_carbs_g': (data['total_carbs_g'] as num?)?.toInt() ?? 0,
         'total_fat_g': (data['total_fat_g'] as num?)?.toInt() ?? 0,
         'notes': data['meal_name'],
+        'logged_at': DateTime.now().toUtc().toIso8601String(),
         'family_member_id': familyMemberId,
       };
 
