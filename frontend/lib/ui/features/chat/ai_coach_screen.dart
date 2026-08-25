@@ -371,6 +371,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           message: escalationAlert['message'] ?? 'Please review your nutrition advice.',
           level: escalationAlert['level'] ?? 'warning',
         );
+        _showBlockingRiskDialog(escalationAlert);
       }
 
       if (mounted) {
@@ -433,6 +434,62 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         );
       }
     });
+  }
+
+  void _showBlockingRiskDialog(Map<String, dynamic> alert) {
+    if (!mounted) return;
+    final isCritical = alert['level'] == 'critical';
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: !isCritical, // Force dismissal only for critical alerts
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              isCritical ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
+              color: isCritical ? Colors.redAccent : Colors.amberAccent,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isCritical ? 'Urgent Safety Alert' : 'Dietary Alert',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          alert['message'] ?? 'A medical pattern or dietary conflict has been detected.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          if (!isCritical)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
+            ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ClinicFinderScreen(
+                    riskLevel: alert['level'] ?? 'warning',
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isCritical ? Colors.redAccent : theme.colorScheme.primary,
+              foregroundColor: isCritical ? Colors.white : Colors.black,
+            ),
+            child: const Text('Find Clinic', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -178,9 +178,9 @@ The string is sent directly to the backend, which embeds it in SQL queries ([foo
 
 ---
 
-## Category 3: Escalation / Clinic-Finder (Safety-Critical)
+## Category 3: Escalation / Clinic-Finder (Safety-Critical) [Resolved ✅]
 
-### Issue 8: Risk evaluator is ENTIRELY SKIPPED for users without medical conditions — even if they report acute symptoms
+### Issue 8: Risk evaluator is ENTIRELY SKIPPED for users without medical conditions — even if they report acute symptoms [Resolved ✅]
 
 - **Where**: [risk_evaluator.py L17-18](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/risk_evaluator.py#L17-L18)
 - **User action**: A user who selected "None" for medical conditions during onboarding types: "I'm feeling dizzy and fainted twice today"
@@ -197,7 +197,7 @@ The `has_acute_symptom` check is keyword-based and catches "dizzy" and "faint". 
 
 ---
 
-### Issue 9: Risk evaluator Gemini call fails → escalation silently dropped for non-keyword matches
+### Issue 9: Risk evaluator Gemini call fails → escalation silently dropped for non-keyword matches [Resolved ✅]
 
 - **Where**: [risk_evaluator.py L67-74](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/risk_evaluator.py#L67-L74)
 - **User action**: A diabetic user says "I ate 3 slices of cake and feel very unwell" (no exact keyword match like "dizzy")
@@ -216,7 +216,7 @@ When Gemini is rate-limited/down AND the user's message doesn't match the hardco
 
 ---
 
-### Issue 10: Escalation alert is ONLY a notification — no guarantee user sees it, no blocking UI
+### Issue 10: Escalation alert is ONLY a notification — no guarantee user sees it, no blocking UI [Resolved ✅]
 
 - **Where**: [ai_coach_screen.dart L369-375](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart#L369-L375)
 - **User action**: Escalation triggers but user has notifications disabled or the app is in background
@@ -237,7 +237,7 @@ if (escalationAlert != null) {
 
 ---
 
-### Issue 11: Clinic finder with location denied shows stale hardcoded Karachi clinics to users ANYWHERE in the world
+### Issue 11: Clinic finder with location denied shows stale hardcoded Karachi clinics to users ANYWHERE in the world [Resolved ✅]
 
 - **Where**: [clinic_finder_screen.dart L41-179](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/frontend/lib/ui/features/chat/clinic_finder_screen.dart#L41-L179) (hardcoded `_allClinics`)
 - **User action**: User is in Islamabad/Peshawar/Dubai → gets escalation → opens clinic finder → location denied
@@ -257,7 +257,7 @@ void _useFallback(String msg) {
 
 ---
 
-### Issue 12: Overpass API returns zero results → fallback shows wrong-city clinics
+### Issue 12: Overpass API returns zero results → fallback shows wrong-city clinics [Resolved ✅]
 
 - **Where**: [clinic_finder_screen.dart L257-260](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/frontend/lib/ui/features/chat/clinic_finder_screen.dart#L257-L260)
 - **User action**: User is in a rural area with GPS → Overpass API returns empty (no hospitals within 5km)
@@ -275,7 +275,7 @@ Falls back to the hardcoded Karachi/Lahore list — even though the user might b
 
 ---
 
-### Issue 13: Race condition — user can navigate away during escalation flow
+### Issue 13: Race condition — user can navigate away during escalation flow [Resolved ✅]
 
 - **Where**: [ai_coach_screen.dart L369-375](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart#L369-L375)
 - **User action**: Risk is detected → escalation alert fires → user taps bottom nav to switch to Dashboard before they see it
