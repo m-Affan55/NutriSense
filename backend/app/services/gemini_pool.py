@@ -42,12 +42,20 @@ class GeminiPool:
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-3.6-flash",
+        model: str = "gemini-3.7-flash",
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None
     ) -> Any:
-        fallback_models = ["gemini-3.6-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
-        models_to_try = [model] + [m for m in fallback_models if m != model]
+        priority_models = [
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-pro"
+        ]
+        models_to_try = [model] + [m for m in priority_models if m != model]
         total_keys = len(self._keys)
         attempts_per_model = max_retries if max_retries is not None else max(total_keys, 2)
         last_error = None
