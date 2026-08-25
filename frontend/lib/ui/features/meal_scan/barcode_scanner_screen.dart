@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -292,7 +292,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedMealType,
+                    initialValue: selectedMealType,
                     dropdownColor: const Color(0xFF1E232E),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -469,6 +469,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             TextField(
               controller: _manualBarcodeController,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(18),
+              ],
               autofocus: true,
               style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
               textAlign: TextAlign.center,
@@ -481,8 +485,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)),
               ),
               onSubmitted: (val) {
-                Navigator.pop(ctx);
-                _processBarcode(val);
+                final trimmed = val.trim();
+                if (trimmed.length >= 4) {
+                  Navigator.pop(ctx);
+                  _processBarcode(trimmed);
+                } else {
+                  CustomToast.show(context, 'Please enter a valid barcode (at least 4 digits)');
+                }
               },
             ),
             const SizedBox(height: 16),
@@ -491,8 +500,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               height: 48,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(ctx);
-                  _processBarcode(_manualBarcodeController.text);
+                  final trimmed = _manualBarcodeController.text.trim();
+                  if (trimmed.length >= 4) {
+                    Navigator.pop(ctx);
+                    _processBarcode(trimmed);
+                  } else {
+                    CustomToast.show(context, 'Please enter a valid barcode (at least 4 digits)');
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,

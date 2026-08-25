@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../navigation/main_navigation_screen.dart';
 import '../../../core/api_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -77,6 +78,20 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   ];
 
   Future<void> _nextPage() async {
+    // Validate body metrics on the metrics page (page 2) or before final submit
+    if (_age < 6 || _age > 120) {
+      CustomToast.show(context, 'Please enter a valid age (6 to 120 years)');
+      return;
+    }
+    if (_weightKg < 15 || _weightKg > 400) {
+      CustomToast.show(context, 'Please enter a valid weight (15 to 400 kg)');
+      return;
+    }
+    if (_heightCm < 50 || _heightCm > 280) {
+      CustomToast.show(context, 'Please enter a valid height (50 to 280 cm)');
+      return;
+    }
+
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -529,6 +544,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       child: TextFormField(
         initialValue: value.toInt().toString(),
         keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           labelText: label,
