@@ -1,0 +1,1 @@
+- **Category 1 and 2 has been resolved**

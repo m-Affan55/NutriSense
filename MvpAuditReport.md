@@ -169,7 +169,7 @@ TextField(
     controller: _manualBarcodeController,
     keyboardType: TextInputType.number,  // Soft keyboard hint only, NOT validation
     // No inputFormatters, no regex validation
-```
+```)
 The string is sent directly to the backend, which embeds it in SQL queries ([food_db_service.py L66-77](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/food_db_service.py#L66-L77)) and Gemini prompts ([gemini_service.py L248-271](file:///d:/mobileAppDev/BanoQabilHackathon/NutriSense/backend/app/services/gemini_service.py#L248-L271)).
 - **Bad outcome**: Prompt injection into Gemini (user sends crafted barcode string that manipulates the AI prompt). SQL is parameterized so SQLi is safe, but Gemini prompt injection is not defended.
 - **Severity**: **Medium**

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.services.gemini_service import GeminiService
 from app.services.gemini_pool import RateLimitExceeded
 from app.services.usda_service import UsdaService
@@ -97,11 +97,11 @@ async def scan_meal(
         raise HTTPException(status_code=500, detail=str(e))
 
 class BarcodeRequest(BaseModel):
-    barcode: str
-    user_id: str
+    barcode: str = Field(..., pattern=r'^\d{4,18}$', description="Barcode must contain 4 to 18 digits only")
+    user_id: str = Field(..., min_length=1, max_length=128)
 
 class SearchFoodRequest(BaseModel):
-    query: str
+    query: str = Field(..., min_length=1, max_length=300, description="Search query limited to 300 characters")
 
 @router.post("/scan-barcode")
 async def scan_barcode(req: BarcodeRequest):
