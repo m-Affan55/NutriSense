@@ -36,7 +36,7 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
         
     from app.services.gemini_pool import gemini_pool
     
-    meals_context = ""
+    meals_context = "Meals logged recently: None."
     if meals:
         meals_context = "\nMeals logged recently:\n" + "\n".join([
             f"- {m.get('notes', 'Unnamed meal')}: {m.get('total_calories', 0)} kcal (P: {m.get('total_protein_g', 0)}g, C: {m.get('total_carbs_g', 0)}g, F: {m.get('total_fat_g', 0)}g)"
@@ -45,7 +45,7 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
         
     system_instruction = f"""
     You are an independent medical safety evaluator agent for NutriSense.
-    Your job is to read the user's message, the AI Coach's reply, the user's medical conditions, and their recent food intake, and decide if there is a 'warning' or 'critical' health risk that warrants escalation.
+    Your job is to read the user's message, the AI Coach's reply, the user's medical conditions, and their recent food intake, and decide if there is an active 'warning' or 'critical' health risk that warrants escalation.
 
     User's Message: "{user_message}"
     User's Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'Not specified (evaluate from message)'}
@@ -58,16 +58,16 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
     \"\"\"
 
     RULES:
-    1. If the user mentions very high/low blood glucose (e.g. >= 300 mg/dL), severe dizziness, or chest tightness, return level="critical" or "warning" and an urgent safety warning.
-    2. If there is a pattern of poor choices that conflict with their medical condition (e.g. high sugar for a diabetic, high sodium for hypertension), return level="warning".
-    3. If there is NO conflict, return level="none" and message="".
+    1. ACUTE CLINICAL RISK: If the user explicitly mentions emergency readings (blood glucose >= 300 mg/dL or < 70 mg/dL), severe dizziness, fainting, chest pain, or hypoglycemia symptoms in their message, return level="critical" or "warning" and an urgent safety warning.
+    2. ACTIVE CONFLICT IN INTAKE/QUERY: If the user is currently asking to eat or currently reporting eating food that severely conflicts with their medical condition (e.g. a diabetic actively consuming high pure sugar), return level="warning".
+    3. CASUAL GREETINGS & NORMAL CHAT: If the user is only greeting ("hello", "hi", etc.), asking general fitness/nutrition questions, or there is NO active clinical emergency/conflict, return level="none" and message="". Do NOT trigger warnings on conversational greetings or hypothetical coaching examples.
     4. Keep message under 30 words. DO NOT provide medical diagnoses.
     """
 
     try:
         response = gemini_pool.generate_content(
             contents=[system_instruction],
-            model="gemini-3.7-flash",
+            model="gemini-3.5-flash-lite",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=RiskEvaluationResponse,
@@ -83,9 +83,9 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
         }
     except Exception as e:
         print(f"Risk Evaluator Error: {str(e)}")
-        if has_acute_symptom or (profile and profile.get("medical_conditions")):
+        if has_acute_symptom:
             return {
                 "level": "warning",
-                "message": "Potential health risk or conflict detected. Please monitor your symptoms and consult a healthcare professional."
+                "message": "Potential health risk detected. Please monitor your symptoms and consult a healthcare professional."
             }
         return {"level": "none", "message": ""}

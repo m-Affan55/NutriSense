@@ -122,13 +122,12 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
                 ),
-                max_retries=1,
             )
             return json.loads(response.text)
         except Exception:
@@ -159,7 +158,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -237,13 +236,12 @@ Return ONLY a valid JSON object with exact keys:
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
                 ),
-                max_retries=1,
             )
             result = json.loads(response.text)
             return {
@@ -291,7 +289,7 @@ Return ONLY a valid JSON object with exact keys:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -335,9 +333,8 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
-                max_retries=1,
             )
             return response.text.strip()
         except Exception:
@@ -375,12 +372,11 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                 ),
-                max_retries=1,
             )
             return json.loads(response.text)
         except Exception:
@@ -415,7 +411,7 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.7-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
