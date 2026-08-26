@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
@@ -313,11 +314,23 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   Future<void> _sendMessage() async {
     // Guard against concurrent submissions while AI is already generating a response
     if (_isTyping) return;
-
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
+    // 1. Preemptive internet connectivity check
+    final connectivityResults = await Connectivity().checkConnectivity();
+    final isOnline = connectivityResults.any((r) => r != ConnectivityResult.none);
+    if (!mounted) return; // Guard async gap
+    if (!isOnline) {
+      final noInternetMsg = _language == 'ur'
+          ? 'انٹرنیٹ کنکشن نہیں ہے۔ براہ کرم اپنا نیٹ ورک چیک کریں۔'
+          : 'No internet connection. Please check your network and try again.';
+      CustomToast.show(context, noInternetMsg, isError: true);
+      return;
+    }
+
     _controller.clear();
+    int userMsgIndex = -1;
     setState(() {
       _messages.add({
         'sender': _language == 'ur' ? 'آپ' : 'You',
@@ -325,6 +338,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         'isUser': true,
         'time': _formatTime(DateTime.now()),
       });
+      userMsgIndex = _messages.length - 1;
       _isTyping = true;
       if (_voiceState != VoiceAssistantState.processing) {
          _voiceState = VoiceAssistantState.processing;
@@ -348,7 +362,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         });
       }
 
-      // 2. Query Uvicorn chat endpoint with a 35-second timeout
+      // 2. Query Uvicorn chat endpoint with a 90-second timeout
       final url = Uri.parse('${ApiClient.getBaseUrl()}/coach/chat');
       final response = await http.post(
         url,
@@ -368,7 +382,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       final reply = data['response'] ?? 'Sorry, I encountered an issue parsing the reply.';
       final escalationAlert = data['escalation_alert'];
 
-      // Escalation handling remains exactly the same (Requirement #17)
+      // Escalation handling
       if (escalationAlert != null) {
         ReminderManager.showRiskAlert(
           title: escalationAlert['level'] == 'critical' ? 'Urgent Clinical Safety Alert' : 'Dietary Health Alert',
@@ -402,6 +416,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         setState(() {
           _isTyping = false;
           _voiceState = VoiceAssistantState.error;
+          // Remove the failed user message bubble from the chat view
+          if (userMsgIndex != -1 && userMsgIndex < _messages.length) {
+            _messages.removeAt(userMsgIndex);
+          }
+          // Restore text back to input field so user can edit and try again
+          _controller.text = text;
         });
 
         final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
@@ -410,8 +430,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                 ? 'سرور کا جواب دینے میں تاخیر ہو گئی۔ براہ کرم دوبارہ کوشش کریں۔'
                 : 'Connection timed out. Please check your internet and try again.')
             : (_language == 'ur'
-                ? 'چیٹ میں خرابی پیش آ گئی۔'
-                : 'Could not reach AI Coach. Please try again.');
+                ? 'رابطہ منقطع ہو گیا۔ براہ کرم انٹرنیٹ چیک کریں۔'
+                : 'Could not reach AI Coach. Please check your internet connection.');
 
         CustomToast.show(context, errorToastMsg, isError: true);
         
