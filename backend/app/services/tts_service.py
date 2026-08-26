@@ -270,6 +270,42 @@ def detect_language(text: str, fallback_lang: str = DEFAULT_LANGUAGE) -> str:
     return fallback_lang
 
 
+ELEVENLABS_VOICES: Dict[str, str] = {
+    "female": "Xb7hH8MSUJpSbSDYk0k2",  # Alice (Warm, conversational, human multilingual)
+    "male": "JBFqnCBsd6RMkjVDRZzb",    # George (Warm, conversational multilingual)
+}
+
+
+async def _synthesize_elevenlabs(text: str, voice_id: str, timeout: float = 20.0) -> bytes:
+    from app.core.config import settings
+    api_key = settings.ELEVENLABS_API_KEY
+    if not api_key:
+        raise TtsUnavailable("No ElevenLabs API key configured")
+
+    import httpx
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "xi-api-key": api_key.strip(),
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.8,
+            "style": 0.15,
+            "use_speaker_boost": True,
+        },
+    }
+
+    async with httpx.AsyncClient() as client:
+        res = await client.post(url, json=payload, headers=headers, timeout=timeout)
+        if res.status_code == 200 and res.content:
+            return res.content
+        raise TtsUnavailable(f"ElevenLabs returned {res.status_code}: {res.text}")
+
+
 async def synthesize(
     text: str,
     language: str = DEFAULT_LANGUAGE,
@@ -279,8 +315,8 @@ async def synthesize(
     """Synthesise ``text`` to MP3 bytes.
 
     Returns ``(audio_bytes, voice_name, was_cached)``.
-    Raises :class:`TtsUnavailable` so the caller can signal the client to fall
-    back to on-device TTS rather than failing silently.
+    Prefers hyper-realistic ElevenLabs neural voices, with seamless auto-failover
+    to Microsoft Edge-TTS and on-device speech.
     """
     cleaned = sanitize_for_speech(text)[:MAX_INPUT_CHARS]
     if not cleaned:
@@ -294,6 +330,18 @@ async def synthesize(
     if cached is not None:
         return cached, voice, True
 
+    # Tier 1: ElevenLabs Hyper-Realistic Conversational Voice
+    from app.core.config import settings
+    if settings.ELEVENLABS_API_KEY:
+        try:
+            el_voice_id = ELEVENLABS_VOICES.get(gender, ELEVENLABS_VOICES["female"])
+            audio = await _synthesize_elevenlabs(cleaned, el_voice_id, timeout=timeout)
+            _cache_put(key, audio)
+            return audio, f"elevenlabs-{el_voice_id}", False
+        except Exception as e:
+            print(f"[TTS] ElevenLabs synthesis failed, falling back to Edge-TTS: {e}")
+
+    # Tier 2: Microsoft Edge-TTS (Free & Unlimited Fallback)
     try:
         audio = await asyncio.wait_for(_synthesize_edge(cleaned, voice, rate), timeout=timeout)
     except asyncio.TimeoutError as exc:
