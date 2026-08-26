@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 from typing import List
 from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
+from app.services import tts_service
 from google import genai
 from google.genai import types
 
@@ -16,6 +17,11 @@ class CoachRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
     message: str = Field(..., min_length=1, max_length=3000, description="Chat message limited to 3000 characters")
     history: List[ChatMessage] = Field(default_factory=list)
+
+class TtsRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=3000, description="Text to speak; Markdown is stripped server-side")
+    language: str = Field(default="ur", max_length=8, description="'ur' or 'en'")
+    gender: str = Field(default="female", max_length=10, description="'female' or 'male'")
 
 @router.post("/chat")
 def chat_with_coach(req: CoachRequest):
@@ -139,3 +145,52 @@ def chat_with_coach(req: CoachRequest):
             return {"response": emergency_msg, "escalation_alert": escalation}
         else:
             return {"response": "I am experiencing technical difficulties right now. Please try again in a few moments.", "escalation_alert": None}
+
+
+@router.post("/tts")
+async def synthesize_coach_speech(req: TtsRequest):
+    """Return natural neural speech (MP3) for a coach reply.
+
+    On-device TTS engines rarely ship a usable ur-PK voice pack, so Urdu comes
+    out robotic or mispronounced. This renders the reply with a Microsoft neural
+    Urdu voice instead. Markdown and emoji are stripped server-side.
+
+    A 503 here is expected and recoverable: the client falls back to on-device
+    flutter_tts, so voice mode keeps working offline or if the provider is down.
+    """
+    try:
+        audio, voice, cached = await tts_service.synthesize(
+            text=req.text,
+            language=req.language,
+            gender=req.gender,
+        )
+    except tts_service.TtsUnavailable as exc:
+        # 503 signals the client to use its on-device fallback.
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={
+            "Content-Length": str(len(audio)),
+            "Cache-Control": "public, max-age=86400",
+            "X-TTS-Voice": voice,
+            "X-TTS-Cached": "1" if cached else "0",
+        },
+    )
+
+
+@router.get("/tts/health")
+async def tts_health():
+    """Report provider availability and warm the connection.
+
+    Call this on app start (and before a live demo) so the first real request
+    isn't paying for a cold container plus a fresh provider handshake.
+    """
+    ready = await tts_service.warmup()
+    return {
+        "provider_installed": tts_service.EDGE_TTS_AVAILABLE,
+        "ready": ready,
+        "voices": tts_service.VOICES,
+        "cache": tts_service.cache_stats(),
+    }

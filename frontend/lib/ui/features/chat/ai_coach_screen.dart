@@ -6,11 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/tts_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
@@ -45,7 +45,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
   // Voice features
   final stt.SpeechToText _speechToText = stt.SpeechToText();
-  final FlutterTts _flutterTts = FlutterTts();
+  final TtsService _tts = TtsService.instance;
   VoiceAssistantState _voiceState = VoiceAssistantState.idle;
   bool _isVoiceModeOn = false;
   bool _isVoiceModeOverlayVisible = false;
@@ -70,7 +70,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void _stopVoiceFeaturesCleanly() {
     _silenceTimer?.cancel();
     if (_voiceState == VoiceAssistantState.speaking) {
-      _flutterTts.stop();
+      _tts.stop();
     }
     if (_voiceState == VoiceAssistantState.listening) {
       _speechToText.stop();
@@ -86,14 +86,38 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     try {
       _isSttInitialized = await _speechToText.initialize(
         onError: (val) {
-          if (mounted) setState(() => _voiceState = VoiceAssistantState.error);
+          if (!mounted) return;
+          // "no match" and "speech timeout" fire routinely whenever the user
+          // just says nothing. Treating those as failures latched the UI into
+          // the error state and killed voice mode for the rest of the session.
+          final msg = val.errorMsg;
+          final routine = msg.contains('no_match') ||
+              msg.contains('speech_timeout') ||
+              msg.contains('retry');
+          setState(() {
+            _voiceState =
+                routine ? VoiceAssistantState.idle : VoiceAssistantState.error;
+          });
+          if (!routine) {
+            // Nothing else resets this state, so self-heal rather than leaving
+            // the mic permanently red.
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted && _voiceState == VoiceAssistantState.error) {
+                setState(() => _voiceState = VoiceAssistantState.idle);
+              }
+            });
+          }
         },
       );
     } catch (e) {
       _isSttInitialized = false;
     }
 
-    _flutterTts.setCompletionHandler(() {
+    await _tts.init();
+
+    // Both the neural server voice and the on-device fallback report through
+    // these two callbacks, so the voice-mode loop doesn't care which spoke.
+    _tts.onComplete = () {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (_isVoiceModeOn) {
@@ -103,9 +127,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           setState(() => _voiceState = VoiceAssistantState.idle);
         }
       });
-    });
+    };
 
-    _flutterTts.setErrorHandler((msg) {
+    _tts.onError = (msg) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         CustomToast.show(context, 'TTS Error: $msg');
@@ -116,7 +140,13 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           }
         });
       });
-    });
+    };
+
+    // The backend sleeps when idle on Render's free tier. Warming it means the
+    // first reply gets the neural voice instead of timing out into the robotic
+    // on-device fallback. Deliberately fired from _loadLanguageAndGreeting, once
+    // _language is actually known — warming 'en' here would cache the wrong
+    // voice for an Urdu user.
   }
 
   Future<bool> _requestPermissions() async {
@@ -164,7 +194,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void _startListening() async {
     // If we're already speaking, stop first
     if (_voiceState == VoiceAssistantState.speaking) {
-      await _flutterTts.stop();
+      await _tts.stop();
     }
 
     final hasPermission = await _requestPermissions();
@@ -190,6 +220,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       }
     });
 
+    // Without an explicit locale the recognizer uses the device default
+    // (usually English), so spoken Urdu comes back as garbled English.
+    final localeId = await SttLocales.resolve(_speechToText, _language);
+    if (!mounted) return;
+
     await _speechToText.listen(
       onResult: (result) {
         if (mounted) {
@@ -205,6 +240,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           });
         }
       },
+      localeId: localeId,
       listenOptions: stt.SpeechListenOptions(
         listenMode: stt.ListenMode.dictation,
       ),
@@ -214,15 +250,21 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void _stopListeningAndProcess() async {
     _silenceTimer?.cancel();
     await _speechToText.stop();
-    if (mounted) {
-      if (_isTyping) return;
-      setState(() => _voiceState = VoiceAssistantState.processing);
-      // Auto-send if there's text
-      if (_controller.text.trim().isNotEmpty) {
-        _sendMessage();
-      } else {
-        setState(() => _voiceState = VoiceAssistantState.idle);
-      }
+    if (!mounted) return;
+
+    // A reply is already in flight, so drop this turn — but still leave the UI
+    // idle rather than stuck on "Listening..." with a dead microphone.
+    if (_isTyping) {
+      setState(() => _voiceState = VoiceAssistantState.idle);
+      return;
+    }
+
+    setState(() => _voiceState = VoiceAssistantState.processing);
+    // Auto-send if there's text
+    if (_controller.text.trim().isNotEmpty) {
+      _sendMessage();
+    } else {
+      setState(() => _voiceState = VoiceAssistantState.idle);
     }
   }
 
@@ -240,21 +282,30 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   Future<void> _speakText(String text) async {
-    await _flutterTts.stop();
+    await _tts.stop();
+    if (!mounted) return;
     setState(() {
       _voiceState = VoiceAssistantState.speaking;
     });
-    
-    // Attempt to set language properly
-    try {
-      if (_language == 'ur') {
-        await _flutterTts.setLanguage('ur-PK');
-      } else {
-        await _flutterTts.setLanguage('en-US');
-      }
-    } catch (_) {}
-    
-    await _flutterTts.speak(text);
+
+    // TtsService strips Markdown/emoji, prefers the neural ur-PK server voice,
+    // and falls back to a tuned on-device voice if the backend is unreachable.
+    await _tts.speak(text, language: _language);
+  }
+
+  /// Cuts the coach off mid-sentence ("Stop Audio").
+  ///
+  /// In voice mode this must hand straight back to the mic: stopping playback
+  /// suppresses the completion callback that drives the speak -> listen loop, so
+  /// without this the overlay would sit idle with no way forward but closing it.
+  void _stopSpeaking() {
+    _tts.stop();
+    if (!mounted) return;
+    if (_isVoiceModeOn) {
+      _startListening();
+    } else {
+      setState(() => _voiceState = VoiceAssistantState.idle);
+    }
   }
 
   Future<void> _loadLanguageAndGreeting() async {
@@ -302,6 +353,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         });
       });
     }
+
+    // Now that the language is known, wake the backend and pre-cache a phrase in
+    // the right voice. Render spins idle containers down, so an un-warmed first
+    // request can take tens of seconds and would silently degrade to the robotic
+    // on-device voice.
+    _tts.prewarm(_language);
   }
 
   String _formatTime(DateTime dt) {
@@ -521,7 +578,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     _silenceTimer?.cancel();
     _speechToText.cancel();
-    _flutterTts.stop();
+    // TtsService is a long-lived singleton, so detach this screen's callbacks
+    // rather than disposing it — the audio player is reused on the next visit.
+    _tts.onComplete = null;
+    _tts.onError = null;
+    _tts.stop();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -623,8 +684,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                         const SizedBox(width: 12),
                         GestureDetector(
                           onTap: () {
-                            _flutterTts.stop();
-                            setState(() => _voiceState = VoiceAssistantState.idle);
+                            _stopSpeaking();
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -826,8 +886,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
             _stopVoiceFeaturesCleanly();
           },
           onStopAudio: () {
-            _flutterTts.stop();
-            setState(() => _voiceState = VoiceAssistantState.idle);
+            _stopSpeaking();
           },
         ),
       ],
