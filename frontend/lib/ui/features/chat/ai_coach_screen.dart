@@ -93,23 +93,27 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     }
 
     _flutterTts.setCompletionHandler(() {
-      if (!mounted) return;
-      if (_isVoiceModeOn) {
-        // Voice mode loop: done speaking -> start listening again
-        _startListening();
-      } else {
-        setState(() => _voiceState = VoiceAssistantState.idle);
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_isVoiceModeOn) {
+          // Voice mode loop: done speaking -> start listening again
+          _startListening();
+        } else {
+          setState(() => _voiceState = VoiceAssistantState.idle);
+        }
+      });
     });
 
     _flutterTts.setErrorHandler((msg) {
-      if (!mounted) return;
-      CustomToast.show(context, 'TTS Error: $msg');
-      setState(() => _voiceState = VoiceAssistantState.error);
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _voiceState == VoiceAssistantState.error) {
-          setState(() => _voiceState = VoiceAssistantState.idle);
-        }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        CustomToast.show(context, 'TTS Error: $msg');
+        setState(() => _voiceState = VoiceAssistantState.error);
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _voiceState == VoiceAssistantState.error) {
+            setState(() => _voiceState = VoiceAssistantState.idle);
+          }
+        });
       });
     });
   }
