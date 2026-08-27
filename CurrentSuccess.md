@@ -77,6 +77,13 @@ This document provides a comprehensive inventory of all features, services, data
 * **Safe Desktop Fallback**: Wrapped permission handler status checks in try-catches to fallback gracefully and avoid crashes on unsupported desktop platforms like Windows (Issue 18).
 * **Utterance Interrupt Sync**: Utilizes monotonic tokens to discard slow synthesize responses that arrive after the user stops or changes speech (Issue 19).
 
+### 12. 🌐 Web Compatibility & Vercel Deployment
+* **Conditional Desktop Setup**: Isolated FFI database initializers and Windows-only registry scheme setups conditionally, preventing compile-time imports on web builds.
+* **Safe Platform Detections**: Replaced `Platform` checks from `dart:io` with `defaultTargetPlatform` to enable browser compatibility.
+* **Multipart Image Uploads**: Modified scanner uploads to use web-safe `XFile` and `MultipartFile.fromBytes` buffers, supporting image previews via Blob network URLs.
+* **Universal File Handlers**: Replaced `dart:io` imports with `universal_io` for PDF document generations to allow compilation on web targets.
+* **Automatic Vercel Build Script**: Designed and implemented `vercel-build.sh` for auto-cloning Flutter stable SDK and building release web packages.
+
 ---
 
 ## 🧪 Current Verification Status
