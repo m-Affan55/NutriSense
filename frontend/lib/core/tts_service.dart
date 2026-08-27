@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
@@ -219,7 +219,7 @@ class TtsService {
     if (_initialized) return;
     _initialized = true;
 
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       try {
         await _flutterTts.setSharedInstance(true);
         await _flutterTts.setIosAudioCategory(
@@ -505,7 +505,7 @@ class TtsService {
   /// platform and glacial on the other. Urdu phonemes need a little more time
   /// than English either way.
   double _rateFor(bool isUrdu) {
-    if (!kIsWeb && Platform.isIOS) return isUrdu ? 0.42 : 0.5;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) return isUrdu ? 0.42 : 0.5;
     return isUrdu ? 0.85 : 1.0;
   }
 

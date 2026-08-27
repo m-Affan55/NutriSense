@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../navigation/main_navigation_screen.dart';
 import '../../../core/api_client.dart';
@@ -7,7 +8,6 @@ import 'package:http/http.dart' as http;
 import '../../../shared/widgets/custom_toast.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
 import '../../../core/health_service.dart';
 
 class OnboardingWizardScreen extends StatefulWidget {
@@ -419,13 +419,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               } catch (e) {
                 if (!mounted) return;
                 // If it fails (likely due to missing Health Connect), show prompt
-                if (Platform.isAndroid) {
+                if (defaultTargetPlatform == TargetPlatform.android) {
                   _showInstallPrompt(
                     'Health Connect Missing',
                     'You need Google Health Connect installed to sync your fitness data. Would you like to install it now?',
                     'market://details?id=com.google.android.apps.healthdata',
                   );
-                } else if (Platform.isIOS) {
+                } else if (defaultTargetPlatform == TargetPlatform.iOS) {
                   _showInstallPrompt(
                     'Apple Health Required',
                     'Please ensure Apple Health is set up and permissions are granted in your iPhone settings.',

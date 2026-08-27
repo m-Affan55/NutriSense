@@ -84,7 +84,20 @@ This document outlines all feature implementations, architectural additions, and
 
 ---
 
-## 🧪 8. Verification Results
+## 🌐 8. Web-Compatibility & Vercel Readiness
+* **Conditional Desktop Setup (Deep Linking & Registry)**:
+  - Created [`platform_setup.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/platform_setup.dart), [`platform_setup_stub.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/platform_setup_stub.dart), and [`platform_setup_windows.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/platform_setup_windows.dart).
+  - Quarantined Windows-only dependencies (`win32_registry` and `sqflite_common_ffi`) so they are conditionally imported only on non-web compilation targets, eliminating all web build-time FFI errors.
+* **Safe Platform Detections**:
+  - Removed `dart:io` references and replaced `Platform` checks with `defaultTargetPlatform` (from `flutter/foundation.dart`) inside [`health_service.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/health_service.dart), [`reminder_manager.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart), [`tts_service.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/tts_service.dart), and [`onboarding_view.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/onboarding/onboarding_view.dart).
+* **Multi-Platform Image Scanning**:
+  - Replaced native `File` checks in [`scan_meal_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/meal_scan/scan_meal_screen.dart) with web-safe `XFile` and `MultipartFile.fromBytes` image upload buffers. Utilizes `Image.network` for web previews (using Blob URLs) and `Image.file` for mobile preview support.
+* **Web-Safe File Handlers**:
+  - Replaced `dart:io` imports with `universal_io` inside [`settings_view.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/settings/settings_view.dart) and [`weekly_report_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/weekly_report/weekly_report_screen.dart), making file storage compilation fully compatible with browser platforms.
+
+---
+
+## 🧪 9. Verification Results
 
 - **Flutter Static Analysis**:
   ```bash
