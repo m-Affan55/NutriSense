@@ -13,11 +13,19 @@ class Settings(BaseSettings):
     GEMINI_API_KEY_01: Optional[str] = None
     GEMINI_API_KEY_02: Optional[str] = None
     GEMINI_API_KEY_03: Optional[str] = None
+    GEMINI_CHAT_API_KEY: Optional[str] = None
     GEMINI_API_KEYS: Optional[str] = None
+    ELEVENLABS_API_KEY: Optional[str] = None
     
     def get_gemini_keys(self) -> List[str]:
         keys = []
-        for candidate in [self.GEMINI_API_KEY_01, self.GEMINI_API_KEY_02, self.GEMINI_API_KEY_03]:
+        candidates = [
+            self.GEMINI_API_KEY_01,
+            self.GEMINI_API_KEY_02,
+            self.GEMINI_API_KEY_03,
+            self.GEMINI_CHAT_API_KEY,
+        ]
+        for candidate in candidates:
             if candidate and candidate.strip() and candidate.strip() not in keys:
                 keys.append(candidate.strip())
         if self.GEMINI_API_KEYS:

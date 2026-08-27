@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -28,7 +27,7 @@ class ReminderManager {
   static Future<void> init() async {
     if (_isInitialized) return;
 
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -54,7 +53,7 @@ class ReminderManager {
   }
 
   static Future<void> requestPermissions() async {
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
 
     final androidImplementation =
         _notifications.resolvePlatformSpecificImplementation<
@@ -87,7 +86,7 @@ class ReminderManager {
 
   /// Cancels all existing reminders and sets up either Ramadan or standard adaptive schedule
   static Future<void> syncRemindersWithMode() async {
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
 
     await _notifications.cancelAll();
 
@@ -350,7 +349,7 @@ class ReminderManager {
         ? 'زبردست کارکردگی! آپ مستقل مزاجی سے اپنے اہداف حاصل کر رہے ہیں۔ کل بھی اسٹریک برقرار رکھیں!'
         : 'You\'re on fire! Keep this momentum going to reach your nutrition targets!';
 
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
       await _notifications.show(
         id: 201,
         title: title,
@@ -408,7 +407,7 @@ class ReminderManager {
     final enabled = prefs.getBool(keyRiskAlerts) ?? true;
     if (!enabled) return;
 
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
       await _notifications.show(
         id: 301,
         title: '🚨 $title',

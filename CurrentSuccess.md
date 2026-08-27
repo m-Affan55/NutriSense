@@ -56,8 +56,10 @@ This document provides a comprehensive inventory of all features, services, data
 ### 9. 📴 Offline-First SQLite Sync Engine
 * **Idempotent Dual-Write Cache**: SQLite local storage (`nutrisense_offline.db`) storing meal/water logs with UUID v4 `sync_id` idempotency keys preventing duplicate uploads during network reconnections.
 
-### 10. 🛡️ AI Agentic Safety & API Resilience (Category 1 & 3)
+### 10. 🛡️ AI Agentic Safety & API Resilience (Category 1, 3 & 4)
 * **3-Step Clinical Architecture**: Retrieval (RAG) $\to$ Contextual Coaching $\to$ Independent Risk Evaluator.
+* **Non-Contradictory Safety Disclaimers**: Automatically appends a safety warning disclaimer block to the coach's replies on the backend if the independent clinical risk pass triggers a warning or critical level (Issue 14).
+* **Conversational History Safety Scanner**: Scans older, truncated history messages for safety-critical metrics (hyper/hypoglycemia levels, symptoms) and prepends them as system reminders to the current message payload, ensuring context is never lost (Issue 15).
 * **Resilient Multi-Key & Multi-Model Pool**:
   * Auto-cycles 4 models (`3.5-flash-lite`, `3.5-flash`, `3.7-flash`, `3.6-flash`) across 3 API keys.
   * Automatically prioritizes `gemini-3.5-flash-lite` first to deliver responses in under 2 seconds.
@@ -67,6 +69,20 @@ This document provides a comprehensive inventory of all features, services, data
 * **Hypoglycemia Fast-Detection**: Evaluates low blood sugar keywords and numeric readings (under 70 mg/dL) with regex to trigger immediate, non-alarmist safety warnings.
 * **Clinical Safety Dialog**: If a critical safety flag is detected, a blocking foreground modal overlays the screen, redirecting the user to care.
 * **Online/Offline Care Locator**: If location services or search APIs fail, the app triggers a clean warning card with a button to launch Google Maps deep-links for a fallback search (`hospital near me`) based on their GPS coordinates.
+
+### 11. 🎙️ Voice Assistant Integration (Category 5)
+* **Bilingual Speech-to-Text (STT)**: Resolved locale resolution for English and Urdu input.
+* **Tuned Text-to-Speech (TTS)**: Neural server voice with local platform TTS fallback.
+* **Concurrent Request Guard**: Prevents auto-sending duplicate messages when the coach is already processing a response (Issue 17).
+* **Safe Desktop Fallback**: Wrapped permission handler status checks in try-catches to fallback gracefully and avoid crashes on unsupported desktop platforms like Windows (Issue 18).
+* **Utterance Interrupt Sync**: Utilizes monotonic tokens to discard slow synthesize responses that arrive after the user stops or changes speech (Issue 19).
+
+### 12. 🌐 Web Compatibility & Vercel Deployment
+* **Conditional Desktop Setup**: Isolated FFI database initializers and Windows-only registry scheme setups conditionally, preventing compile-time imports on web builds.
+* **Safe Platform Detections**: Replaced `Platform` checks from `dart:io` with `defaultTargetPlatform` to enable browser compatibility.
+* **Multipart Image Uploads**: Modified scanner uploads to use web-safe `XFile` and `MultipartFile.fromBytes` buffers, supporting image previews via Blob network URLs.
+* **Universal File Handlers**: Replaced `dart:io` imports with `universal_io` for PDF document generations to allow compilation on web targets.
+* **Automatic Vercel Build Script**: Designed and implemented `vercel-build.sh` for auto-cloning Flutter stable SDK and building release web packages.
 
 ---
 

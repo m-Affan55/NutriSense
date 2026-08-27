@@ -40,7 +40,11 @@ class SwapService {
             onTap: () {
               highlightNotifier.value = true;
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              MainNavigationScreen.of(context).currentIndex = 3;
+              // Null-safe: root navigator context may not have a
+              // MainNavigationScreen ancestor, so guard with ?.
+              final navState = context
+                  .findAncestorStateOfType<MainNavigationScreenState>();
+              navState?.currentIndex = 3;
               // Reset highlight after 5 seconds
               Future.delayed(const Duration(seconds: 5), () {
                 highlightNotifier.value = false;

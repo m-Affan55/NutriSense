@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,7 +27,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   bool _isLoading = false;
   String _loadingText = 'AI Analyzing Meal Plate...';
   Timer? _loadingTimer;
-  File? _selectedImage;
+  XFile? _selectedImage;
   String _language = 'en';
 
   @override
@@ -75,7 +76,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       if (image == null) return;
 
       setState(() {
-        _selectedImage = File(image!.path);
+        _selectedImage = image;
       });
 
       await _uploadAndScanImage();
@@ -130,8 +131,13 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       final request = http.MultipartRequest('POST', url);
       
       request.fields['user_id'] = user.id;
+      final bytes = await _selectedImage!.readAsBytes();
       request.files.add(
-        await http.MultipartFile.fromPath('image', _selectedImage!.path),
+        http.MultipartFile.fromBytes(
+          'image',
+          bytes,
+          filename: _selectedImage!.name,
+        ),
       );
 
       final streamedResponse = await request.send();
@@ -247,12 +253,19 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                       if (_selectedImage != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _selectedImage!,
-                            height: 140,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _selectedImage!.path,
+                                  height: 140,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.file(
+                                  File(_selectedImage!.path),
+                                  height: 140,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                       const SizedBox(height: 16),
                       

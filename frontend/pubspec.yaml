@@ -49,11 +49,14 @@ dependencies:
   connectivity_plus: ^6.0.0
   health: ^13.3.2
   path: ^1.9.1
+  universal_io: ^2.2.2
   win32_registry: ^3.0.3
   uuid: ^4.6.0
   sqflite_common_ffi: ^2.4.2+1
   speech_to_text: ^7.4.0
   flutter_tts: ^4.2.5
+  # Plays neural Urdu MP3 audio returned by the backend /coach/tts endpoint.
+  audioplayers: ^6.1.0
   permission_handler: ^13.0.1
   path_provider: ^2.1.2
   open_file: ^3.3.2
@@ -63,7 +66,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  flutter_launcher_icons: ^0.13.1
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -117,3 +120,15 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: false
+  ios: true
+  image_path_ios: "assets/Logo_ios.png"
+  image_path: "assets/Logo_ios.png"
+  web:
+    generate: true
+    image_path: "assets/Logo_ios.png"
+  windows:
+    generate: true
+    image_path: "assets/Logo_ios.png"

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -121,7 +120,7 @@ class HealthService {
   /// Returns true if native OS health APIs (Health Connect / HealthKit) are available.
   bool get isNativeHealthSupported {
     if (kIsWeb) return false;
-    return Platform.isAndroid || Platform.isIOS;
+    return defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   /// Request native READ permissions on Android / iOS.
@@ -247,7 +246,7 @@ class HealthService {
               activeKcal: activeKcal.round(),
               sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
               heartRateBpm: avgHr,
-              source: Platform.isAndroid ? 'Health Connect' : 'Apple Health',
+              source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
             );
             await saveTodayActivity(nativeActivity);
             return nativeActivity;
