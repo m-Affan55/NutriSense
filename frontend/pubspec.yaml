@@ -122,12 +122,13 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: false
   ios: true
-  image_path: "assets/Logo.png"
+  image_path_ios: "assets/Logo_ios.png"
+  image_path: "assets/Logo_ios.png"
   web:
     generate: true
-    image_path: "assets/Logo.png"
+    image_path: "assets/Logo_ios.png"
   windows:
     generate: true
-    image_path: "assets/Logo.png"
+    image_path: "assets/Logo_ios.png"

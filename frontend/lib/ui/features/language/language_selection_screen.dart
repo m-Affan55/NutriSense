@@ -43,18 +43,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               // Logo
               CircleAvatar(
                 radius: 48,
-                backgroundColor: Colors.transparent,
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/Logo.png',
-                    fit: BoxFit.cover,
-                    width: 96,
-                    height: 96,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.spa, size: 48, color: theme.colorScheme.primary);
-                    },
-                  ),
-                ),
+                backgroundColor: theme.colorScheme.primary.withAlpha(20),
+                child: Icon(Icons.spa, size: 48, color: theme.colorScheme.primary),
               ),
               const SizedBox(height: 32),
               
