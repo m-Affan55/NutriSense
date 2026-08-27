@@ -16,6 +16,7 @@ import '../health_sync/health_sync_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
+import '../../../core/meal_sync_notifier.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -76,8 +77,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     FamilyViewModel.instance.addListener(_loadData);
     FamilyViewModel.instance.loadMembers();
+    MealSyncNotifier.instance.addListener(_loadData);
 
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    FamilyViewModel.instance.removeListener(_loadData);
+    MealSyncNotifier.instance.removeListener(_loadData);
+    _ringController.dispose();
+    _fabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -569,14 +580,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    FamilyViewModel.instance.removeListener(_loadData);
-    _ringController.dispose();
-    _fabController.dispose();
-    super.dispose();
   }
 
   @override

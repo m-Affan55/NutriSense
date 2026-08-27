@@ -8,6 +8,7 @@ import '../../../core/api_client.dart';
 import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import 'manual_log_screen.dart';
+import '../../../core/meal_sync_notifier.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -364,6 +365,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       Navigator.pop(context, true);
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
                       SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food');
+                      MealSyncNotifier.instance.notifyMealChanged();
                     }
                   } catch (e) {
                     if (mounted) {
