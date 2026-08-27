@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -85,6 +86,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   Future<void> _initSpeechAndTts() async {
     try {
       _isSttInitialized = await _speechToText.initialize(
+        options: [
+          stt.SpeechToText.webDoNotAggregate,
+        ],
         onError: (val) {
           if (!mounted) return;
           // "no match" and "speech timeout" fire routinely whenever the user
@@ -240,8 +244,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     await _speechToText.listen(
       onResult: (result) {
         if (mounted) {
+          final sanitized = _sanitizeSpeechText(result.recognizedWords);
           setState(() {
-            _controller.text = result.recognizedWords;
+            _controller.text = sanitized;
           });
           // Reset silence timer on new words
           _silenceTimer?.cancel();
@@ -252,11 +257,61 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           });
         }
       },
-      localeId: localeId,
       listenOptions: stt.SpeechListenOptions(
-        listenMode: stt.ListenMode.dictation,
+        localeId: localeId,
+        listenMode: kIsWeb ? stt.ListenMode.confirmation : stt.ListenMode.dictation,
+        partialResults: true,
       ),
     );
+  }
+
+  /// Cleans up raw transcription output to prevent duplicate words or phrases
+  /// caused by browser-level SpeechRecognition event overlapping on mobile web.
+  String _sanitizeSpeechText(String raw) {
+    if (raw.trim().isEmpty) return '';
+    String text = raw.trim();
+
+    // 1. Deduplicate identical adjacent substrings smushed without spaces (e.g. "MainMainMain" -> "Main")
+    for (int len = 20; len >= 3; len--) {
+      final pattern = RegExp('(.{$len,}?)\\1+', caseSensitive: false);
+      text = text.replaceAllMapped(pattern, (match) => match.group(1)!);
+    }
+
+    // 2. Remove consecutive identical duplicate words
+    final words = text.split(RegExp(r'\s+'));
+    if (words.isEmpty) return text;
+
+    final List<String> cleanedWords = [];
+    for (int i = 0; i < words.length; i++) {
+      if (cleanedWords.isNotEmpty &&
+          cleanedWords.last.toLowerCase() == words[i].toLowerCase()) {
+        continue;
+      }
+      cleanedWords.add(words[i]);
+    }
+
+    String result = cleanedWords.join(' ');
+
+    // 3. Remove repeating multi-word phrases (e.g., "Main kya Main kya khaun" -> "Main kya khaun")
+    for (int len = 8; len >= 2; len--) {
+      var wordsList = result.split(RegExp(r'\s+'));
+      if (wordsList.length < len * 2) continue;
+
+      bool changed = false;
+      for (int i = 0; i <= wordsList.length - len * 2; i++) {
+        final chunk1 = wordsList.sublist(i, i + len).join(' ').toLowerCase();
+        final chunk2 = wordsList.sublist(i + len, i + len * 2).join(' ').toLowerCase();
+        if (chunk1 == chunk2) {
+          wordsList.removeRange(i + len, i + len * 2);
+          result = wordsList.join(' ');
+          changed = true;
+          break;
+        }
+      }
+      if (changed) len++;
+    }
+
+    return result.trim();
   }
 
   void _stopListeningAndProcess() async {
