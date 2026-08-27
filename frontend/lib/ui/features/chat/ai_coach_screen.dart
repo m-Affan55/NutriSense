@@ -411,12 +411,57 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
       // 1. Build chat history payload
       final List<Map<String, String>> historyPayload = [];
-      final startIdx = _messages.length > 11 ? _messages.length - 11 : 1;
+      // Increase active history window to last 20 messages (Issue 15)
+      final startIdx = _messages.length > 21 ? _messages.length - 21 : 1;
       for (int i = startIdx; i < _messages.length - 1; i++) {
         historyPayload.add({
           'role': _messages[i]['isUser'] ? 'user' : 'model',
           'content': _messages[i]['text'],
         });
+      }
+
+      // Scan older/truncated history for critical symptoms or sugar alerts
+      final List<String> safetySummaries = [];
+      final sugarRegex = RegExp(r'\b(?:sugar|glucose|reading|level|value|bs|bg)\b.*?\b(\d{2,3})\b', caseSensitive: false);
+      for (int i = 1; i < startIdx; i++) {
+        final msg = _messages[i];
+        final msgText = msg['text'] as String? ?? '';
+        final msgTextLower = msgText.toLowerCase();
+        
+        // High/low glucose indicators
+        final matches = sugarRegex.allMatches(msgTextLower);
+        for (final match in matches) {
+          final val = int.tryParse(match.group(1) ?? '');
+          if (val != null && (val < 70 || val >= 250)) {
+            safetySummaries.add("Logged sugar reading: $val mg/dL");
+          }
+        }
+        // Symptoms
+        if (msgTextLower.contains('dizzy') || 
+            msgTextLower.contains('faint') || 
+            msgTextLower.contains('chest pain') || 
+            msgTextLower.contains('hypoglycemia') ||
+            msgTextLower.contains('ketoacidosis') ||
+            msgTextLower.contains('confusion') ||
+            msgTextLower.contains('sweating') ||
+            msgTextLower.contains('shakiness') ||
+            msgTextLower.contains('breathless') ||
+            msgTextLower.contains('shortness of breath') ||
+            msgTextLower.contains('unconscious') ||
+            msgTextLower.contains('vomiting') ||
+            msgTextLower.contains('بے ہوش') ||
+            msgTextLower.contains('چکر') ||
+            msgTextLower.contains('سانس کا پھولنا') ||
+            msgTextLower.contains('الٹی') ||
+            msgTextLower.contains('پسینہ')) {
+          safetySummaries.add("Reported symptom: $msgText");
+        }
+      }
+
+      String messagePayload = text;
+      if (safetySummaries.isNotEmpty) {
+        // Prepend truncated safety context to the message body so Gemini retains memory of it
+        messagePayload = "[System Reminder: Earlier in this conversation, user reported: ${safetySummaries.join(', ')}]\n$text";
       }
 
       // 2. Query Uvicorn chat endpoint with a 90-second timeout
@@ -426,7 +471,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'user_id': user.id,
-          'message': text,
+          'message': messagePayload,
           'history': historyPayload,
         }),
       ).timeout(const Duration(seconds: 90));

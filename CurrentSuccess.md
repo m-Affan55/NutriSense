@@ -56,8 +56,10 @@ This document provides a comprehensive inventory of all features, services, data
 ### 9. 📴 Offline-First SQLite Sync Engine
 * **Idempotent Dual-Write Cache**: SQLite local storage (`nutrisense_offline.db`) storing meal/water logs with UUID v4 `sync_id` idempotency keys preventing duplicate uploads during network reconnections.
 
-### 10. 🛡️ AI Agentic Safety & API Resilience (Category 1 & 3)
+### 10. 🛡️ AI Agentic Safety & API Resilience (Category 1, 3 & 4)
 * **3-Step Clinical Architecture**: Retrieval (RAG) $\to$ Contextual Coaching $\to$ Independent Risk Evaluator.
+* **Non-Contradictory Safety Disclaimers**: Automatically appends a safety warning disclaimer block to the coach's replies on the backend if the independent clinical risk pass triggers a warning or critical level (Issue 14).
+* **Conversational History Safety Scanner**: Scans older, truncated history messages for safety-critical metrics (hyper/hypoglycemia levels, symptoms) and prepends them as system reminders to the current message payload, ensuring context is never lost (Issue 15).
 * **Resilient Multi-Key & Multi-Model Pool**:
   * Auto-cycles 4 models (`3.5-flash-lite`, `3.5-flash`, `3.7-flash`, `3.6-flash`) across 3 API keys.
   * Automatically prioritizes `gemini-3.5-flash-lite` first to deliver responses in under 2 seconds.

@@ -286,7 +286,7 @@ Falls back to the hardcoded Karachi/Lahore list — even though the user might b
 
 ---
 
-## Category 4: AI Coach (Gemini) Reliability
+## Category 4: AI Coach (Gemini) Reliability [Resolved ✅]
 
 ### Issue 14: Coach says "you're fine" but risk evaluator says escalate — contradiction shown to user
 

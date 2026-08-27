@@ -125,6 +125,11 @@ def chat_with_coach(req: CoachRequest):
                 "message": risk["message"],
                 "show_doctor_button": True
             }
+            
+            # Append safety disclaimer to avoid contradiction (Issue 14)
+            disclaimer = "\n\n⚠️ Note: Based on your health profile, please review the safety alert below before following this advice."
+            if disclaimer not in coach_reply:
+                coach_reply += disclaimer
 
         return {"response": coach_reply, "escalation_alert": escalation_alert}
         

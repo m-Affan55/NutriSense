@@ -61,7 +61,18 @@ This document outlines all feature implementations, architectural additions, and
 
 ---
 
-## 🧪 6. Verification Results
+## 🛡️ 6. AI Coach (Gemini) Reliability & Safety Guard (Category 4)
+* **Non-Contradictory Advice (Issue 14)**:
+  - Added safety disclaimer enforcement logic to the Uvicorn FastAPI backend in [`coach.py`](file:///d:/AI%20Hackathon/NutriSense/backend/app/api/v1/endpoints/coach.py).
+  - If the risk evaluator triggers a clinical escalation at `warning` or `critical` level, the backend automatically appends the disclaimer notice to the coach chat bubble, eliminating contradiction.
+* **Conversational History Safety Context Persistence (Issue 15)**:
+  - Increased active history window to last 20 messages in [`ai_coach_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart).
+  - Built a frontend **Safety History Context Scanner** that inspects older conversation histories that get truncated/discarded for any clinical triggers (e.g. glucose readings <70 mg/dL or >=250 mg/dL, or symptoms like dizziness/fainting/unconsciousness/breathlessness).
+  - Compiles the extracted triggers and prepends them as a system reminder prompt header directly inside the current message payload, ensuring context is never lost across long chats.
+
+---
+
+## 🧪 7. Verification Results
 
 - **Flutter Static Analysis**:
   ```bash
