@@ -17,5 +17,10 @@ This file tracks all resolved categories and issues from the Adversarial QA Audi
   - **Issue 14 [Resolved ✅]**: Appends safety disclaimers to the coach's replies when risk warning/escalation levels trigger (`warning`/`critical`), eliminating contradictory advice.
   - **Issue 15 [Resolved ✅]**: Increases the active conversation history window to the last 20 messages. Adds a safety context scanner that extracts clinical triggers (high/low sugar numbers, acute symptoms) from older truncated history messages and prefixes them as system reminders in the message body so safety context is never lost.
 
+- **Category 5: Voice Assistant [Resolved ✅]**
+  - **Issue 17 [Resolved ✅]**: Adds a concurrent request guard to `_startListening()` in `ai_coach_screen.dart` to prevent the mic from listening and auto-submitting duplicate messages while the coach is still processing a response.
+  - **Issue 18 [Resolved ✅]**: Wraps native platform permission request calls in try-catches to prevent app crashes on unsupported desktop platforms (like Windows/Linux) and fall back gracefully.
+  - **Issue 19 [Resolved ✅]**: Utilizes monotonic utterance tokens (`_utterance++`) and stops both local AudioPlayer and FlutterTts streams before starting any new speech, avoiding overlay/interruption issues.
+
 - **Category 11: Profile Settings [Resolved ✅]**
   - **Issue 33 [Resolved ✅]**: Restricts settings inputs (age, weight, height, budget) to clean numeric ranges, prevents empty submissions, and ensures that user-friendly messages are displayed instead of raw FormatException compiler details.

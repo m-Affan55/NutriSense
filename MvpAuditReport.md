@@ -343,7 +343,7 @@ The raw exception message (which may contain API keys, internal paths, or Gemini
 
 ---
 
-## Category 5: Voice Assistant
+## Category 5: Voice Assistant [Resolved ✅]
 
 ### Issue 17: Voice input auto-sends while a network request is already in flight — duplicate messages
 

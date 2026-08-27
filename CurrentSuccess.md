@@ -70,6 +70,13 @@ This document provides a comprehensive inventory of all features, services, data
 * **Clinical Safety Dialog**: If a critical safety flag is detected, a blocking foreground modal overlays the screen, redirecting the user to care.
 * **Online/Offline Care Locator**: If location services or search APIs fail, the app triggers a clean warning card with a button to launch Google Maps deep-links for a fallback search (`hospital near me`) based on their GPS coordinates.
 
+### 11. 🎙️ Voice Assistant Integration (Category 5)
+* **Bilingual Speech-to-Text (STT)**: Resolved locale resolution for English and Urdu input.
+* **Tuned Text-to-Speech (TTS)**: Neural server voice with local platform TTS fallback.
+* **Concurrent Request Guard**: Prevents auto-sending duplicate messages when the coach is already processing a response (Issue 17).
+* **Safe Desktop Fallback**: Wrapped permission handler status checks in try-catches to fallback gracefully and avoid crashes on unsupported desktop platforms like Windows (Issue 18).
+* **Utterance Interrupt Sync**: Utilizes monotonic tokens to discard slow synthesize responses that arrive after the user stops or changes speech (Issue 19).
+
 ---
 
 ## 🧪 Current Verification Status

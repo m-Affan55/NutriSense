@@ -150,22 +150,28 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   Future<bool> _requestPermissions() async {
-    final micStatus = await Permission.microphone.request();
-    final speechStatus = await Permission.speech.request();
+    try {
+      final micStatus = await Permission.microphone.request();
+      final speechStatus = await Permission.speech.request();
 
-    if (micStatus.isPermanentlyDenied || speechStatus.isPermanentlyDenied) {
-      if (mounted) _showSettingsDialog();
-      return false;
-    }
-
-    if (!micStatus.isGranted || !speechStatus.isGranted) {
-      if (mounted) {
-        CustomToast.show(context, 'Microphone permission is required for voice features.');
+      if (micStatus.isPermanentlyDenied || speechStatus.isPermanentlyDenied) {
+        if (mounted) _showSettingsDialog();
+        return false;
       }
-      return false;
-    }
 
-    return true;
+      if (!micStatus.isGranted || !speechStatus.isGranted) {
+        if (mounted) {
+          CustomToast.show(context, 'Microphone permission is required for voice features.');
+        }
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('[Voice] Permission request unsupported on this platform (Windows/Linux/Web): $e');
+      // Gracefully bypass permission checks on unsupported desktop platforms
+      return true;
+    }
   }
 
   void _showSettingsDialog() {
@@ -192,6 +198,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   void _startListening() async {
+    // If the coach is currently thinking/typing, do not start listening
+    if (_isTyping) {
+      setState(() => _voiceState = VoiceAssistantState.idle);
+      return;
+    }
+
     // If we're already speaking, stop first
     if (_voiceState == VoiceAssistantState.speaking) {
       await _tts.stop();

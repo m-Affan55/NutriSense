@@ -72,7 +72,19 @@ This document outlines all feature implementations, architectural additions, and
 
 ---
 
-## 🧪 7. Verification Results
+## 🎙️ 7. Voice Assistant Integration & Optimization (Category 5)
+* **Concurrent Voice Request Guard (Issue 17)**:
+  - Added an active request typing guard `if (_isTyping) return;` at the beginning of `_startListening()` in [`ai_coach_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart).
+  - This prevents the assistant from listening and recording new user utterances while the coach is still processing or speaking, blocking duplicate queries or voice-loop state confusion.
+* **Safe Desktop Fallback try-catch (Issue 18)**:
+  - Wrapped native status check and request permissions calls in [`ai_coach_screen.dart`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/chat/ai_coach_screen.dart) in a platform-safe `try-catch` block.
+  - On unsupported desktop platforms (like Windows/Linux), catches the expected platform errors and bypasses permission dialogs gracefully to continue speech initialization instead of crashing the app.
+* **Utterance Interruption sync (Issue 19)**:
+  - Audited and verified that [`TtsService.stop()`](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/tts_service.dart) increments the monotonic token `_utterance++` to invalidate slow/in-flight network syntheses, stops the local `AudioPlayer`, and stops `FlutterTts`. This prevents playback overlaps and cuts off older utterances cleanly.
+
+---
+
+## 🧪 8. Verification Results
 
 - **Flutter Static Analysis**:
   ```bash
