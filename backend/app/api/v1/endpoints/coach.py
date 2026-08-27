@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
+import datetime
 from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
 from app.services import tts_service
+from app.services.user_cache import user_cache
 from google import genai
 from google.genai import types
 
@@ -17,6 +19,8 @@ class CoachRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
     message: str = Field(..., min_length=1, max_length=3000, description="Chat message limited to 3000 characters")
     history: List[ChatMessage] = Field(default_factory=list)
+    client_profile: Optional[dict] = None
+    client_meals: Optional[List[dict]] = None
 
 class TtsRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=3000, description="Text to speak; Markdown is stripped server-side")
@@ -26,17 +30,21 @@ class TtsRequest(BaseModel):
 @router.post("/chat")
 def chat_with_coach(req: CoachRequest):
     try:
-        supabase = get_supabase_admin_client()
-        
-        # 1. Fetch user health profile
-        profile_res = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-        profile = profile_res.data
-        
-        # 2. Fetch user's meals logged today
-        import datetime
         today_str = datetime.date.today().isoformat()
-        meals_res = supabase.table('meal_logs').select('*').eq('user_id', req.user_id).gte('logged_at', f"{today_str}T00:00:00").lte('logged_at', f"{today_str}T23:59:59").execute()
-        meals = meals_res.data
+        
+        # 1. Fetch user health profile (Memory Cache / Client Context / Lazy Rehydration)
+        if req.client_profile:
+            profile = req.client_profile
+            user_cache.set_profile(req.user_id, profile)
+        else:
+            profile = user_cache.get_profile(req.user_id)
+        
+        # 2. Fetch user's meals logged today (Memory Cache / Client Context / Lazy Rehydration)
+        if req.client_meals is not None:
+            meals = req.client_meals
+            user_cache.set_today_meals(req.user_id, today_str, meals)
+        else:
+            meals = user_cache.get_today_meals(req.user_id, today_str)
         
         # 3. Formulate the system instruction
         profile_context = ""
@@ -110,6 +118,7 @@ def chat_with_coach(req: CoachRequest):
         if risk["level"] in ("warning", "critical"):
             # Save risk flag to DB
             try:
+                supabase = get_supabase_admin_client()
                 supabase.table('risk_flags').insert({
                     "user_id": req.user_id,
                     "level": risk["level"],

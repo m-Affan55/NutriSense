@@ -83,6 +83,10 @@ def create_health_profile(data: OnboardingData):
         supabase = get_supabase_admin_client()
         response = supabase.table('health_profiles').insert(db_payload).execute()
 
+        # Update In-Memory User Cache for zero-latency AI Coach lookups
+        from app.services.user_cache import user_cache
+        user_cache.set_profile(data.user_id, db_payload)
+
         return {
             "message": "Health profile created successfully",
             "daily_calorie_target": int(daily_calories),
