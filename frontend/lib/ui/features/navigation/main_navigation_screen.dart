@@ -4,10 +4,12 @@ import '../dashboard/dashboard_screen.dart';
 import '../meal_scan/manual_log_screen.dart';
 import '../chat/ai_coach_screen.dart';
 import '../predictive_coaching/coaching_screen.dart';
+import '../workout/workout_screen.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/meal_sync_notifier.dart';
 
 final GlobalKey<CoachingScreenState> coachingKey = GlobalKey<CoachingScreenState>();
+final GlobalKey<WorkoutScreenState> workoutKey = GlobalKey<WorkoutScreenState>();
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -30,6 +32,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
       MealSyncNotifier.instance.notifyMealChanged();
     } else if (index == 3) {
       coachingKey.currentState?.loadCoachingData();
+    } else if (index == 4) {
+      workoutKey.currentState?.loadWorkoutData();
     }
   }
 
@@ -38,6 +42,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     const ManualLogScreen(),
     const AiCoachScreen(),
     CoachingScreen(key: coachingKey),
+    WorkoutScreen(key: workoutKey),
   ];
 
   @override
@@ -54,7 +59,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             children: _screens,
           ),
           bottomNavigationBar: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+            padding: const EdgeInsets.only(left: 14, right: 14, bottom: 20),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(40),
               child: BackdropFilter(
@@ -80,6 +85,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                       _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, 'Meals', isRamadan),
                       _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
                       _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
+                      _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, 'Workout', isRamadan),
                     ],
                   ),
                 ),
@@ -104,13 +110,15 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
           MealSyncNotifier.instance.notifyMealChanged();
         } else if (index == 3) {
           coachingKey.currentState?.loadCoachingData();
+        } else if (index == 4) {
+          workoutKey.currentState?.loadWorkoutData();
         }
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? activeColor.withAlpha(30) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -121,14 +129,14 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             Icon(
               isSelected ? activeIcon : inactiveIcon,
               color: isSelected ? activeColor : const Color(0xFF8A94A6),
-              size: isSelected ? 24 : 22,
+              size: isSelected ? 22 : 20,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? activeColor : const Color(0xFF8A94A6),
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -138,3 +146,4 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 }
+

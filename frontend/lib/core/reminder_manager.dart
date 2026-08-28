@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'ramadan_controller.dart';
+import 'workout_service.dart';
 
 class ReminderManager {
   static final _notifications = FlutterLocalNotificationsPlugin();
@@ -15,6 +16,9 @@ class ReminderManager {
   static const String keyStreakAlerts = 'notif_streak_alerts';
   static const String keyRiskAlerts = 'notif_risk_alerts';
   static const String keyRamadanAlerts = 'notif_ramadan_alerts';
+  static const String keyWorkoutAlerts = 'notif_workout_alerts';
+  static const String keyWorkoutReminderHour = 'workout_reminder_hour';
+  static const String keyWorkoutReminderMinute = 'workout_reminder_minute';
 
   // Learned meal timings (defaults in 24h format)
   static const String keyLearnedBreakfastHour = 'learned_breakfast_hour';
@@ -104,6 +108,12 @@ class ReminderManager {
     // Schedule evening Streak Saver notification (8:30 PM)
     if (streakAlertsEnabled) {
       await _scheduleStreakSaverAlert();
+    }
+
+    // Schedule active Workout reminders (IDs 301-307)
+    final workoutAlertsEnabled = prefs.getBool(keyWorkoutAlerts) ?? true;
+    if (workoutAlertsEnabled) {
+      await _scheduleActiveWorkoutReminders(prefs);
     }
   }
 
@@ -495,6 +505,93 @@ class ReminderManager {
     if (currentStreak % 3 == 0 || currentStreak == 5 || currentStreak == 7 || currentStreak == 10 || currentStreak == 14 || currentStreak == 30) {
       await triggerStreakMilestoneNotification(currentStreak);
     }
+  }
+
+  /// 8. Workout Reminders (IDs 301-307 for Mon-Sun)
+  /// Non-daily: Only triggers on active workout days, skips rest days!
+  static Future<void> _scheduleActiveWorkoutReminders(SharedPreferences prefs) async {
+    try {
+      final plan = await WorkoutService.instance.getWorkoutPlan();
+      if (plan != null) {
+        await scheduleWorkoutPlanReminders(plan);
+      }
+    } catch (e) {
+      debugPrint('[ReminderManager] Workout notification scheduling error: $e');
+    }
+  }
+
+  static Future<void> scheduleWorkoutPlanReminders(WorkoutPlanModel plan) async {
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final ramadan = RamadanController.instance;
+    final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    final isUrdu = language == 'ur';
+
+    // Default: 5:30 PM (17:30) or Ramadan 9:30 PM (21:30) post-Iftar
+    int defaultHour = ramadan.isRamadanMode ? 21 : 17;
+    int defaultMin = 30;
+
+    int wHour = prefs.getInt(keyWorkoutReminderHour) ?? defaultHour;
+    int wMin = prefs.getInt(keyWorkoutReminderMinute) ?? defaultMin;
+
+    final dayMap = {
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+      'sunday': 7,
+    };
+
+    for (final day in plan.weeklySchedule) {
+      final dayKey = day.dayName.toLowerCase().trim();
+      final weekdayNum = dayMap[dayKey] ?? 1;
+      final notifId = 300 + weekdayNum;
+
+      if (day.isRestDay) {
+        // Rest day: Cancel any workout reminder for this day
+        await _notifications.cancel(notifId);
+      } else {
+        // Active workout day: Schedule weekly notification for this specific day of week
+        final tz.TZDateTime scheduledDate = _nextInstanceOfDayAndTime(weekdayNum, wHour, wMin);
+
+        final title = isUrdu
+            ? '🏋️‍♂️ ورزش کا وقت: ${day.workoutTitle}'
+            : '🏋️‍♂️ Workout Time: ${day.workoutTitle}';
+        final body = isUrdu
+            ? 'آج کا فوکس: ${day.targetFocus} (~${day.durationMins} منٹ)۔ اپنی فٹنس کا ہدف مکمل کریں! 💪'
+            : 'Today\'s Focus: ${day.targetFocus} (~${day.durationMins} mins). Let\'s crush your fitness goal! 💪';
+
+        await _notifications.zonedSchedule(
+          id: notifId,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'nutrisense_workout_channel',
+              'NutriSense Workout Reminders',
+              channelDescription: 'Smart non-daily workout reminders scheduled according to your weekly routine',
+              importance: Importance.high,
+              priority: Priority.high,
+            ),
+            iOS: DarwinNotificationDetails(),
+          ),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+      }
+    }
+  }
+
+  static tz.TZDateTime _nextInstanceOfDayAndTime(int targetWeekday, int hour, int minute) {
+    tz.TZDateTime scheduledDate = _nextInstanceOfTime(hour, minute);
+    while (scheduledDate.weekday != targetWeekday) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
   }
 
   static String _format12Hour(int hour, int minute) {
