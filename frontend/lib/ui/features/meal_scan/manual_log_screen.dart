@@ -412,7 +412,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({'query': query}),
       ).timeout(const Duration(seconds: 60));
 

@@ -1,13 +1,13 @@
 import httpx
 import logging
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class UsdaService:
     API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
-    # Using the public demo key for hackathon purposes.
-    # Note: Limited to 30 requests per IP per minute.
-    API_KEY = "DEMO_KEY"
+    # Fallback to DEMO_KEY if no USDA_API_KEY is configured in settings
+    API_KEY = settings.USDA_API_KEY or "DEMO_KEY"
 
     @staticmethod
     async def fetch_macros_per_100g(food_name: str) -> dict:

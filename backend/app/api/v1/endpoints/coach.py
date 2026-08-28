@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
 from app.services import tts_service
 from app.services.user_cache import user_cache
+from app.core.security import get_current_user_id
 from google import genai
 from google.genai import types
 
@@ -29,16 +30,18 @@ class TtsRequest(BaseModel):
     gender: str = Field(default="female", max_length=10, description="'female' or 'male'")
 
 @router.post("/chat")
-async def chat_with_coach(req: CoachRequest):
+async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depends(get_current_user_id)):
+    if req.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+        
     try:
         today_str = datetime.date.today().isoformat()
         
-        # 1. Fetch user health profile (Memory Cache / Client Context / Lazy Rehydration)
-        if req.client_profile:
+        # 1. Fetch user health profile from cache/database (never overwrite cache with client profile)
+        profile = user_cache.get_profile(req.user_id)
+        if not profile and req.client_profile:
+            # Fallback to client profile display hint only if database entry does not exist
             profile = req.client_profile
-            user_cache.set_profile(req.user_id, profile)
-        else:
-            profile = user_cache.get_profile(req.user_id)
         
         # 2. Fetch user's meals logged today (Memory Cache / Client Context / Lazy Rehydration)
         if req.client_meals is not None:

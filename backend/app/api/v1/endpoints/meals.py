@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from app.services.gemini_service import GeminiService
@@ -8,14 +8,19 @@ from app.services.usda_service import UsdaService
 from app.services.barcode_service import BarcodeService
 from app.db.supabase_client import get_supabase_admin_client
 from app.services.food_db_service import FoodDBService
+from app.core.security import get_current_user_id
 
 router = APIRouter()
 
 @router.post("/scan")
 async def scan_meal(
     image: UploadFile = File(...),
-    user_id: str = Form(...)
+    user_id: str = Form(...),
+    authenticated_user_id: str = Depends(get_current_user_id)
 ):
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         # 1. Fetch user's health profile (non-blocking thread pool)
         supabase = get_supabase_admin_client()
@@ -112,7 +117,10 @@ class SearchFoodRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300, description="Search query limited to 300 characters")
 
 @router.post("/scan-barcode")
-async def scan_barcode(req: BarcodeRequest):
+async def scan_barcode(req: BarcodeRequest, authenticated_user_id: str = Depends(get_current_user_id)):
+    if req.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     import logging
     logger = logging.getLogger(__name__)
     try:
@@ -317,7 +325,10 @@ async def scan_barcode(req: BarcodeRequest):
 
 
 @router.get("/weekly-report")
-async def get_weekly_report(user_id: str, language: str = "en"):
+async def get_weekly_report(user_id: str, language: str = "en", authenticated_user_id: str = Depends(get_current_user_id)):
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+        
     try:
         from app.services.report_service import ReportService
         return await run_in_threadpool(ReportService.generate_weekly_report, user_id=user_id, language=language)
@@ -325,7 +336,7 @@ async def get_weekly_report(user_id: str, language: str = "en"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/search-food")
-async def search_food(req: SearchFoodRequest):
+async def search_food(req: SearchFoodRequest, authenticated_user_id: str = Depends(get_current_user_id)):
     try:
         macros = await run_in_threadpool(GeminiService.estimate_food_macros, req.query)
         return macros
@@ -335,7 +346,10 @@ async def search_food(req: SearchFoodRequest):
         raise HTTPException(status_code=503, detail=str(e))
 
 @router.get("/grocery-list/{user_id}")
-async def get_grocery_list(user_id: str):
+async def get_grocery_list(user_id: str, authenticated_user_id: str = Depends(get_current_user_id)):
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+        
     try:
         supabase = get_supabase_admin_client()
         

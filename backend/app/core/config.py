@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
+    USDA_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_API_KEY_01: Optional[str] = None
     GEMINI_API_KEY_02: Optional[str] = None

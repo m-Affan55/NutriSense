@@ -13,7 +13,7 @@ def get_application() -> FastAPI:
     # Set all CORS enabled origins
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], # In production, set this to specific domains
+        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

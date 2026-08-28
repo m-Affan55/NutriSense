@@ -8,12 +8,12 @@ class VoiceModeOverlay extends StatefulWidget {
   final VoidCallback onStopAudio;
 
   const VoiceModeOverlay({
-    Key? key,
+    super.key,
     required this.voiceState,
     required this.recognizedText,
     required this.onClose,
     required this.onStopAudio,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceModeOverlay> createState() => _VoiceModeOverlayState();

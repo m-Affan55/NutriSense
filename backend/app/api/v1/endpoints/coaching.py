@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List
 import datetime
 from app.db.supabase_client import get_supabase_admin_client
 from app.services.gemini_service import GeminiService
+from app.core.security import get_current_user_id
 
 router = APIRouter()
 
@@ -13,7 +14,10 @@ class SwapRequest(BaseModel):
     recent_meals: List[str]
 
 @router.get("/habit-score/{user_id}")
-async def get_habit_score(user_id: str, offset_minutes: int = 0):
+async def get_habit_score(user_id: str, offset_minutes: int = 0, authenticated_user_id: str = Depends(get_current_user_id)):
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         supabase = get_supabase_admin_client()
         
@@ -110,7 +114,10 @@ async def get_habit_score(user_id: str, offset_minutes: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/food-swaps")
-async def get_food_swaps(req: SwapRequest):
+async def get_food_swaps(req: SwapRequest, authenticated_user_id: str = Depends(get_current_user_id)):
+    if req.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         supabase = get_supabase_admin_client()
         

@@ -57,7 +57,7 @@ class GroceryViewModel extends ChangeNotifier {
       if (user == null) throw Exception('No active session found.');
 
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/grocery-list/${user.id}');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: ApiClient.getHeaders());
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as List;
