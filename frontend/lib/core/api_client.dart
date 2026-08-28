@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class ApiClient {
   /// Set to `true` to test against your local backend (http://127.0.0.1:8000/api/v1).
   /// Set to `false` to point to the live Render cloud backend.
@@ -14,5 +16,15 @@ class ApiClient {
       return _localBackendUrl;
     }
     return _liveBackendUrl;
+  }
+
+  /// Generates the standard headers including JWT Authorization token if logged in
+  static Map<String, String> getHeaders() {
+    final session = Supabase.instance.client.auth.currentSession;
+    final jwt = session?.accessToken;
+    return {
+      'Content-Type': 'application/json',
+      if (jwt != null) 'Authorization': 'Bearer $jwt',
+    };
   }
 }

@@ -14,6 +14,7 @@ import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'barcode_scanner_screen.dart';
+import '../../../core/meal_sync_notifier.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -152,6 +153,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             : 'Meal Logged! ($calories kcal • ${proteinG.round()}g P • ${carbsG.round()}g C • ${fatG.round()}g F)';
         CustomToast.show(context, successMsg, isError: false);
         SwapService.checkMealForSwaps(mealName);
+        MealSyncNotifier.instance.notifyMealChanged();
 
         if (Navigator.canPop(context)) {
           Navigator.pop(context, true);
@@ -410,7 +412,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({'query': query}),
       ).timeout(const Duration(seconds: 60));
 

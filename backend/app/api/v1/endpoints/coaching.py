@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List
 import datetime
 from app.db.supabase_client import get_supabase_admin_client
 from app.services.gemini_service import GeminiService
+from app.core.security import get_current_user_id
 
 router = APIRouter()
 
@@ -12,12 +14,17 @@ class SwapRequest(BaseModel):
     recent_meals: List[str]
 
 @router.get("/habit-score/{user_id}")
-def get_habit_score(user_id: str, offset_minutes: int = 0):
+async def get_habit_score(user_id: str, offset_minutes: int = 0, authenticated_user_id: str = Depends(get_current_user_id)):
+    if user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         supabase = get_supabase_admin_client()
         
-        # 1. Fetch user health profile
-        profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        # 1. Fetch user health profile (non-blocking thread pool)
+        profile_res = await run_in_threadpool(
+            lambda: supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        )
         profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
         if not profile:
             profile = {
@@ -28,10 +35,12 @@ def get_habit_score(user_id: str, offset_minutes: int = 0):
                 'dietary_restrictions': []
             }
 
-        # 2. Fetch last 30 days of meals (Using UTC to match Supabase TIMESTAMPTZ correctly)
+        # 2. Fetch last 30 days of meals (non-blocking thread pool)
         now_utc = datetime.datetime.now(datetime.timezone.utc)
         thirty_days_ago = (now_utc - datetime.timedelta(days=30)).isoformat()
-        meals_res = supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', thirty_days_ago).execute()
+        meals_res = await run_in_threadpool(
+            lambda: supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', thirty_days_ago).execute()
+        )
         meals = meals_res.data or []
 
         # 3. Compute habit score components
@@ -93,8 +102,8 @@ def get_habit_score(user_id: str, offset_minutes: int = 0):
                 trend.append(-1.0)
         trend.reverse()
         
-        # 4. Get Gemini coaching summary
-        summary = GeminiService.generate_coaching_summary(total_score, profile)
+        # 4. Get Gemini coaching summary (non-blocking thread pool)
+        summary = await run_in_threadpool(GeminiService.generate_coaching_summary, total_score, profile)
         
         return {
             "score": round(total_score),
@@ -105,15 +114,21 @@ def get_habit_score(user_id: str, offset_minutes: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/food-swaps")
-def get_food_swaps(req: SwapRequest):
+async def get_food_swaps(req: SwapRequest, authenticated_user_id: str = Depends(get_current_user_id)):
+    if req.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         supabase = get_supabase_admin_client()
         
-        # Fetch user health profile
-        profile_res = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        # Fetch user health profile (non-blocking thread pool)
+        profile_res = await run_in_threadpool(
+            lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        )
         profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
         
-        swaps = GeminiService.generate_food_swaps(req.recent_meals, profile)
+        # Generate food swaps (non-blocking thread pool)
+        swaps = await run_in_threadpool(GeminiService.generate_food_swaps, req.recent_meals, profile)
         
         return {"swaps": swaps}
     except Exception as e:

@@ -535,11 +535,16 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       final url = Uri.parse('${ApiClient.getBaseUrl()}/coach/chat');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({
           'user_id': user.id,
           'message': messagePayload,
           'history': historyPayload,
+          if (_goal != null || _medicalConditions.isNotEmpty)
+            'client_profile': {
+              'goal': _goal,
+              'medical_conditions': _medicalConditions,
+            },
         }),
       ).timeout(const Duration(seconds: 90));
 

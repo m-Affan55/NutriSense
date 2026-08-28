@@ -425,7 +425,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/profile/delete-account');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({'user_id': user.id}),
       );
 

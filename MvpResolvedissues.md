@@ -23,4 +23,10 @@ This file tracks all resolved categories and issues from the Adversarial QA Audi
   - **Issue 19 [Resolved ✅]**: Utilizes monotonic utterance tokens (`_utterance++`) and stops both local AudioPlayer and FlutterTts streams before starting any new speech, avoiding overlay/interruption issues.
 
 - **Category 11: Profile Settings [Resolved ✅]**
+  - **Issue 6 [Resolved ✅]**: Replaced wildcard CORS origins in `main.py` with `allow_origin_regex` to support credentialed browser sessions.
   - **Issue 33 [Resolved ✅]**: Restricts settings inputs (age, weight, height, budget) to clean numeric ranges, prevents empty submissions, and ensures that user-friendly messages are displayed instead of raw FormatException compiler details.
+  - **Issue 34 [Resolved ✅]**: Added JWT token validation to account deletion endpoint to verify requesting user identity.
+
+- **Category 8: Android-Specific [Resolved ✅]**
+  - **Issue 4 [Resolved ✅]**: Enabled Android launcher icon generation (`android: true`) under `flutter_launcher_icons` in `pubspec.yaml` and generated launcher icon assets for Android, iOS, Web, and Windows.
+  - **Issue 5 [Skipped ⚠️]**: Kept `.env` file packaged as a Flutter asset as per user decision.

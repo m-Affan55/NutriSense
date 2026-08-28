@@ -5,6 +5,7 @@ import '../meal_scan/manual_log_screen.dart';
 import '../chat/ai_coach_screen.dart';
 import '../predictive_coaching/coaching_screen.dart';
 import '../../../core/ramadan_controller.dart';
+import '../../../core/meal_sync_notifier.dart';
 
 final GlobalKey<CoachingScreenState> coachingKey = GlobalKey<CoachingScreenState>();
 
@@ -25,6 +26,11 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 0) {
+      MealSyncNotifier.instance.notifyMealChanged();
+    } else if (index == 3) {
+      coachingKey.currentState?.loadCoachingData();
+    }
   }
 
   final List<Widget> _screens = [
@@ -94,7 +100,9 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
         setState(() {
           _currentIndex = index;
         });
-        if (index == 3) {
+        if (index == 0) {
+          MealSyncNotifier.instance.notifyMealChanged();
+        } else if (index == 3) {
           coachingKey.currentState?.loadCoachingData();
         }
       },

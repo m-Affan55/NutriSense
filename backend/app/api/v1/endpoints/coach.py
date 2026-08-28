@@ -1,9 +1,13 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Depends
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
+import datetime
 from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
 from app.services import tts_service
+from app.services.user_cache import user_cache
+from app.core.security import get_current_user_id
 from google import genai
 from google.genai import types
 
@@ -17,6 +21,8 @@ class CoachRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
     message: str = Field(..., min_length=1, max_length=3000, description="Chat message limited to 3000 characters")
     history: List[ChatMessage] = Field(default_factory=list)
+    client_profile: Optional[dict] = None
+    client_meals: Optional[List[dict]] = None
 
 class TtsRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=3000, description="Text to speak; Markdown is stripped server-side")
@@ -24,19 +30,25 @@ class TtsRequest(BaseModel):
     gender: str = Field(default="female", max_length=10, description="'female' or 'male'")
 
 @router.post("/chat")
-def chat_with_coach(req: CoachRequest):
+async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depends(get_current_user_id)):
+    if req.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+        
     try:
-        supabase = get_supabase_admin_client()
-        
-        # 1. Fetch user health profile
-        profile_res = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-        profile = profile_res.data
-        
-        # 2. Fetch user's meals logged today
-        import datetime
         today_str = datetime.date.today().isoformat()
-        meals_res = supabase.table('meal_logs').select('*').eq('user_id', req.user_id).gte('logged_at', f"{today_str}T00:00:00").lte('logged_at', f"{today_str}T23:59:59").execute()
-        meals = meals_res.data
+        
+        # 1. Fetch user health profile from cache/database (never overwrite cache with client profile)
+        profile = user_cache.get_profile(req.user_id)
+        if not profile and req.client_profile:
+            # Fallback to client profile display hint only if database entry does not exist
+            profile = req.client_profile
+        
+        # 2. Fetch user's meals logged today (Memory Cache / Client Context / Lazy Rehydration)
+        if req.client_meals is not None:
+            meals = req.client_meals
+            user_cache.set_today_meals(req.user_id, today_str, meals)
+        else:
+            meals = user_cache.get_today_meals(req.user_id, today_str)
         
         # 3. Formulate the system instruction
         profile_context = ""
@@ -74,7 +86,7 @@ def chat_with_coach(req: CoachRequest):
         4. Be concise, supportive, actionable, and focus on practical recommendations. Respond in English or Urdu depending on the user's input language.
         """
         
-        # 4. Generate response using GeminiPool with auto-failover
+        # 4. Generate response using GeminiPool with auto-failover (non-blocking thread pool)
         from app.services.gemini_pool import gemini_pool
         
         # Convert bounded history (last 20 messages max) to format compatible with GenAI content list
@@ -92,9 +104,10 @@ def chat_with_coach(req: CoachRequest):
             "parts": [{"text": req.message}]
         })
         
-        response = gemini_pool.generate_content(
+        response = await run_in_threadpool(
+            gemini_pool.generate_content,
             contents=contents,
-            model="gemini-3.5-flash-lite",
+            model="gemini-2.5-flash",
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
             ),
@@ -102,21 +115,30 @@ def chat_with_coach(req: CoachRequest):
         
         coach_reply = response.text if response and response.text else "I am here to guide your nutrition. How else can I assist?"
         
-        # 5. Evaluate Health Risk (Independent agentic pass)
+        # 5. Evaluate Health Risk (Independent agentic pass, non-blocking thread pool)
         escalation_alert = None
         from app.services.risk_evaluator import evaluate_health_risk
-        risk = evaluate_health_risk(coach_reply, profile or {}, meals or [], user_message=req.message)
+        risk = await run_in_threadpool(
+            evaluate_health_risk,
+            coach_reply,
+            profile or {},
+            meals or [],
+            user_message=req.message
+        )
         
         if risk["level"] in ("warning", "critical"):
             # Save risk flag to DB
             try:
-                supabase.table('risk_flags').insert({
-                    "user_id": req.user_id,
-                    "level": risk["level"],
-                    "message": risk["message"],
-                    "coach_reply": coach_reply,
-                    "is_resolved": False
-                }).execute()
+                supabase = get_supabase_admin_client()
+                await run_in_threadpool(
+                    lambda: supabase.table('risk_flags').insert({
+                        "user_id": req.user_id,
+                        "level": risk["level"],
+                        "message": risk["message"],
+                        "coach_reply": coach_reply,
+                        "is_resolved": False
+                    }).execute()
+                )
             except Exception as e:
                 print(f"Failed to log risk flag to DB: {e}")
             

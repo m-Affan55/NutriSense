@@ -61,11 +61,14 @@ This document provides a comprehensive inventory of all features, services, data
 * **Non-Contradictory Safety Disclaimers**: Automatically appends a safety warning disclaimer block to the coach's replies on the backend if the independent clinical risk pass triggers a warning or critical level (Issue 14).
 * **Conversational History Safety Scanner**: Scans older, truncated history messages for safety-critical metrics (hyper/hypoglycemia levels, symptoms) and prepends them as system reminders to the current message payload, ensuring context is never lost (Issue 15).
 * **Resilient Multi-Key & Multi-Model Pool**:
-  * Auto-cycles 4 models (`3.5-flash-lite`, `3.5-flash`, `3.7-flash`, `3.6-flash`) across 3 API keys.
-  * Automatically prioritizes `gemini-3.5-flash-lite` first to deliver responses in under 2 seconds.
-  * Tracks key availability statefully in memory (`True`/`False`), instantly disabling rate-limited keys for the day to avoid wasteful retries.
-  * Skips entire model loops immediately upon hitting network/congestion timeouts (504/503), preventing backend locks.
-  * Aligned timeouts: 30-second backend connection limits with 60–90 second frontend request tolerances.
+  * Auto-cycles real models (`gemini-2.5-flash-lite`, `gemini-2.5-flash`, `gemini-3-flash-preview`) across 3 API keys.
+  * Automatically prioritizes `gemini-2.5-flash-lite` first to deliver text-only coaching responses in under 2 seconds.
+  * Reuses `genai.Client` instances statefully in memory rather than recreating them per request.
+  * Offloads blocking network/database calls to FastAPI thread-pools via `run_in_threadpool`, keeping the async event loop responsive.
+  * Parallelizes USDA macro lookups in `/scan` concurrently using `asyncio.gather`.
+  * Tracks key availability statefully in memory (`True`/`False`), instantly disabling rate-limited keys on 429 errors with short rolling cooldowns.
+  * Skips entire model loops immediately upon hitting network/congestion timeouts, preventing backend locks.
+  * Aligned timeouts: 12-second backend connection limits with 60–90 second frontend request tolerances.
 * **Hypoglycemia Fast-Detection**: Evaluates low blood sugar keywords and numeric readings (under 70 mg/dL) with regex to trigger immediate, non-alarmist safety warnings.
 * **Clinical Safety Dialog**: If a critical safety flag is detected, a blocking foreground modal overlays the screen, redirecting the user to care.
 * **Online/Offline Care Locator**: If location services or search APIs fail, the app triggers a clean warning card with a button to launch Google Maps deep-links for a fallback search (`hospital near me`) based on their GPS coordinates.
@@ -83,6 +86,8 @@ This document provides a comprehensive inventory of all features, services, data
 * **Multipart Image Uploads**: Modified scanner uploads to use web-safe `XFile` and `MultipartFile.fromBytes` buffers, supporting image previews via Blob network URLs.
 * **Universal File Handlers**: Replaced `dart:io` imports with `universal_io` for PDF document generations to allow compilation on web targets.
 * **Automatic Vercel Build Script**: Designed and implemented `vercel-build.sh` for auto-cloning Flutter stable SDK and building release web packages.
+* **CORS Dynamic Regex Mapping**: Enabled credentialed Vercel and local web sessions by mapping origins dynamically via `allow_origin_regex` on backend (Issue 6).
+* **Cross-Platform Icons**: Configured and compiled branding launcher icons dynamically for Web, Android, iOS, and Windows (Issue 4).
 
 ---
 

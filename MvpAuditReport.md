@@ -523,7 +523,7 @@ Compare to ManualLogScreen at [L153-166](file:///d:/mobileAppDev/BanoQabilHackat
 
 ---
 
-## Category 8: Android-Specific
+## Category 8: Android-Specific [Resolved ✅]
 
 ### Issue 25: SQLite module-level connection with `check_same_thread=False` — potential corruption under load
 
@@ -680,7 +680,7 @@ This correctly resets `_activeMember` to null. BUT the dashboard listener `_load
 
 ---
 
-## Category 11: Profile Settings
+## Category 11: Profile Settings [Resolved ✅]
 
 ### Issue 32: Settings saves profile without recalculating calorie/macro targets — user updates weight/goal but targets stay stale
 
@@ -892,7 +892,7 @@ If a user logs meals rapidly and hits streak 3 and 5 in the same session, the no
 
 ---
 
-## Category 16: Weekly Report
+## Category 16: Weekly Report [Resolved ✅]
 
 ### Issue 43: Report reads `protein_g` from meal_logs but meals are stored as `total_protein_g` — protein always 0 in reports
 
@@ -973,7 +973,7 @@ The real bug: The user expects "today's meals" on Aug 25 to include only Aug 25 
 
 ---
 
-## Category 18: Coaching / Habit Score
+## Category 18: Coaching / Habit Score [Resolved ✅]
 
 ### Issue 46: Habit score endpoint exposes ALL user data via user_id in URL — no auth check
 

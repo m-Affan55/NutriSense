@@ -14,6 +14,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
 import 'barcode_scanner_screen.dart';
+import '../../../core/meal_sync_notifier.dart';
 
 class ScanMealScreen extends StatefulWidget {
   const ScanMealScreen({super.key});
@@ -129,6 +130,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/scan');
       final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(ApiClient.getHeaders());
       
       request.fields['user_id'] = user.id;
       final bytes = await _selectedImage!.readAsBytes();
@@ -140,7 +142,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         ),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 90));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 400 && response.body.contains("NO_FOOD_DETECTED")) {
@@ -638,6 +640,8 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
       if (mounted) {
         CustomToast.show(context, 'Meal logged successfully!', isError: false);
         SwapService.checkMealForSwaps(data['meal_name'] ?? 'Scanned Meal');
+        MealSyncNotifier.instance.notifyMealChanged();
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
