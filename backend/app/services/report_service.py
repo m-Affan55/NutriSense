@@ -215,6 +215,7 @@ class ReportService:
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     temperature=0.3,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
 

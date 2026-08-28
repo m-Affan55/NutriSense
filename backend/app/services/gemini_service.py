@@ -128,6 +128,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)
@@ -164,6 +165,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             data = json.loads(response.text)
@@ -242,6 +244,7 @@ Return ONLY a valid JSON object with exact keys:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             result = json.loads(response.text)
@@ -295,6 +298,7 @@ Return ONLY a valid JSON object with exact keys:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             result = json.loads(response.text)
@@ -336,6 +340,9 @@ Return ONLY a valid JSON object with exact keys:
             response = gemini_pool.generate_content(
                 model='gemini-2.5-flash',
                 contents=[prompt],
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                ),
             )
             return response.text.strip()
         except Exception:
@@ -377,6 +384,7 @@ Return ONLY a valid JSON object with exact keys:
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)
@@ -416,6 +424,7 @@ Return ONLY a valid JSON object with exact keys:
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)

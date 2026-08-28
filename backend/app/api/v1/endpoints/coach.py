@@ -110,6 +110,7 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
             model="gemini-2.5-flash",
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         
