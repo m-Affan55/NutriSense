@@ -6,7 +6,7 @@
 
 ## 🔴 Critical
 
-### 1. Account deletion doesn't delete anything
+### 1. Account deletion doesn't delete anything [Resolved ✅]
 `backend/app/api/v1/endpoints/profile.py` → `POST /profile/delete-account`
 
 ```python
@@ -21,7 +21,7 @@ There is no call to `supabase.auth.admin.delete_user()` and no deletion from `he
 - This is a functional bug and a compliance risk — both the App Store and Play Store require a working account-deletion path for apps that collect health data, and misrepresenting deletion is a real liability for a clinical-adjacent app.
 - **Fix:** actually call `supabase.auth.admin.delete_user(user_id)` and delete/cascade the user's rows from every table before returning success.
 
-### 2. No authentication on any backend endpoint
+### 2. No authentication on any backend endpoint [Resolved ✅]
 Checked every router in `app/api/v1/endpoints/` and `app/core/security.py` (the latter is an empty `# TODO` stub) — there is no JWT verification, no `Depends()` auth guard, and no check that the caller owns the `user_id` they send.
 
 - Every endpoint (`meals.py`, `health_profile.py`, `coach.py`, `profile.py`, `coaching.py`) accepts `user_id` as a plain field in the request body/query and trusts it.
@@ -29,7 +29,7 @@ Checked every router in `app/api/v1/endpoints/` and `app/core/security.py` (the 
 - Net effect: anyone who has (or guesses/enumerates) a `user_id` can read another user's health profile and meal history, overwrite their onboarding data, or delete their account via endpoint #1.
 - **Fix:** verify the Supabase JWT from the `Authorization` header server-side, derive `user_id` from the verified token (never trust the client-sent one), and switch reads/writes to the anon client so RLS policies apply as a second line of defense.
 
-### 3. AI Coach caches client-supplied medical data as ground truth
+### 3. AI Coach caches client-supplied medical data as ground truth [Resolved ✅]
 `backend/app/api/v1/endpoints/coach.py` → `POST /coach/chat`
 ```python
 if req.client_profile:
@@ -51,7 +51,7 @@ Because the server unconditionally caches whatever the client sends, this partia
 
 ## 🟠 High — specific to your Web + Android release
 
-### 4. Android app icon generation is disabled
+### 4. Android app icon generation is disabled [Resolved ✅]
 `pubspec.yaml`:
 ```yaml
 flutter_launcher_icons:
@@ -59,7 +59,7 @@ flutter_launcher_icons:
 ```
 Since Android is one of your two target platforms, this needs to be `true` (with an Android-appropriate adaptive icon) before release, or the app ships with the default Flutter icon.
 
-### 5. Secrets are bundled into the client binary
+### 5. Secrets are bundled into the client binary [Skipped ⚠️]
 ```yaml
 assets:
   - assets/
@@ -67,7 +67,7 @@ assets:
 ```
 `.env` (Supabase URL + anon key) is packaged as a Flutter asset, meaning it's extractable from both the compiled APK and the deployed web bundle by anyone (unzip the APK / inspect the web build's asset manifest). The Supabase anon key being public is expected, but shipping it via `.env` this way is also why RLS (see #2) is essential — right now there's neither.
 
-### 6. CORS is misconfigured for a browser client
+### 6. CORS is misconfigured for a browser client [Resolved ✅]
 `backend/app/main.py`:
 ```python
 allow_origins=["*"],
@@ -75,7 +75,7 @@ allow_credentials=True,
 ```
 Browsers reject wildcard origins combined with credentials — this combination is invalid per the Fetch/CORS spec. If your Flutter Web build ever sends credentialed requests (cookies, `Authorization` headers with credentials mode), the browser will block them regardless of what the server sends. Since you're deploying to web, replace `allow_origins=["*"]` with your actual deployed origins.
 
-### 7. USDA lookup uses a shared demo key, capped at 30 req/min per IP
+### 7. USDA lookup uses a shared demo key, capped at 30 req/min per IP [Resolved ✅]
 `backend/app/services/usda_service.py`:
 ```python
 API_KEY = "DEMO_KEY"  # Limited to 30 requests per IP per minute.
