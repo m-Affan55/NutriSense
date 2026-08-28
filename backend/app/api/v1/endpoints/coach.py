@@ -107,10 +107,9 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
         response = await run_in_threadpool(
             gemini_pool.generate_content,
             contents=contents,
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         

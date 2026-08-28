@@ -29,7 +29,7 @@ class GeminiService:
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
         
         response = gemini_pool.generate_content(
-            model='gemini-3-flash-preview',
+            model='gemini-3.6-flash',
             contents=[
                 types.Part.from_bytes(
                     data=image_bytes,
@@ -123,12 +123,11 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)
@@ -160,12 +159,11 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             data = json.loads(response.text)
@@ -239,12 +237,11 @@ Return ONLY a valid JSON object with exact keys:
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             result = json.loads(response.text)
@@ -293,12 +290,11 @@ Return ONLY a valid JSON object with exact keys:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.1,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             result = json.loads(response.text)
@@ -338,11 +334,8 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.5-flash-lite',
                 contents=[prompt],
-                config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
-                ),
             )
             return response.text.strip()
         except Exception:
@@ -380,11 +373,10 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)
@@ -420,11 +412,10 @@ Return ONLY a valid JSON object with exact keys:
         """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return json.loads(response.text)

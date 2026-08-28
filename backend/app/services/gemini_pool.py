@@ -28,7 +28,7 @@ class GeminiPool:
         self._clients = [
             genai.Client(
                 api_key=key,
-                http_options=types.HttpOptions(timeout=12_000),  # Reduced timeout to 12s for faster failover
+                http_options=types.HttpOptions(timeout=60_000),  
             )
             for key in self._keys
         ]
@@ -37,9 +37,10 @@ class GeminiPool:
 
     def _reset_quotas(self):
         priority_models = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-3-flash-preview"
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash"
         ]
         for m in priority_models:
             # Stores the timestamp when a key is allowed to be used again (0.0 means immediately)
@@ -62,22 +63,23 @@ class GeminiPool:
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-2.5-flash",  # Default to the fastest GA model
+        model: str = "gemini-3.6-flash",  # Default to the fastest, highly capable GA model
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None,
         require_vision: bool = False
     ) -> Any:
         priority_models = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-3-flash-preview"
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash"
         ]
 
         # If the task requires vision, exclude lite model families (they don't support image inputs)
         if require_vision:
             priority_models = [m for m in priority_models if "-flash-lite" not in m]
             if "-flash-lite" in model:
-                model = "gemini-2.5-flash"
+                model = "gemini-3.6-flash"
 
         models_to_try = [model] + [m for m in priority_models if m != model]
         last_error = None
@@ -113,19 +115,7 @@ class GeminiPool:
                     err_str = str(e)
                     last_error = e
                     
-                    # 1. Catch non-transient developer/setup errors (400, 403, invalid arguments)
-                    # and propagate them instantly without trying other keys/models to avoid latency hangs.
-                    is_non_transient = (
-                        "400" in err_str or
-                        "403" in err_str or
-                        "invalid" in err_str.lower() or
-                        "permission" in err_str.lower()
-                    )
-                    if is_non_transient:
-                        logger.error(f"Non-transient Gemini API error on model {current_model}: {e}")
-                        raise e
-                    
-                    # 2. Handle rate limits (429 / RESOURCE_EXHAUSTED) -> put key on a short cooldown (60s)
+                    # 1. Catch rate limits (429 / RESOURCE_EXHAUSTED) -> put key on a short cooldown (60s)
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                         logger.warning(
                             f"Model {current_model} on key #{key_idx+1} ({masked_key}) hit rate limit. Cooling down for 60s."
@@ -133,12 +123,15 @@ class GeminiPool:
                         with self._lock:
                             self._quota_status[current_model][key_idx] = time.time() + 60.0
                             
-                    # 3. Handle deprecated models (404 NOT_FOUND) or network outages (504, 503, timeout) -> skip to next model
+                    # 2. Handle deprecated/restricted models (404 NOT_FOUND or 403 PERMISSION_DENIED on model)
+                    # or network outages (504, 503, timeout) -> skip to next model family
                     elif ("404" in err_str or "not found" in err_str.lower() or
+                          "403" in err_str or "permission" in err_str.lower() or
+                          "denied" in err_str.lower() or
                           "504" in err_str or "503" in err_str or "timeout" in err_str.lower() or
                           "timed out" in err_str.lower() or "deadline" in err_str.lower()):
                         logger.warning(
-                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) unavailable or timed out. Skipping to next model."
+                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) unavailable ({e}). Skipping to next model."
                         )
                         break  # Try the next model family
                     else:
