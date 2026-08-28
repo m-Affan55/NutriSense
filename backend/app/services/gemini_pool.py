@@ -37,8 +37,8 @@ class GeminiPool:
 
     def _reset_quotas(self):
         priority_models = [
-            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
+            "gemini-2.0-flash-lite",
             "gemini-3-flash-preview"
         ]
         for m in priority_models:
@@ -62,21 +62,21 @@ class GeminiPool:
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-2.5-flash-lite",  # Default to the fastest model
+        model: str = "gemini-2.5-flash",  # Default to the fastest GA model
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None,
         require_vision: bool = False
     ) -> Any:
         priority_models = [
-            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
+            "gemini-2.0-flash-lite",
             "gemini-3-flash-preview"
         ]
 
-        # If the task requires vision, exclude model families that don't support image inputs
+        # If the task requires vision, exclude lite model families (they don't support image inputs)
         if require_vision:
-            priority_models = [m for m in priority_models if m != "gemini-2.5-flash-lite"]
-            if model == "gemini-2.5-flash-lite":
+            priority_models = [m for m in priority_models if "-flash-lite" not in m]
+            if "-flash-lite" in model:
                 model = "gemini-2.5-flash"
 
         models_to_try = [model] + [m for m in priority_models if m != model]
@@ -113,14 +113,12 @@ class GeminiPool:
                     err_str = str(e)
                     last_error = e
                     
-                    # 1. Catch non-transient developer/setup errors (400, 404, 403, invalid arguments)
+                    # 1. Catch non-transient developer/setup errors (400, 403, invalid arguments)
                     # and propagate them instantly without trying other keys/models to avoid latency hangs.
                     is_non_transient = (
                         "400" in err_str or
-                        "404" in err_str or
                         "403" in err_str or
                         "invalid" in err_str.lower() or
-                        "not found" in err_str.lower() or
                         "permission" in err_str.lower()
                     )
                     if is_non_transient:
@@ -135,10 +133,12 @@ class GeminiPool:
                         with self._lock:
                             self._quota_status[current_model][key_idx] = time.time() + 60.0
                             
-                    # 3. Handle network timeouts or deadlines (504, 503, timeout) -> skip directly to next model
-                    elif "504" in err_str or "503" in err_str or "timeout" in err_str.lower() or "timed out" in err_str.lower() or "deadline" in err_str.lower():
+                    # 3. Handle deprecated models (404 NOT_FOUND) or network outages (504, 503, timeout) -> skip to next model
+                    elif ("404" in err_str or "not found" in err_str.lower() or
+                          "504" in err_str or "503" in err_str or "timeout" in err_str.lower() or
+                          "timed out" in err_str.lower() or "deadline" in err_str.lower()):
                         logger.warning(
-                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) timed out or returned 504/503. Skipping model generation."
+                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) unavailable or timed out. Skipping to next model."
                         )
                         break  # Try the next model family
                     else:
