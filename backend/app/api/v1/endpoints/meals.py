@@ -1,4 +1,6 @@
+import asyncio
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from app.services.gemini_service import GeminiService
 from app.services.gemini_pool import RateLimitExceeded
@@ -15,36 +17,42 @@ async def scan_meal(
     user_id: str = Form(...)
 ):
     try:
-        # 1. Fetch user's health profile to get conditions and allergies context
+        # 1. Fetch user's health profile (non-blocking thread pool)
         supabase = get_supabase_admin_client()
-        profile_response = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        profile_response = await run_in_threadpool(
+            lambda: supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        )
         profile = profile_response.data
         
         # 2. Read image details
         image_bytes = await image.read()
         mime_type = image.content_type or "image/jpeg"
         
-        # 3. Analyze plate using Gemini interactions service
-        scan_result = GeminiService.scan_meal(
-            image_bytes=image_bytes,
-            mime_type=mime_type,
-            profile=profile
+        # 3. Analyze plate using Gemini service (non-blocking thread pool)
+        scan_result = await run_in_threadpool(
+            GeminiService.scan_meal,
+            image_bytes,
+            mime_type,
+            profile
         )
         
         if not scan_result.get("is_food", True):
             raise HTTPException(status_code=400, detail="NO_FOOD_DETECTED")
             
-        # 4. Fetch USDA macros for each item and recalculate totals
+        # 4. Fetch USDA macros in parallel using asyncio.gather
         total_calories = 0.0
         total_protein = 0.0
         total_carbs = 0.0
         total_fat = 0.0
         
-        for item in scan_result.get("items", []):
+        items = scan_result.get("items", [])
+        usda_tasks = [UsdaService.fetch_macros_per_100g(item.get("name", "")) for item in items]
+        usda_results = await asyncio.gather(*usda_tasks)
+        
+        for item, usda_macros in zip(items, usda_results):
             grams = float(item.get("estimated_weight_g", 0))
             ratio = (grams / 100.0) if grams > 0 else 1.0
             
-            usda_macros = await UsdaService.fetch_macros_per_100g(item.get("name", ""))
             has_usda = usda_macros.get("calories", 0) > 0 or usda_macros.get("protein_g", 0) > 0 or usda_macros.get("carbs_g", 0) > 0 or usda_macros.get("fat_g", 0) > 0
             
             if has_usda:
@@ -108,24 +116,27 @@ async def scan_barcode(req: BarcodeRequest):
     import logging
     logger = logging.getLogger(__name__)
     try:
-        # 1. Fetch user's health profile
+        # 1. Fetch user's health profile (non-blocking thread pool)
         supabase = get_supabase_admin_client()
-        profile_response = supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        profile_response = await run_in_threadpool(
+            lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+        )
         profile = profile_response.data if profile_response else None
 
         # ── PATH A: Product exists in local DB ────────────────────────────────
-        db_row = FoodDBService.lookup(req.barcode)
+        db_row = await run_in_threadpool(FoodDBService.lookup, req.barcode)
 
         if db_row is not None:
             logger.info(f"Barcode '{req.barcode}' found in local DB: {db_row.get('product_name')}")
             
-            # Check if DB row has complete valid macros (Tea/Water with 0.0 are accepted, NULL is not)
+            # Check if DB row has complete valid macros
             if FoodDBService.is_macro_complete(db_row):
                 logger.info(f"DB row has complete macros for '{req.barcode}'.")
                 product_data = FoodDBService.format_result(db_row, profile=profile)
                 
-                # Single call for clinical health evaluation
-                ai_warnings = GeminiService.evaluate_ingredients(
+                # Single call for clinical health evaluation (non-blocking thread pool)
+                ai_warnings = await run_in_threadpool(
+                    GeminiService.evaluate_ingredients,
                     ingredients=product_data.get("ingredients", ""),
                     allergens=product_data.get("allergens", ""),
                     profile=profile,
@@ -147,13 +158,14 @@ async def scan_barcode(req: BarcodeRequest):
                 }
 
             else:
-                # Macros are missing/NULL or anomalous in DB -> Single combined Gemini call (Fix 7)
+                # Macros are missing/NULL or anomalous in DB -> Single combined Gemini call (non-blocking thread pool)
                 logger.info(f"Incomplete macros for '{req.barcode}' — filling via combined Gemini call for: {db_row.get('product_name')}")
                 pname = db_row.get('product_name') or 'Packaged Food'
                 brand = db_row.get('brands') or ''
                 display_name = f"{brand} · {pname}" if (brand and brand.lower() not in pname.lower()) else pname
 
-                enriched = GeminiService.fill_macros_and_evaluate(
+                enriched = await run_in_threadpool(
+                    GeminiService.fill_macros_and_evaluate,
                     product_name=display_name,
                     ingredients=db_row.get('ingredients_text', ''),
                     allergens=db_row.get('allergens_en', ''),
@@ -173,11 +185,11 @@ async def scan_barcode(req: BarcodeRequest):
                         'source':          'database_enriched',
                     }
                     try:
-                        FoodDBService.cache_food(req.barcode, product_data)
+                        await run_in_threadpool(FoodDBService.cache_food, req.barcode, product_data)
                     except Exception:
                         pass
                 else:
-                    # Fallback to whatever raw DB has if Gemini is rate limited
+                    # Fallback to whatever raw DB has if Gemini fails
                     product_data = FoodDBService.format_result(db_row, profile=profile)
 
                 return {
@@ -210,18 +222,19 @@ async def scan_barcode(req: BarcodeRequest):
                         f, c, p = float(fat), float(carbs), float(protein)
                         cal_val = float(cal) if cal is not None else 0.0
                         if cal_val > 50 and f == 0.0 and c == 0.0 and p == 0.0:
-                            is_off_complete = False  # Anomaly in OpenFoodFacts data
+                            is_off_complete = False
                         elif cal_val <= 25 and f == 0.0 and c == 0.0 and p == 0.0:
-                            is_off_complete = True   # Legitimate zero-calorie item (Tea, Water, etc.)
+                            is_off_complete = True
                         elif f > 0 or c > 0 or p > 0:
-                            is_off_complete = True   # Valid positive macros
+                            is_off_complete = True
                     except (ValueError, TypeError):
                         is_off_complete = False
 
                 if not is_off_complete:
-                    # Macros are NULL or anomalous in OpenFoodFacts -> Call Gemini to fill macros & evaluate health in 1 call
+                    # Macros are NULL or anomalous in OpenFoodFacts -> Call Gemini to fill macros & evaluate health in 1 call (non-blocking thread pool)
                     logger.info(f"OpenFoodFacts entry for '{req.barcode}' has missing/null macros — enriching via Gemini AI...")
-                    enriched = GeminiService.fill_macros_and_evaluate(
+                    enriched = await run_in_threadpool(
+                        GeminiService.fill_macros_and_evaluate,
                         product_name=off_data.get("product_name", "Packaged Food"),
                         ingredients=off_data.get("ingredients", ""),
                         allergens=off_data.get("allergens", ""),
@@ -246,8 +259,9 @@ async def scan_barcode(req: BarcodeRequest):
                         off_data["allergy_warnings"] = []
                         off_data["source"] = "openfoodfacts"
                 else:
-                    # OpenFoodFacts macros are complete -> Single call for clinical health & allergy evaluation
-                    ai_warnings = GeminiService.evaluate_ingredients(
+                    # OpenFoodFacts macros are complete -> Single call for clinical health & allergy evaluation (non-blocking thread pool)
+                    ai_warnings = await run_in_threadpool(
+                        GeminiService.evaluate_ingredients,
                         ingredients=off_data.get("ingredients", ""),
                         allergens=off_data.get("allergens", ""),
                         profile=profile,
@@ -261,9 +275,9 @@ async def scan_barcode(req: BarcodeRequest):
                     off_data["allergy_warnings"] = ai_warnings
                     off_data["source"] = "openfoodfacts"
 
-                # Cache into local DB so future lookups are instant
+                # Cache into local DB (non-blocking thread pool)
                 try:
-                    FoodDBService.cache_food(req.barcode, off_data)
+                    await run_in_threadpool(FoodDBService.cache_food, req.barcode, off_data)
                 except Exception:
                     pass
 
@@ -276,9 +290,9 @@ async def scan_barcode(req: BarcodeRequest):
             # ── Fallback 2: Not in OpenFoodFacts -> Gemini AI Identification ──
             logger.info(f"Barcode '{req.barcode}' not in OpenFoodFacts — falling back to Gemini AI...")
             try:
-                product_data = GeminiService.identify_barcode_food(req.barcode, profile=profile)
+                product_data = await run_in_threadpool(GeminiService.identify_barcode_food, req.barcode, profile)
                 try:
-                    FoodDBService.cache_food(req.barcode, product_data)
+                    await run_in_threadpool(FoodDBService.cache_food, req.barcode, product_data)
                 except Exception:
                     pass
             except Exception as gemini_err:
@@ -303,17 +317,17 @@ async def scan_barcode(req: BarcodeRequest):
 
 
 @router.get("/weekly-report")
-def get_weekly_report(user_id: str, language: str = "en"):
+async def get_weekly_report(user_id: str, language: str = "en"):
     try:
         from app.services.report_service import ReportService
-        return ReportService.generate_weekly_report(user_id=user_id, language=language)
+        return await run_in_threadpool(ReportService.generate_weekly_report, user_id=user_id, language=language)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/search-food")
 async def search_food(req: SearchFoodRequest):
     try:
-        macros = GeminiService.estimate_food_macros(req.query)
+        macros = await run_in_threadpool(GeminiService.estimate_food_macros, req.query)
         return macros
     except RateLimitExceeded:
         raise HTTPException(status_code=429, detail="RATE_LIMITED")
@@ -325,8 +339,10 @@ async def get_grocery_list(user_id: str):
     try:
         supabase = get_supabase_admin_client()
         
-        # 1. Fetch profile
-        profile_res = supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        # 1. Fetch profile (non-blocking thread pool)
+        profile_res = await run_in_threadpool(
+            lambda: supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+        )
         profile = profile_res.data
         
         # 2. Fetch past 7 days of meals (using UTC bounds)
@@ -334,16 +350,18 @@ async def get_grocery_list(user_id: str):
         now_utc = datetime.datetime.now(datetime.timezone.utc)
         start_date = now_utc.date() - datetime.timedelta(days=7)
         
-        meals_res = supabase.table('meal_logs') \
-            .select('notes') \
-            .eq('user_id', user_id) \
-            .gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00") \
-            .execute()
+        meals_res = await run_in_threadpool(
+            lambda: supabase.table('meal_logs')
+                .select('notes')
+                .eq('user_id', user_id)
+                .gte('logged_at', f"{start_date.isoformat()}T00:00:00+00:00")
+                .execute()
+        )
         meals = meals_res.data or []
         recent_meal_notes = [m.get('notes') for m in meals if m.get('notes')]
         
-        # 3. Generate grocery list
-        grocery_list = GeminiService.generate_grocery_list(recent_meal_notes, profile)
+        # 3. Generate grocery list (non-blocking thread pool)
+        grocery_list = await run_in_threadpool(GeminiService.generate_grocery_list, recent_meal_notes, profile)
         return grocery_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

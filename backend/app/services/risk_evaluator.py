@@ -67,7 +67,7 @@ def evaluate_health_risk(coach_reply: str, profile: dict, meals: list, user_mess
     try:
         response = gemini_pool.generate_content(
             contents=[system_instruction],
-            model="gemini-3.5-flash-lite",
+            model="gemini-2.5-flash-lite",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=RiskEvaluationResponse,
