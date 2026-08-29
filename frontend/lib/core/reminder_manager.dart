@@ -552,7 +552,7 @@ class ReminderManager {
 
       if (day.isRestDay) {
         // Rest day: Cancel any workout reminder for this day
-        await _notifications.cancel(notifId);
+        await _notifications.cancel(id: notifId);
       } else {
         // Active workout day: Schedule weekly notification for this specific day of week
         final tz.TZDateTime scheduledDate = _nextInstanceOfDayAndTime(weekdayNum, wHour, wMin);
