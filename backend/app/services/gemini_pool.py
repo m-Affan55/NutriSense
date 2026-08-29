@@ -38,10 +38,12 @@ class GeminiPool:
 
     def _reset_quotas(self):
         priority_models = [
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-3.7-flash",
             "gemini-3.6-flash",
             "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.7-flash"
+            "gemini-2.0-flash"
         ]
         for m in priority_models:
             # Stores the timestamp when a key is allowed to be used again (0.0 means immediately)
@@ -64,16 +66,19 @@ class GeminiPool:
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-3.6-flash",  # Default to the fastest, highly capable GA model
+        model: str = "gemini-3.5-flash-lite",  # Default to the fastest model
         config: Optional[types.GenerateContentConfig] = None,
         max_retries: Optional[int] = None,
         require_vision: bool = False
     ) -> Any:
+        import copy
         priority_models = [
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-3.7-flash",
             "gemini-3.6-flash",
             "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.7-flash"
+            "gemini-2.0-flash"
         ]
 
         # If the task requires vision, exclude lite model families (they don't support image inputs)
@@ -108,10 +113,16 @@ class GeminiPool:
                 masked_key = self._keys[key_idx][:8] + "..." if len(self._keys[key_idx]) > 8 else "***"
                 try:
                     client = self._get_client(key_idx)
+                    
+                    # Clone config and configure thinking budget to 0 (disabled) if model supports it
+                    req_config = copy.deepcopy(config) if config is not None else types.GenerateContentConfig()
+                    if "3.7" in current_model or "thinking" in current_model:
+                        req_config.thinking_config = types.ThinkingConfig(thinking_budget=0)
+
                     response = client.models.generate_content(
                         model=current_model,
                         contents=contents,
-                        config=config,
+                        config=req_config,
                     )
                     return response
                 except Exception as e:

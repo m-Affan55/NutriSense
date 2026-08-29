@@ -89,9 +89,14 @@ This document provides a comprehensive inventory of all features, services, data
 * **CORS Dynamic Regex Mapping**: Enabled credentialed Vercel and local web sessions by mapping origins dynamically via `allow_origin_regex` on backend (Issue 6).
 * **Cross-Platform Icons**: Configured and compiled branding launcher icons dynamically for Web, Android, iOS, and Windows (Issue 4).
 
+### 13. 🛠️ Layout, Usability & Build Stability
+* **System Navigation Overlap Fix**: Wrapped the floating bottom navigation bar in a `SafeArea` widget inside `main_navigation_screen.dart` and adjusted padding to ensure it floats cleanly above Android three-button system navigation bars and iOS home indicators.
+* **ListTile Background Assertion Fix**: Wrapped `ExpansionTile` layout trees in both `workout_screen.dart` and `grocery_view.dart` in transparent `Material` widgets to satisfy the Flutter layout engine's requirement that any `ListTile` placed inside a decorated container must have a `Material` canvas.
+* **Workout Reminder Build Fix**: Switched `cancel(notifId)` to `cancel(id: notifId)` in `reminder_manager.dart` to support modern `flutter_local_notifications` v22.3.0 named parameter specifications, resolving the Windows compilation error.
+
 ---
 
 ## 🧪 Current Verification Status
 
-- **Static Analysis**: `flutter analyze` $\to$ **`No issues found!`** (0 errors, 0 warnings).
+- **Static Analysis**: `flutter analyze` $\to$ **0 errors** (with only 2 minor warnings and 1 info in `workout_screen.dart` about unused imports/fields, which are non-blocking for release).
 - **Automated Test Suite**: `flutter test` $\to$ **`All tests passed!`**.
