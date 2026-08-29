@@ -316,7 +316,7 @@ Return ONLY a valid JSON object with exact keys:
 
 
     @staticmethod
-    def generate_coaching_summary(score: float, profile: dict = None) -> str:
+    def generate_coaching_summary(score: float, profile: dict = None, language: str = "en") -> str:
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -332,6 +332,9 @@ Return ONLY a valid JSON object with exact keys:
         Write a short, personalized, encouraging one-paragraph coaching message (max 3 sentences) 
         reflecting on their score and giving one piece of actionable advice tailored to their profile.
         """
+        if language == "ur":
+            prompt += "\nMANDATORY: You must respond entirely in Urdu language using correct Arabic-script spelling and grammar."
+
         try:
             response = gemini_pool.generate_content(
                 model='gemini-3.5-flash-lite',
@@ -339,15 +342,23 @@ Return ONLY a valid JSON object with exact keys:
             )
             return response.text.strip()
         except Exception:
-            if score >= 80:
-                return "Fantastic job! Your consistency is paying off. Keep up the great work!"
-            elif score >= 50:
-                return "You're making good progress. A little more consistency with your macro targets will boost your score!"
+            if language == "ur":
+                if score >= 80:
+                    return "بہت عمدہ کام! آپ کا تسلسل رنگ لا رہا ہے۔ اسی طرح محنت جاری رکھیں!"
+                elif score >= 50:
+                    return "آپ اچھی پیش رفت کر رہے ہیں۔ اپنے میکرو اہداف پر تھوڑا اور تسلسل برقرار رکھنے سے آپ کا اسکور مزید بہتر ہو جائے گا!"
+                else:
+                    return "اپنے کھانے کا ریکارڈ لکھتے رہیں! آپ کے عادات کے اسکور کو بہتر بنانے کے لیے تسلسل سب سے اہم ہے۔"
             else:
-                return "Keep logging your meals! Consistency is key to improving your habit score."
+                if score >= 80:
+                    return "Fantastic job! Your consistency is paying off. Keep up the great work!"
+                elif score >= 50:
+                    return "You're making good progress. A little more consistency with your macro targets will boost your score!"
+                else:
+                    return "Keep logging your meals! Consistency is key to improving your habit score."
 
     @staticmethod
-    def generate_food_swaps(recent_meals: list[str], profile: dict = None) -> list[dict]:
+    def generate_food_swaps(recent_meals: list[str], profile: dict = None, language: str = "en") -> list[dict]:
         profile_context = ""
         if profile:
             profile_context = f"""
@@ -371,6 +382,9 @@ Return ONLY a valid JSON object with exact keys:
         - "healthy_swap": string (what they should eat instead)
         - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
         """
+        if language == "ur":
+            prompt += "\nMANDATORY: Write the values for 'original_food', 'healthy_swap', and 'reason' in Urdu language (using Urdu Arabic script)."
+
         try:
             response = gemini_pool.generate_content(
                 model='gemini-3.6-flash',

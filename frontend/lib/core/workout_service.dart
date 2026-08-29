@@ -167,6 +167,7 @@ class WorkoutService {
 
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = '$_cacheKeyPrefix$userId';
+    final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
     // 1. Return cached plan if not forced to refresh
     if (!forceRefresh && prefs.containsKey(cacheKey)) {
@@ -183,7 +184,7 @@ class WorkoutService {
 
     // 2. Fetch from backend API
     try {
-      final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/plan/$userId?is_ramadan=$isRamadan');
+      final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/plan/$userId?is_ramadan=$isRamadan&language=$language');
       final response = await http.get(url, headers: ApiClient.getHeaders()).timeout(
         const Duration(seconds: 15),
       );
@@ -216,6 +217,9 @@ class WorkoutService {
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id ?? 'guest_user';
 
+    final prefs = await SharedPreferences.getInstance();
+    final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+
     try {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/generate');
       final response = await http.post(
@@ -225,6 +229,7 @@ class WorkoutService {
           'user_id': userId,
           'client_profile': profile,
           'is_ramadan': isRamadan,
+          'language': language,
         }),
       ).timeout(const Duration(seconds: 25));
 
@@ -232,7 +237,6 @@ class WorkoutService {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final plan = WorkoutPlanModel.fromJson(data);
 
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setString('$_cacheKeyPrefix$userId', json.encode(plan.toJson()));
         return plan;
       }

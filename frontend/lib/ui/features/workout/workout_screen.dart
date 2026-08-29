@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/workout_service.dart';
 import '../../../core/reminder_manager.dart';
@@ -18,6 +19,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   bool _isRegenerating = false;
   WorkoutPlanModel? _workoutPlan;
   int _selectedDayIndex = 0;
+  String _language = 'en';
 
   final List<String> _dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   final List<String> _shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -35,11 +37,93 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
     _selectedDayIndex = (todayWeekday - 1).clamp(0, 6);
   }
 
+  String _t(String key) {
+    final translations = {
+      'en': {
+        'title': 'AI Workout Plan',
+        'restDay': 'Rest & Recovery',
+        'activeDay': 'Active Training Day',
+        'duration': 'Duration',
+        'mins': 'mins',
+        'calories': 'Est. Calories',
+        'kcal': 'kcal',
+        'warmup': 'Dynamic Warm-up',
+        'cooldown': 'Post-Workout Cool-down',
+        'safetyAlert': 'Clinical Safety Guidance',
+        'formTips': 'Execution / Form Cues',
+        'precautions': 'Clinical Precautions',
+        'target': 'Target:',
+        'sets': 'sets',
+        'reps': 'reps',
+        'rest': 'rest',
+        'sec': 's',
+        'emptyTitle': 'No Workout Plan Yet',
+        'emptyBody': 'Generate a personalized, clinically tailored workout routine based on your medical profile and health goals.',
+        'genBtn': 'Generate Workout Plan',
+        'refreshing': 'AI is crafting your tailored workout plan...',
+        'snackSuccess': '✨ AI generated a new tailored workout routine!',
+        'completed': 'Completed!',
+        'markComplete': 'Mark Exercise Completed',
+        'recoveryPillars': 'Recovery Pillars',
+        'nutrition': 'Nutrition & Recovery',
+        'hydration': 'Optimal Hydration',
+        'sleep': 'Sleep & Rest',
+      },
+      'ur': {
+        'title': 'اے آئی ورزش کا منصوبہ',
+        'restDay': 'آرام اور بحالی',
+        'activeDay': 'سرگرم ورزش کا دن',
+        'duration': 'وقت',
+        'mins': 'منٹ',
+        'calories': 'اندازاً کیلوریز',
+        'kcal': 'کیلوریز',
+        'warmup': 'ورزش سے پہلے وارم اپ',
+        'cooldown': 'ورزش کے بعد کول ڈاؤن',
+        'safetyAlert': 'طبی و حفاظتی رہنمائی',
+        'formTips': 'ورزش کا طریقہ اور ٹپس',
+        'precautions': 'طبی احتیاطی تدابیر',
+        'target': 'ہدف:',
+        'sets': 'سیٹس',
+        'reps': 'بار',
+        'rest': 'آرام',
+        'sec': 'سیکنڈ',
+        'emptyTitle': 'کوئی ورزش کا منصوبہ نہیں ہے',
+        'emptyBody': 'اپنے طبی پروفائل اور صحت کے اہداف کے مطابق ذاتی اے آئی ورزش کا منصوبہ بنائیں۔',
+        'genBtn': 'ورزش کا منصوبہ بنائیں',
+        'refreshing': 'اے آئی آپ کی ورزش کا منصوبہ تیار کر رہا ہے...',
+        'snackSuccess': '✨ اے آئی نے آپ کا نیا ورزش کا منصوبہ تیار کر لیا ہے!',
+        'completed': 'مکمل ہو گیا!',
+        'markComplete': 'ورزش مکمل لاگ کریں',
+        'recoveryPillars': 'بحالی کے ستون',
+        'nutrition': 'غذائیت اور بحالی',
+        'hydration': 'بہترین ہائیڈریشن',
+        'sleep': 'نیند اور آرام',
+      }
+    };
+    return translations[_language]?[key] ?? key;
+  }
+
+  String _getDayDisplayName(String dayName) {
+    if (_language == 'ur') {
+      final index = _dayNames.indexOf(dayName);
+      if (index != -1) {
+        return ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'][index];
+      }
+    }
+    return dayName;
+  }
+
   Future<void> loadWorkoutData({bool forceRefresh = false}) async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        });
+      }
       final isRamadan = RamadanController.instance.isRamadanMode;
       final plan = await WorkoutService.instance.getWorkoutPlan(
         forceRefresh: forceRefresh,
@@ -80,7 +164,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
           ReminderManager.scheduleWorkoutPlanReminders(plan);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('✨ AI generated a new tailored workout routine!'),
+              content: Text(_t('snackSuccess')),
               backgroundColor: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -157,7 +241,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                           CircularProgressIndicator(color: primaryColor),
                           const SizedBox(height: 16),
                           Text(
-                            'AI is crafting your tailored workout plan...',
+                            _t('refreshing'),
                             style: GoogleFonts.outfit(
                               color: Colors.white,
                               fontSize: 14,
@@ -190,7 +274,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                   Icon(Icons.fitness_center_rounded, color: primaryColor, size: 22),
                   const SizedBox(width: 8),
                   Text(
-                    'AI Workout Plan',
+                    _t('title'),
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -201,7 +285,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               ),
               const SizedBox(height: 4),
               Text(
-                _workoutPlan?.planName ?? 'Personalized Clinical Protocol',
+                _workoutPlan?.planName ?? (_language == 'ur' ? 'ذاتی طبی منصوبہ' : 'Personalized Clinical Protocol'),
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   color: const Color(0xFF8A94A6),
@@ -212,7 +296,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
           IconButton(
             onPressed: _isRegenerating ? null : _regeneratePlanWithAI,
             icon: Icon(Icons.auto_awesome, color: primaryColor),
-            tooltip: 'Regenerate Plan with AI',
+            tooltip: _language == 'ur' ? 'اے آئی کے ساتھ نیا منصوبہ بنائیں' : 'Regenerate Plan with AI',
             style: IconButton.styleFrom(
               backgroundColor: primaryColor.withAlpha(25),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -263,7 +347,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _shortDays[index],
+                    _language == 'ur' ? ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'][index] : _shortDays[index],
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -324,7 +408,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Exercises (${day.exercises.length})',
+                _language == 'ur' ? 'ورزشیں (${day.exercises.length})' : 'Exercises (${day.exercises.length})',
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -332,7 +416,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                 ),
               ),
               Text(
-                'Tap to check off',
+                _t('markComplete'),
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   color: const Color(0xFF8A94A6),
@@ -378,7 +462,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  day.dayName.toUpperCase(),
+                  _getDayDisplayName(day.dayName).toUpperCase(),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -392,14 +476,14 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                   Icon(Icons.timer_outlined, size: 14, color: const Color(0xFF8A94A6)),
                   const SizedBox(width: 4),
                   Text(
-                    '${day.durationMins} mins',
+                    '${day.durationMins} ${_t('mins')}',
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
                   ),
                   const SizedBox(width: 12),
                   Icon(Icons.local_fire_department_rounded, size: 14, color: isRamadan ? const Color(0xFFFFD166) : const Color(0xFFFF6D00)),
                   const SizedBox(width: 4),
                   Text(
-                    '~${day.estimatedCaloriesBurned} kcal',
+                    '~${day.estimatedCaloriesBurned} ${_t('kcal')}',
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
                   ),
                 ],
@@ -417,7 +501,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
           ),
           const SizedBox(height: 4),
           Text(
-            'Target: ${day.targetFocus}',
+            '${_t('target')} ${day.targetFocus}',
             style: GoogleFonts.inter(
               fontSize: 13,
               color: primaryColor,
@@ -482,7 +566,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Dynamic Warm-Up',
+                  _t('warmup'),
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -531,7 +615,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Cool-Down & Recovery Stretch',
+                  _t('cooldown'),
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -626,7 +710,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '${exercise.sets} sets × ${exercise.reps}',
+                          '${exercise.sets} ${_t('sets')} × ${exercise.reps}',
                           style: GoogleFonts.inter(fontSize: 11, color: primaryColor, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -637,7 +721,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          'Rest: ${exercise.restSeconds}s',
+                          '${_t('rest')}: ${exercise.restSeconds}${_t('sec')}',
                           style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8)),
                         ),
                       ),
@@ -659,7 +743,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Form Cue: ${exercise.formCues}',
+                                  '${_language == 'ur' ? 'ورزش کی ٹپ' : 'Form Cue'}: ${exercise.formCues}',
                                   style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, height: 1.3),
                                 ),
                               ),
@@ -675,7 +759,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Precaution: ${exercise.precautions}',
+                                  '${_language == 'ur' ? 'احتیاط' : 'Precaution'}: ${exercise.precautions}',
                                   style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFCD34D), height: 1.3),
                                 ),
                               ),
@@ -719,7 +803,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               ),
               const SizedBox(height: 16),
               Text(
-                'Rest & Active Recovery',
+                _t('restDay'),
                 style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -745,24 +829,30 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
         _buildRecoveryPillarCard(
           icon: Icons.water_drop_outlined,
           iconColor: const Color(0xFF00D2FF),
-          title: 'Hydration & Electrolytes',
-          description: 'Drink at least 2.5–3L of water today to flush lactic acid and replenish intracellular glycogen.',
+          title: _language == 'ur' ? 'ہائیڈریشن اور الیکٹرولائٹس' : 'Hydration & Electrolytes',
+          description: _language == 'ur'
+              ? 'پٹھوں کی بحالی اور پانی کی کمی دور کرنے کے لیے آج کم از کم 2.5 سے 3 لیٹر پانی پیئیں۔'
+              : 'Drink at least 2.5–3L of water today to flush lactic acid and replenish intracellular glycogen.',
           cardBg: cardBg,
         ),
         const SizedBox(height: 10),
         _buildRecoveryPillarCard(
           icon: Icons.self_improvement_outlined,
           iconColor: const Color(0xFF10B981),
-          title: 'Light Active Mobility',
-          description: 'A 15-minute leisurely walk or gentle foam rolling enhances blood flow without taxing your muscles.',
+          title: _language == 'ur' ? 'ہلکی لچک اور چہل قدمی' : 'Light Active Mobility',
+          description: _language == 'ur'
+              ? '15 منٹ کی ہلکی چہل قدمی یا اسٹریچنگ جوڑوں میں دورانِ خون کو بہتر بناتی ہے۔'
+              : 'A 15-minute leisurely walk or gentle foam rolling enhances blood flow without taxing your muscles.',
           cardBg: cardBg,
         ),
         const SizedBox(height: 10),
         _buildRecoveryPillarCard(
           icon: Icons.bed_outlined,
           iconColor: const Color(0xFFA855F7),
-          title: 'Deep Sleep & Muscle Synthesis',
-          description: 'Aim for 7–8 hours of quality sleep. Muscle protein repair and tissue remodeling occur during deep REM sleep.',
+          title: _language == 'ur' ? 'گہری نیند اور بحالی' : 'Deep Sleep & Muscle Synthesis',
+          description: _language == 'ur'
+              ? '7 سے 8 گھنٹے کی گہری نیند لیں۔ عضلات کی مرمت اور بحالی گہری نیند کے دوران ہی ہوتی ہے۔'
+              : 'Aim for 7–8 hours of quality sleep. Muscle protein repair and tissue remodeling occur during deep REM sleep.',
           cardBg: cardBg,
         ),
       ],
@@ -834,12 +924,12 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
             Icon(Icons.fitness_center_outlined, size: 64, color: primaryColor.withAlpha(120)),
             const SizedBox(height: 16),
             Text(
-              'No Workout Plan Available',
+              _t('emptyTitle'),
               style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap below to let AI generate your personalized workout schedule based on your health goals.',
+              _t('emptyBody'),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF8A94A6)),
             ),
@@ -848,7 +938,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               onPressed: _regeneratePlanWithAI,
               icon: const Icon(Icons.auto_awesome, color: Colors.black),
               label: Text(
-                'Generate Workout Plan',
+                _t('genBtn'),
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black),
               ),
               style: ElevatedButton.styleFrom(

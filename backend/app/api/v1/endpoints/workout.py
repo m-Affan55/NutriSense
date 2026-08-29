@@ -13,6 +13,7 @@ router = APIRouter()
 async def get_workout_plan(
     user_id: str,
     is_ramadan: bool = False,
+    language: str = "en",
     authenticated_user_id: str = Depends(get_current_user_id)
 ):
     """
@@ -52,7 +53,8 @@ async def get_workout_plan(
     plan = await run_in_threadpool(
         WorkoutService.generate_workout_plan,
         profile=profile,
-        is_ramadan=is_ramadan
+        is_ramadan=is_ramadan,
+        language=language
     )
 
     return plan
@@ -96,7 +98,8 @@ async def regenerate_workout_plan(
     plan = await run_in_threadpool(
         WorkoutService.generate_workout_plan,
         profile=profile,
-        is_ramadan=req.is_ramadan or False
+        is_ramadan=req.is_ramadan or False,
+        language=req.language or "en"
     )
 
     return plan
