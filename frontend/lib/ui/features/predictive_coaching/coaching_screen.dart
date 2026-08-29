@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
@@ -24,6 +25,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   List<double> _trend = [];
   String _coachingMessage = '';
   List<dynamic> _foodSwaps = [];
+  String _language = 'en';
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -55,11 +57,18 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        });
+      }
+
       // 1. Fetch Habit Score & Summary
       try {
         final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
         final scoreRes = await http.get(
-          Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes'),
+          Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes&language=$_language'),
           headers: ApiClient.getHeaders(),
         ).timeout(const Duration(seconds: 20));
         
@@ -102,6 +111,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
             body: jsonEncode({
               'user_id': user.id,
               'recent_meals': recentMealNotes,
+              'language': _language,
             }),
           ).timeout(const Duration(seconds: 20));
           
@@ -139,6 +149,42 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     }
   }
 
+  String _t(String key) {
+    final translations = {
+      'en': {
+        'title': 'AI Coaching',
+        'consistency': '7-Day Consistency',
+        'swaps': 'Recommended Swaps',
+        'noSwapsTitle': 'No food swaps needed yet',
+        'noSwapsBody': 'Log your recent meals to receive personalized, healthier alternative swaps tailored to your health goals.',
+        'insteadOf': 'Instead of',
+        'trySwap': 'Try',
+        'excellent': 'Excellent',
+        'onTrack': 'On Track',
+        'needsWork': 'Needs Work',
+        'loading': 'Loading...',
+        'defaultGoodMsg': 'Great progress! Your daily intake consistency is building strong nutritional momentum. Keep logging your meals to optimize your habit score.',
+        'defaultNeedMsg': 'Consistency is key to reaching your dietary targets. Continue logging your breakfast, lunch, and dinner to unlock personalized coaching insights!',
+      },
+      'ur': {
+        'title': 'اے آئی کوچنگ',
+        'consistency': '7 دن کا تسلسل',
+        'swaps': 'تجویز کردہ متبادل کھانے',
+        'noSwapsTitle': 'ابھی تک کسی متبادل کی ضرورت نہیں',
+        'noSwapsBody': 'صحت کے اہداف کے مطابق متبادل تجویز حاصل کرنے کے لیے حالیہ کھانے لاگ کریں۔',
+        'insteadOf': 'کے بجائے',
+        'trySwap': 'استعمال کریں',
+        'excellent': 'بہترین',
+        'onTrack': 'بہتر ہے',
+        'needsWork': 'توجہ درکار ہے',
+        'loading': 'لوڈ ہو رہا ہے...',
+        'defaultGoodMsg': 'بہت اچھا! روزانہ کھانے پینے کا ریکارڈ رکھنے سے آپ کا تسلسل بہتر ہو رہا ہے۔ اسکور کو مزید بڑھانے کے لیے لاگ کرتے رہیں۔',
+        'defaultNeedMsg': 'طبی اہداف حاصل کرنے کے لیے مستقل مزاجی ضروری ہے۔ ذاتی مشورے حاصل کرنے کے لیے اپنے ناشتہ، دوپہر اور رات کا کھانا لاگ کریں۔',
+      }
+    };
+    return translations[_language]?[key] ?? key;
+  }
+
   Color _getScoreColor(int score) {
     if (score >= 80) return Colors.green.shade400;
     if (score >= 50) return Colors.amber.shade400;
@@ -146,9 +192,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   }
 
   String _getScoreLabel(int score) {
-    if (score >= 80) return 'Excellent';
-    if (score >= 50) return 'On Track';
-    return 'Needs Work';
+    if (score >= 80) return _t('excellent');
+    if (score >= 50) return _t('onTrack');
+    return _t('needsWork');
   }
 
   @override
@@ -158,7 +204,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Coaching'),
+        title: Text(_t('title')),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -237,8 +283,8 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                               _coachingMessage.isNotEmpty
                                   ? _coachingMessage
                                   : (_habitScore >= 50
-                                      ? "Great progress! Your daily intake consistency is building strong nutritional momentum. Keep logging your meals to optimize your habit score."
-                                      : "Consistency is key to reaching your dietary targets. Continue logging your breakfast, lunch, and dinner to unlock personalized coaching insights!"),
+                                      ? _t('defaultGoodMsg')
+                                      : _t('defaultNeedMsg')),
                               style: const TextStyle(height: 1.5, color: Colors.white, fontSize: 15),
                             ),
                           ),
@@ -248,7 +294,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                     const SizedBox(height: 32),
 
                     // Trend Chart
-                    Text('7-Day Consistency', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(_t('consistency'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 140,
@@ -257,13 +303,14 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                         painter: _ConsistencyChartPainter(
                           trend: _trend,
                           accent: theme.colorScheme.primary,
+                          language: _language,
                         ),
                       ),
                     ),
                     const SizedBox(height: 40),
 
                     // Food Swaps
-                    Text('Recommended Swaps', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(_t('swaps'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     if (_foodSwaps.isNotEmpty) ...[
                       ValueListenableBuilder<bool>(
@@ -298,13 +345,13 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'No food swaps needed yet',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  Text(
+                                    _t('noSwapsTitle'),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Log your recent meals to receive personalized, healthier alternative swaps tailored to your health goals.',
+                                    _t('noSwapsBody'),
                                     style: TextStyle(color: Colors.grey.shade400, fontSize: 12, height: 1.4),
                                   ),
                                 ],
@@ -350,7 +397,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
               const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Instead of ${swap['original_food']}',
+                '${_t('insteadOf')} ${swap['original_food']}',
                 style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
               ),
             ],
@@ -365,7 +412,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Try ${swap['healthy_swap']}',
+                  '${_t('trySwap')} ${swap['healthy_swap']}',
                   style: TextStyle(color: Colors.green.shade400, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -385,10 +432,12 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
 class _ConsistencyChartPainter extends CustomPainter {
   final List<double> trend;
   final Color accent;
+  final String language;
 
   _ConsistencyChartPainter({
     required this.trend,
     required this.accent,
+    required this.language,
   });
 
   @override
@@ -414,7 +463,9 @@ class _ConsistencyChartPainter extends CustomPainter {
       canvas.drawLine(Offset(x, goalY), Offset(x + 5, goalY), dashPaint);
     }
 
-    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final dayLabels = language == 'ur'
+        ? ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار']
+        : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     for (int i = 0; i < trend.length; i++) {
       final val = trend[i] < 0 ? 0.0 : trend[i];

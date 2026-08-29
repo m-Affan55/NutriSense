@@ -3,7 +3,6 @@ import 'core/platform_setup.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 import 'ui/features/auth/update_password_screen.dart';
-import 'ui/features/navigation/main_navigation_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -74,7 +73,6 @@ class NutriSenseApp extends StatefulWidget {
 
 class NutriSenseAppState extends State<NutriSenseApp> {
   ThemeMode _themeMode = ThemeMode.dark;
-  final _navigatorKey = GlobalKey<NavigatorState>();
 
   ThemeMode get themeMode => _themeMode;
 
@@ -96,12 +94,9 @@ class NutriSenseAppState extends State<NutriSenseApp> {
       final session = data.session;
 
       if (event == AuthChangeEvent.signedIn && session != null) {
-        _navigatorKey.currentState?.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-          (route) => false,
-        );
+        // Handled primarily by auth screen navigation or deep links
       } else if (event == AuthChangeEvent.passwordRecovery) {
-        _navigatorKey.currentState?.pushAndRemoveUntil(
+        globalNavigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
           (route) => false,
         );

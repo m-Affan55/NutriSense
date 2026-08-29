@@ -93,6 +93,7 @@ This document provides a comprehensive inventory of all features, services, data
 * **System Navigation Overlap Fix**: Wrapped the floating bottom navigation bar in a `SafeArea` widget inside `main_navigation_screen.dart` and adjusted padding to ensure it floats cleanly above Android three-button system navigation bars and iOS home indicators.
 * **ListTile Background Assertion Fix**: Wrapped `ExpansionTile` layout trees in both `workout_screen.dart` and `grocery_view.dart` in transparent `Material` widgets to satisfy the Flutter layout engine's requirement that any `ListTile` placed inside a decorated container must have a `Material` canvas.
 * **Workout Reminder Build Fix**: Switched `cancel(notifId)` to `cancel(id: notifId)` in `reminder_manager.dart` to support modern `flutter_local_notifications` v22.3.0 named parameter specifications, resolving the Windows compilation error.
+* **Branded Native Google Sign-In**: Integrated the `google_sign_in` package to implement the native authentication flow on Android and iOS. This resolves browser redirect warnings and prevents displaying the internal `supabase.co` URL on Google's consent screen.
 
 ---
 

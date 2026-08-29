@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../onboarding/onboarding_view.dart';
 import '../navigation/main_navigation_screen.dart';
@@ -107,14 +109,67 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
+      final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+      final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'];
+
+      if (webClientId == null || webClientId.isEmpty) {
+        throw Exception('GOOGLE_WEB_CLIENT_ID is not configured in your .env file.');
+      }
+
+      // Initialize the singleton instance with our client IDs
+      await GoogleSignIn.instance.initialize(
+        clientId: iosClientId,
+        serverClientId: webClientId,
+      );
+
+      // Authenticate natively (throws on cancel/failure)
+      final googleUser = await GoogleSignIn.instance.authenticate();
+
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw Exception('Google Sign-In failed: ID Token is null.');
+      }
+
       final supabase = Supabase.instance.client;
-      await supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.nutrisense://login-callback/',
+      await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+
+      if (!mounted) return;
+
+      // Check if user has completed onboarding / health profile
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final profileResponse = await supabase
+            .from('health_profiles')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        if (profileResponse != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+          return;
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
       );
     } catch (e) {
       if (mounted) {
-        CustomToast.show(context, e.toString());
+        final errStr = e.toString();
+        // Ignore user cancellation errors to prevent showing confusing toast popups
+        if (!errStr.contains('sign_in_canceled') && !errStr.contains('canceled')) {
+          CustomToast.show(context, errStr);
+        }
       }
     } finally {
       if (mounted) {

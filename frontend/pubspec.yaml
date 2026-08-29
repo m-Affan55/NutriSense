@@ -61,6 +61,7 @@ dependencies:
   path_provider: ^2.1.2
   open_file: ^3.3.2
   geolocator: ^14.0.3
+  google_sign_in: ^7.2.0
 
 
 dev_dependencies:

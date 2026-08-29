@@ -12,9 +12,15 @@ router = APIRouter()
 class SwapRequest(BaseModel):
     user_id: str
     recent_meals: List[str]
+    language: str = "en"
 
 @router.get("/habit-score/{user_id}")
-async def get_habit_score(user_id: str, offset_minutes: int = 0, authenticated_user_id: str = Depends(get_current_user_id)):
+async def get_habit_score(
+    user_id: str,
+    offset_minutes: int = 0,
+    language: str = "en",
+    authenticated_user_id: str = Depends(get_current_user_id)
+):
     if user_id != authenticated_user_id:
         raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
 
@@ -103,7 +109,7 @@ async def get_habit_score(user_id: str, offset_minutes: int = 0, authenticated_u
         trend.reverse()
         
         # 4. Get Gemini coaching summary (non-blocking thread pool)
-        summary = await run_in_threadpool(GeminiService.generate_coaching_summary, total_score, profile)
+        summary = await run_in_threadpool(GeminiService.generate_coaching_summary, total_score, profile, language)
         
         return {
             "score": round(total_score),
@@ -128,7 +134,7 @@ async def get_food_swaps(req: SwapRequest, authenticated_user_id: str = Depends(
         profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
         
         # Generate food swaps (non-blocking thread pool)
-        swaps = await run_in_threadpool(GeminiService.generate_food_swaps, req.recent_meals, profile)
+        swaps = await run_in_threadpool(GeminiService.generate_food_swaps, req.recent_meals, profile, req.language)
         
         return {"swaps": swaps}
     except Exception as e:
