@@ -1,6 +1,6 @@
 import logging
 import threading
-import datetime
+import time
 from typing import Any, List, Optional
 from google import genai
 from google.genai import types
@@ -15,28 +15,38 @@ class RateLimitExceeded(Exception):
 class GeminiPool:
     """
     Manages a pool of Gemini API keys with automatic stateful rate limit tracking,
-    disabling exhausted keys for the day per model to ensure near-zero latency failovers.
+    reusing client instances and utilizing rolling cooldowns for efficient failover.
     """
     _instance = None
     _lock = threading.Lock()
 
     def __init__(self):
         self._keys = settings.get_gemini_keys()
-        self._last_reset_date = datetime.date.today()
         self._quota_status = {}
+        self._disabled_keys = set()  # Permanently invalid or banned keys
+        
+        # Instantiate genai.Client instances once per API key for connection reuse
+        self._clients = [
+            genai.Client(
+                api_key=key,
+                http_options=types.HttpOptions(timeout=60_000),  
+            )
+            for key in self._keys
+        ]
         self._reset_quotas()
-        logger.info(f"Initialized GeminiPool with {len(self._keys)} active API key(s) and stateful daily tracking.")
+        logger.info(f"Initialized GeminiPool with {len(self._keys)} active API key(s) and rolling rate limit tracking.")
 
     def _reset_quotas(self):
         priority_models = [
-            "gemini-3.5-flash-lite",  # Fastest (~0.75s latency, 30 RPM)
-            "gemini-3.5-flash",       # Fast (~1.4s latency, 15 RPM)
-            "gemini-3.7-flash",       # Highest capability (15 RPM)
-            "gemini-3.6-flash"        # Fallback capability (15 RPM)
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash"
         ]
         for m in priority_models:
-            self._quota_status[m] = [True] * len(self._keys)
-        logger.info("Daily rate-limit tracking quotas reset to True for all active models.")
+            # Stores the timestamp when a key is allowed to be used again (0.0 means immediately)
+            self._quota_status[m] = [0.0] * len(self._keys)
+        logger.info("Rate-limit tracking quotas reset to active for all models.")
 
     @classmethod
     def get_instance(cls) -> "GeminiPool":
@@ -47,49 +57,51 @@ class GeminiPool:
         return cls._instance
 
     def _get_client(self, index: int) -> genai.Client:
-        key = self._keys[index % len(self._keys)]
-        return genai.Client(
-            api_key=key,
-            http_options=types.HttpOptions(timeout=30_000),
-        )
+        if not self._clients:
+            raise RuntimeError("No Gemini API keys configured.")
+        return self._clients[index % len(self._clients)]
 
     def generate_content(
         self,
         contents: Any,
-        model: str = "gemini-3.5-flash-lite",  # Default to the fastest model first
+        model: str = "gemini-3.6-flash",  # Default to the fastest, highly capable GA model
         config: Optional[types.GenerateContentConfig] = None,
-        max_retries: Optional[int] = None
+        max_retries: Optional[int] = None,
+        require_vision: bool = False
     ) -> Any:
-        # Check for daily reset
-        today = datetime.date.today()
-        with self._lock:
-            if self._last_reset_date != today:
-                self._reset_quotas()
-                self._last_reset_date = today
-
         priority_models = [
-            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
             "gemini-3.5-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash"
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash"
         ]
+
+        # If the task requires vision, exclude lite model families (they don't support image inputs)
+        if require_vision:
+            priority_models = [m for m in priority_models if "-flash-lite" not in m]
+            if "-flash-lite" in model:
+                model = "gemini-3.6-flash"
+
         models_to_try = [model] + [m for m in priority_models if m != model]
         last_error = None
+        current_time = time.time()
 
         for current_model in models_to_try:
             while True:
                 key_idx = None
                 with self._lock:
                     if current_model not in self._quota_status:
-                        self._quota_status[current_model] = [True] * len(self._keys)
+                        self._quota_status[current_model] = [0.0] * len(self._keys)
                     
-                    # Pick the first key index that has remaining rate limits for this model
+                    # Pick the first active key that is not disabled and not in a rate-limit cooldown
                     for i in range(len(self._keys)):
-                        if self._quota_status[current_model][i]:
+                        if i in self._disabled_keys:
+                            continue
+                        if self._quota_status[current_model][i] <= current_time:
                             key_idx = i
                             break
 
-                # If all keys for this model are exhausted, skip to next model generation
+                # If all valid keys for this model are currently cooling down, move to the next model family
                 if key_idx is None:
                     break
 
@@ -106,24 +118,52 @@ class GeminiPool:
                     err_str = str(e)
                     last_error = e
                     
-                    # If it's a rate limit / quota exhaustion (429), mark key as false for today and retry another key
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                    # 1. Catch 403 / PERMISSION_DENIED / Project Denied Access
+                    # This means the API key or its project is blocked/invalid.
+                    # Quarantine this key permanently so it never wastes latency again, and immediately try next key.
+                    if ("403" in err_str or "permission" in err_str.lower() or 
+                        "denied" in err_str.lower() or "api key not valid" in err_str.lower()):
                         logger.warning(
-                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) hit rate limit. Disabling key for today."
+                            f"Key #{key_idx+1} ({masked_key}) denied access (403). Quarantining key across all models."
                         )
                         with self._lock:
-                            self._quota_status[current_model][key_idx] = False
-                    # If it's a timeout or network deadline error (504, 503, timeout), rotate key and skip directly to the next model
-                    elif "504" in err_str or "503" in err_str or "timeout" in err_str.lower() or "timed out" in err_str.lower() or "deadline" in err_str.lower():
+                            self._disabled_keys.add(key_idx)
+                            for m in self._quota_status:
+                                self._quota_status[m][key_idx] = time.time() + 86400.0
+                        continue  # Try the NEXT KEY on the current model without skipping the model!
+                    
+                    # 2. Catch rate limits (429 / RESOURCE_EXHAUSTED) -> put key on a rolling cooldown (60s)
+                    elif "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                         logger.warning(
-                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) timed out or returned 504/503. Skipping model generation."
+                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) hit rate limit. Cooling down for 60s."
                         )
-                        break  # Break key attempts loop for this model and try next model generation
+                        with self._lock:
+                            self._quota_status[current_model][key_idx] = time.time() + 60.0
+                        continue  # Try the NEXT KEY on the current model!
+                            
+                    # 3. Handle deprecated models (404 NOT_FOUND) -> skip to next model family
+                    elif "404" in err_str or "not found" in err_str.lower():
+                        logger.warning(
+                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) not found (404). Skipping model."
+                        )
+                        break  # Model doesn't exist; try the next model family
+                    
+                    # 4. Handle transient network / high-demand errors (503, 504, timeout)
+                    elif ("504" in err_str or "503" in err_str or "timeout" in err_str.lower() or
+                          "timed out" in err_str.lower() or "deadline" in err_str.lower()):
+                        logger.warning(
+                            f"Model {current_model} on key #{key_idx+1} ({masked_key}) transient outage ({e}). Cooling down for 30s."
+                        )
+                        with self._lock:
+                            self._quota_status[current_model][key_idx] = time.time() + 30.0
+                        continue  # Try next key on this model, or moves to next model if all are cooling down
+                    
                     else:
                         logger.error(f"Gemini API error on model {current_model}, key #{key_idx+1}: {e}")
-                        # Disable key for today on unhandled API exceptions to prevent crash loops
+                        # Cooling down for 10 seconds for general unexpected network/API errors
                         with self._lock:
-                            self._quota_status[current_model][key_idx] = False
+                            self._quota_status[current_model][key_idx] = time.time() + 10.0
+                        continue
 
         raise RateLimitExceeded(f"All Gemini API keys and models exhausted. Last error: {last_error}")
 

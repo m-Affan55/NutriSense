@@ -18,7 +18,7 @@ class SwapService {
     try {
       final swapRes = await http.post(
         Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({
           'user_id': user.id,
           'recent_meals': [mealNote],

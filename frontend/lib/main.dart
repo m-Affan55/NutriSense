@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'core/platform_setup.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';

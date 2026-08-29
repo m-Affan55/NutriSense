@@ -54,7 +54,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       // 1. Fetch weekly report from AI backend
       try {
         final url = Uri.parse('${ApiClient.getBaseUrl()}/reports/weekly?user_id=${user.id}&language=$_language');
-        final response = await http.get(url);
+        final response = await http.get(url, headers: ApiClient.getHeaders());
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -64,7 +64,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
         } else {
           // Fallback to legacy meals weekly endpoint
           final fallbackUrl = Uri.parse('${ApiClient.getBaseUrl()}/meals/weekly-report?user_id=${user.id}&language=$_language');
-          final fallbackRes = await http.get(fallbackUrl);
+          final fallbackRes = await http.get(fallbackUrl, headers: ApiClient.getHeaders());
           if (fallbackRes.statusCode == 200) {
             final data = jsonDecode(fallbackRes.body);
             _summary = data['weekly_summary'] ?? '';
@@ -128,7 +128,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       // 1. Try downloading from backend PDF generator
       try {
         final pdfUrl = Uri.parse('${ApiClient.getBaseUrl()}/reports/weekly/pdf?user_id=${user.id}&language=$_language');
-        final response = await http.get(pdfUrl);
+        final response = await http.get(pdfUrl, headers: ApiClient.getHeaders());
         if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
           pdfBytes = response.bodyBytes;
         }

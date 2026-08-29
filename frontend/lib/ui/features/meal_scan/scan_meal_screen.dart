@@ -130,6 +130,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/scan');
       final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(ApiClient.getHeaders());
       
       request.fields['user_id'] = user.id;
       final bytes = await _selectedImage!.readAsBytes();
@@ -141,7 +142,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
         ),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 90));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 400 && response.body.contains("NO_FOOD_DETECTED")) {

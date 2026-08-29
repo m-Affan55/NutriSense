@@ -60,6 +60,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
         final scoreRes = await http.get(
           Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes'),
+          headers: ApiClient.getHeaders(),
         ).timeout(const Duration(seconds: 20));
         
         if (scoreRes.statusCode == 200) {
@@ -97,7 +98,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         if (recentMealNotes.isNotEmpty) {
           final swapRes = await http.post(
             Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
-            headers: {'Content-Type': 'application/json'},
+            headers: ApiClient.getHeaders(),
             body: jsonEncode({
               'user_id': user.id,
               'recent_meals': recentMealNotes,

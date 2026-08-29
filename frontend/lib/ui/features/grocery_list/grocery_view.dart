@@ -261,57 +261,60 @@ class _GroceryViewState extends State<GroceryView> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: Colors.white.withAlpha(15)),
                                 ),
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                                  child: ExpansionTile(
-                                    initiallyExpanded: true,
-                                    title: Text(
-                                      '$categoryName (${items.length})',
-                                      style: const TextStyle(
-                                        color: Color(0xFF00E676),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                child: Material(
+                                  type: MaterialType.transparency,
+                                  child: Theme(
+                                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                                    child: ExpansionTile(
+                                      initiallyExpanded: true,
+                                      title: Text(
+                                        '$categoryName (${items.length})',
+                                        style: const TextStyle(
+                                          color: Color(0xFF00E676),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
-                                    ),
-                                    children: items.asMap().entries.map((entry) {
-                                      final itemIdx = entry.key;
-                                      final item = entry.value;
-                                      final bool isChecked = item['checked'] ?? false;
+                                      children: items.asMap().entries.map((entry) {
+                                        final itemIdx = entry.key;
+                                        final item = entry.value;
+                                        final bool isChecked = item['checked'] ?? false;
 
-                                      return ListTile(
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                        leading: Checkbox(
-                                          activeColor: const Color(0xFF00E676),
-                                          checkColor: Colors.black,
-                                          side: const BorderSide(color: Colors.grey),
-                                          value: isChecked,
-                                          onChanged: (_) {
-                                            _viewModel.toggleItemChecked(catIdx, itemIdx);
-                                          },
-                                        ),
-                                        title: Text(
-                                          item['name'],
-                                          style: TextStyle(
-                                            color: isChecked ? Colors.grey : Colors.white,
-                                            decoration: isChecked ? TextDecoration.lineThrough : null,
-                                            fontWeight: FontWeight.w500,
+                                        return ListTile(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                          leading: Checkbox(
+                                            activeColor: const Color(0xFF00E676),
+                                            checkColor: Colors.black,
+                                            side: const BorderSide(color: Colors.grey),
+                                            value: isChecked,
+                                            onChanged: (_) {
+                                              _viewModel.toggleItemChecked(catIdx, itemIdx);
+                                            },
                                           ),
-                                        ),
-                                        subtitle: Text(
-                                          item['quantity'] ?? '',
-                                          style: TextStyle(
-                                            color: isChecked ? Colors.grey.withAlpha(100) : Colors.grey,
-                                            fontSize: 12,
+                                          title: Text(
+                                            item['name'],
+                                            style: TextStyle(
+                                              color: isChecked ? Colors.grey : Colors.white,
+                                              decoration: isChecked ? TextDecoration.lineThrough : null,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
-                                        ),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                                          onPressed: () {
-                                            _viewModel.removeItem(catIdx, itemIdx);
-                                          },
-                                        ),
-                                      );
-                                    }).toList(),
+                                          subtitle: Text(
+                                            item['quantity'] ?? '',
+                                            style: TextStyle(
+                                              color: isChecked ? Colors.grey.withAlpha(100) : Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          trailing: IconButton(
+                                            icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                                            onPressed: () {
+                                              _viewModel.removeItem(catIdx, itemIdx);
+                                            },
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
                                   ),
                                 ),
                               );

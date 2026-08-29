@@ -68,7 +68,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiClient.getHeaders(),
         body: jsonEncode({
           'barcode': cleanCode,
           'user_id': user.id,
@@ -360,7 +360,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       });
                     }
                     
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.pop(context);
                       Navigator.pop(context, true);
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
@@ -368,7 +368,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       MealSyncNotifier.instance.notifyMealChanged();
                     }
                   } catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       CustomToast.show(context, 'Failed to log food');
                     }
                   }

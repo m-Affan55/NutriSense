@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List
 from app.db.supabase_client import get_supabase_admin_client
+from app.core.security import get_current_user_id
 
 router = APIRouter()
 
@@ -18,7 +19,10 @@ class OnboardingData(BaseModel):
     daily_budget_pkr: int = Field(default=1000, ge=0, le=1_000_000)
 
 @router.post("/onboarding")
-def create_health_profile(data: OnboardingData):
+def create_health_profile(data: OnboardingData, authenticated_user_id: str = Depends(get_current_user_id)):
+    if data.user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this resource")
+
     try:
         # Calculate TDEE using Mifflin-St Jeor equation
         if data.gender.lower() == 'male':
@@ -82,6 +86,10 @@ def create_health_profile(data: OnboardingData):
         # Insert into Supabase using Admin client
         supabase = get_supabase_admin_client()
         response = supabase.table('health_profiles').insert(db_payload).execute()
+
+        # Update In-Memory User Cache for zero-latency AI Coach lookups
+        from app.services.user_cache import user_cache
+        user_cache.set_profile(data.user_id, db_payload)
 
         return {
             "message": "Health profile created successfully",

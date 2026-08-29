@@ -210,7 +210,7 @@ class ReportService:
             """
 
             response = gemini_pool.generate_content(
-                model='gemini-3.5-flash-lite',
+                model='gemini-3.6-flash',
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,

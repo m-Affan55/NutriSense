@@ -120,7 +120,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         final url = Uri.parse('${ApiClient.getBaseUrl()}/profile/onboarding');
         final response = await http.post(
           url,
-          headers: {'Content-Type': 'application/json'},
+          headers: ApiClient.getHeaders(),
           body: jsonEncode(payload),
         );
 
