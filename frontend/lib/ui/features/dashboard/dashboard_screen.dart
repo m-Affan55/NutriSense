@@ -603,7 +603,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   onRefresh: _loadData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 140),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

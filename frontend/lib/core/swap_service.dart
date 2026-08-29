@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_client.dart';
+import 'language_controller.dart';
 import '../shared/widgets/custom_toast.dart';
 import '../ui/features/navigation/main_navigation_screen.dart';
 import '../main.dart'; // To access globalNavigatorKey
@@ -16,12 +17,14 @@ class SwapService {
     if (user == null || mealNote.trim().isEmpty) return;
 
     try {
+      final lang = LanguageController.instance.currentLanguage;
       final swapRes = await http.post(
         Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
         headers: ApiClient.getHeaders(),
         body: jsonEncode({
           'user_id': user.id,
           'recent_meals': [mealNote],
+          'language': lang,
         }),
       );
       
@@ -32,9 +35,12 @@ class SwapService {
         final context = globalNavigatorKey.currentContext;
         if (swaps.isNotEmpty && context != null && context.mounted) {
           cachedSwaps = swaps;
+          final isUrdu = lang == 'ur';
           CustomToast.show(
             context, 
-            'Healthier alternatives found for your recent meal! Tap to view.',
+            isUrdu
+                ? 'آپ کے کھانے کے لیے صحت مند متبادل دستیاب ہے! دیکھنے کے لیے ٹیپ کریں۔'
+                : 'Healthier alternatives found for your meal! Tap to view.',
             isError: false,
             duration: const Duration(seconds: 8),
             onTap: () {

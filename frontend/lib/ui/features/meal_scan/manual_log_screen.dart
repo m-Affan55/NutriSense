@@ -688,8 +688,9 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final theme = Theme.of(context);
 
     return ListenableBuilder(
-      listenable: RamadanController.instance,
+      listenable: Listenable.merge([RamadanController.instance, LanguageController.instance]),
       builder: (context, _) {
+        _language = LanguageController.instance.currentLanguage;
         final isRamadan = RamadanController.instance.isRamadanMode;
         final accentColor = isRamadan ? const Color(0xFF00D2FF) : theme.colorScheme.primary;
 
@@ -737,7 +738,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 150),
+            padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 30),
             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1344,7 +1345,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 100),
+                const SizedBox(height: 150),
               ],
             ),
           ),
