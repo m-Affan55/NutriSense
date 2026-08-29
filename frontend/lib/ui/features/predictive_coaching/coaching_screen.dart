@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 import '../../../core/swap_service.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
@@ -38,12 +38,14 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     
     MealSyncNotifier.instance.addListener(loadCoachingData);
+    LanguageController.instance.addListener(loadCoachingData);
     loadCoachingData();
   }
 
   @override
   void dispose() {
     MealSyncNotifier.instance.removeListener(loadCoachingData);
+    LanguageController.instance.removeListener(loadCoachingData);
     _ringController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -57,11 +59,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _language = LanguageController.instance.currentLanguage;
       if (mounted) {
-        setState(() {
-          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-        });
+        setState(() {});
       }
 
       // 1. Fetch Habit Score & Summary

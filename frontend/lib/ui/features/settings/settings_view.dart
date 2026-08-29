@@ -22,6 +22,7 @@ import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -125,6 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('language', _language);
       await prefs.setString('app_language', _language);
+      await LanguageController.instance.setLanguage(_language);
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;

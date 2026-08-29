@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -15,6 +14,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'barcode_scanner_screen.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -45,8 +45,20 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _initDefaultMealType();
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
+    _nameController.dispose();
+    _caloriesController.dispose();
+    _proteinController.dispose();
+    _carbsController.dispose();
+    _fatController.dispose();
+    super.dispose();
   }
 
   void _initDefaultMealType() {
@@ -76,11 +88,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     }
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _loadLanguage() {
     if (mounted) {
       setState(() {
-        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        _language = LanguageController.instance.currentLanguage;
       });
     }
   }
@@ -670,16 +681,6 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _caloriesController.dispose();
-    _proteinController.dispose();
-    _carbsController.dispose();
-    _fatController.dispose();
-    super.dispose();
   }
 
   @override

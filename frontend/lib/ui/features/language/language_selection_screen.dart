@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_view.dart';
 
+import '../../../core/language_controller.dart';
 import '../../widgets/animated_particles_background.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_language', _selectedLanguage!);
     await prefs.setString('language', _selectedLanguage!);
+    await LanguageController.instance.setLanguage(_selectedLanguage!);
     
     if (mounted) {
       Navigator.of(context).pushReplacement(

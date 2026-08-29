@@ -7,6 +7,7 @@ import '../predictive_coaching/coaching_screen.dart';
 import '../workout/workout_screen.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 final GlobalKey<CoachingScreenState> coachingKey = GlobalKey<CoachingScreenState>();
 final GlobalKey<WorkoutScreenState> workoutKey = GlobalKey<WorkoutScreenState>();
@@ -23,6 +24,27 @@ class MainNavigationScreen extends StatefulWidget {
 
 class MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    LanguageController.instance.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      setState(() {});
+      coachingKey.currentState?.loadCoachingData();
+      workoutKey.currentState?.loadWorkoutData(forceRefresh: true);
+      MealSyncNotifier.instance.notifyMealChanged();
+    }
+  }
 
   set currentIndex(int index) {
     setState(() {
@@ -48,9 +70,10 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: RamadanController.instance,
+      listenable: Listenable.merge([RamadanController.instance, LanguageController.instance]),
       builder: (context, _) {
         final isRamadan = RamadanController.instance.isRamadanMode;
+        final isUrdu = LanguageController.instance.isUrdu;
 
         return Scaffold(
           extendBody: true, // Allows body to go behind the transparent nav bar
@@ -82,11 +105,11 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
-                        _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, 'Meals', isRamadan),
-                        _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
-                        _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
-                        _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, 'Workout', isRamadan),
+                        _buildNavItem(0, Icons.home_filled, Icons.home_outlined, isUrdu ? 'ہوم' : 'Home', isRamadan),
+                        _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, isUrdu ? 'کھانے' : 'Meals', isRamadan),
+                        _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, isUrdu ? 'کوچ' : 'Coach', isRamadan),
+                        _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, isUrdu ? 'اعداد و شمار' : 'Stats', isRamadan),
+                        _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, isUrdu ? 'ورزش' : 'Workout', isRamadan),
                       ],
                     ),
                   ),

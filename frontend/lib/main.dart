@@ -11,6 +11,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
 import 'core/ramadan_controller.dart';
+import 'core/language_controller.dart';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -29,8 +30,9 @@ Future<void> main(List<String> args) async {
     publishableKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  // Initialize RamadanController state
+  // Initialize RamadanController & LanguageController state
   await RamadanController.instance.init();
+  await LanguageController.instance.init();
 
   // Initialize and schedule local notifications
   try {
@@ -107,7 +109,7 @@ class NutriSenseAppState extends State<NutriSenseApp> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: RamadanController.instance,
+      listenable: Listenable.merge([RamadanController.instance, LanguageController.instance]),
       builder: (context, _) {
         final isRamadan = RamadanController.instance.isRamadanMode;
         return MaterialApp(

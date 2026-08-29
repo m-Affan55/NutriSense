@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../navigation/main_navigation_screen.dart';
 import '../settings/settings_view.dart';
@@ -17,6 +16,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -78,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     FamilyViewModel.instance.addListener(_loadData);
     FamilyViewModel.instance.loadMembers();
     MealSyncNotifier.instance.addListener(_loadData);
+    LanguageController.instance.addListener(_loadData);
 
     _loadData();
   }
@@ -86,6 +87,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void dispose() {
     FamilyViewModel.instance.removeListener(_loadData);
     MealSyncNotifier.instance.removeListener(_loadData);
+    LanguageController.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
     super.dispose();
@@ -95,8 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    _language = LanguageController.instance.currentLanguage;
 
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;

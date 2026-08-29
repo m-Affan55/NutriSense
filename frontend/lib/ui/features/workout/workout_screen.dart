@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/workout_service.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -25,8 +25,23 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   @override
   void initState() {
     super.initState();
+    _language = LanguageController.instance.currentLanguage;
+    LanguageController.instance.addListener(_onLanguageChange);
     _setInitialDayToToday();
     loadWorkoutData();
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_onLanguageChange);
+    super.dispose();
+  }
+
+  void _onLanguageChange() {
+    if (mounted) {
+      _language = LanguageController.instance.currentLanguage;
+      loadWorkoutData(forceRefresh: true);
+    }
   }
 
   void _setInitialDayToToday() {
@@ -116,11 +131,9 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
     setState(() => _isLoading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _language = LanguageController.instance.currentLanguage;
       if (mounted) {
-        setState(() {
-          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-        });
+        setState(() {});
       }
       final isRamadan = RamadanController.instance.isRamadanMode;
       final plan = await WorkoutService.instance.getWorkoutPlan(

@@ -166,8 +166,8 @@ class WorkoutService {
     final userId = user?.id ?? 'guest_user';
 
     final prefs = await SharedPreferences.getInstance();
-    final cacheKey = '$_cacheKeyPrefix$userId';
     final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    final cacheKey = '$_cacheKeyPrefix${userId}_$language';
 
     // 1. Return cached plan if not forced to refresh
     if (!forceRefresh && prefs.containsKey(cacheKey)) {
@@ -193,7 +193,7 @@ class WorkoutService {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final plan = WorkoutPlanModel.fromJson(data);
 
-        // Save to cache
+        // Save to language-specific cache
         await prefs.setString(cacheKey, json.encode(plan.toJson()));
         return plan;
       }
@@ -219,6 +219,7 @@ class WorkoutService {
 
     final prefs = await SharedPreferences.getInstance();
     final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    final cacheKey = '$_cacheKeyPrefix${userId}_$language';
 
     try {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/generate');
@@ -237,7 +238,7 @@ class WorkoutService {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final plan = WorkoutPlanModel.fromJson(data);
 
-        await prefs.setString('$_cacheKeyPrefix$userId', json.encode(plan.toJson()));
+        await prefs.setString(cacheKey, json.encode(plan.toJson()));
         return plan;
       }
     } catch (e) {

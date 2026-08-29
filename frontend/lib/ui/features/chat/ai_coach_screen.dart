@@ -16,6 +16,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 import 'clinic_finder_screen.dart';
 import 'voice_mode_overlay.dart';
 
@@ -57,8 +58,42 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    LanguageController.instance.addListener(_onLanguageChanged);
+    _language = LanguageController.instance.currentLanguage;
     _initSpeechAndTts();
     _loadLanguageAndGreeting();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    final newLang = LanguageController.instance.currentLanguage;
+    if (_language != newLang) {
+      setState(() {
+        _language = newLang;
+        if (_messages.length <= 1) {
+          _messages.clear();
+          final isRamadan = RamadanController.instance.isRamadanMode;
+          String greeting;
+          if (isRamadan) {
+            greeting = _language == 'ur'
+                ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
+                : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
+          } else {
+            greeting = _language == 'ur'
+                ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
+                : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+          }
+              
+          _messages.add({
+            'sender': _language == 'ur' ? 'کوچ' : 'Coach',
+            'text': greeting,
+            'isUser': false,
+            'time': _formatTime(DateTime.now()),
+          });
+        }
+      });
+      _tts.prewarm(_language);
+    }
   }
 
   @override
@@ -693,6 +728,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    LanguageController.instance.removeListener(_onLanguageChanged);
     _silenceTimer?.cancel();
     _speechToText.cancel();
     // TtsService is a long-lived singleton, so detach this screen's callbacks
