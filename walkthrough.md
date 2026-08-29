@@ -104,6 +104,8 @@ This document outlines all feature implementations, architectural additions, and
   - Wrapped `ExpansionTile` layout trees in transparent `Material` widgets to satisfy the Flutter layout engine's requirement that any `ListTile` placed inside a decorated container must have a `Material` canvas.
 * **Workout Reminder Build Fix ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))**:
   - Switched `cancel(notifId)` to `cancel(id: notifId)` to support modern `flutter_local_notifications` v22.3.0 named parameter specifications, resolving the Windows compilation error.
+* **Branded Native Google Sign-In ([auth_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/auth/auth_view.dart))**:
+  - Integrated the `google_sign_in` package to implement the native authentication flow on Android and iOS. This resolves browser redirect warnings and prevents displaying the internal `supabase.co` URL on Google's consent screen.
 
 ---
 
