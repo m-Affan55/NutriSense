@@ -22,6 +22,7 @@ import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -61,14 +62,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_onLanguageChanged);
+    _language = LanguageController.instance.currentLanguage;
     _loadProfileData();
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_onLanguageChanged);
+    _nameController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    _budgetController.dispose();
+    _medicalConditionsController.dispose();
+    _dietaryRestrictionsController.dispose();
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      setState(() {
+        _language = LanguageController.instance.currentLanguage;
+      });
+    }
   }
 
   Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
     try {
+      _language = LanguageController.instance.currentLanguage;
       final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -125,6 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('language', _language);
       await prefs.setString('app_language', _language);
+      await LanguageController.instance.setLanguage(_language);
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -645,17 +670,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      key: ValueKey(_language),
                       initialValue: _language,
                       decoration: InputDecoration(labelText: _t('language'), border: const OutlineInputBorder()),
                       items: const [
-                        DropdownMenuItem(value: 'en', child: Text('English')),
-                        DropdownMenuItem(value: 'ur', child: Text('Urdu (اردو)')),
+                        DropdownMenuItem(value: 'en', child: Text('English 🇬🇧')),
+                        DropdownMenuItem(value: 'ur', child: Text('اردو (Urdu) 🇵🇰')),
                       ],
-                      onChanged: (val) {
+                      onChanged: (val) async {
                         if (val != null) {
                           setState(() {
                             _language = val;
                           });
+                          await LanguageController.instance.setLanguage(val);
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('language', val);
+                          await prefs.setString('app_language', val);
                         }
                       },
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'core/platform_setup.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
@@ -11,12 +12,26 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
 import 'core/ramadan_controller.dart';
+import 'core/language_controller.dart';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Configure system overlays & edge-to-edge for responsive system bar handling across all Android devices
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   // Initialize platform specific configurations (desktop registry/FFI database setup)
   await initPlatformSetup(args);
 
@@ -29,8 +44,9 @@ Future<void> main(List<String> args) async {
     publishableKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  // Initialize RamadanController state
+  // Initialize RamadanController & LanguageController state
   await RamadanController.instance.init();
+  await LanguageController.instance.init();
 
   // Initialize and schedule local notifications
   try {
@@ -107,7 +123,7 @@ class NutriSenseAppState extends State<NutriSenseApp> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: RamadanController.instance,
+      listenable: Listenable.merge([RamadanController.instance, LanguageController.instance]),
       builder: (context, _) {
         final isRamadan = RamadanController.instance.isRamadanMode;
         return MaterialApp(

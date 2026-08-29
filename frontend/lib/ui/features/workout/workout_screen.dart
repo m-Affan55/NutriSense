@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/workout_service.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -25,8 +25,23 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   @override
   void initState() {
     super.initState();
+    _language = LanguageController.instance.currentLanguage;
+    LanguageController.instance.addListener(_onLanguageChange);
     _setInitialDayToToday();
     loadWorkoutData();
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_onLanguageChange);
+    super.dispose();
+  }
+
+  void _onLanguageChange() {
+    if (mounted) {
+      _language = LanguageController.instance.currentLanguage;
+      loadWorkoutData(forceRefresh: true);
+    }
   }
 
   void _setInitialDayToToday() {
@@ -116,11 +131,9 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
     setState(() => _isLoading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _language = LanguageController.instance.currentLanguage;
       if (mounted) {
-        setState(() {
-          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-        });
+        setState(() {});
       }
       final isRamadan = RamadanController.instance.isRamadanMode;
       final plan = await WorkoutService.instance.getWorkoutPlan(
@@ -192,20 +205,6 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
           backgroundColor: bgColor,
           body: Stack(
             children: [
-              // Ambient gradient backgrounds
-              Positioned(
-                top: -100,
-                right: -80,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: primaryColor.withAlpha(25),
-                  ),
-                ),
-              ),
-
               SafeArea(
                 child: Column(
                   children: [
@@ -264,33 +263,42 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.fitness_center_rounded, color: primaryColor, size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    _t('title'),
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.fitness_center_rounded, color: primaryColor, size: 22),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _t('title'),
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _workoutPlan?.planName ?? (_language == 'ur' ? 'ذاتی طبی منصوبہ' : 'Personalized Clinical Protocol'),
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF8A94A6),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  _workoutPlan?.planName ?? (_language == 'ur' ? 'ذاتی طبی منصوبہ' : 'Personalized Clinical Protocol'),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF8A94A6),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           IconButton(
             onPressed: _isRegenerating ? null : _regeneratePlanWithAI,
             icon: Icon(Icons.auto_awesome, color: primaryColor),
@@ -306,13 +314,10 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   }
 
   Widget _buildWeeklyDaySelector(Color primaryColor, bool isRamadan) {
-    return SizedBox(
-      height: 72,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 7,
-        itemBuilder: (context, index) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: List.generate(7, (index) {
           final isSelected = _selectedDayIndex == index;
           final isToday = (DateTime.now().weekday - 1) == index;
 
@@ -322,49 +327,59 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
           }
 
           final isRestDay = dayData?.isRestDay ?? false;
+          final dayLabel = _language == 'ur'
+              ? ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'][index]
+              : _shortDays[index];
 
-          return GestureDetector(
-            onTap: () => setState(() => _selectedDayIndex = index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 52,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? primaryColor.withAlpha(40)
-                    : (isRamadan ? const Color(0xFF0E172A).withAlpha(160) : const Color(0xFF161A22).withAlpha(160)),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedDayIndex = index),
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                height: 66,
+                margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                decoration: BoxDecoration(
                   color: isSelected
-                      ? primaryColor
-                      : (isToday ? primaryColor.withAlpha(100) : Colors.white.withAlpha(15)),
-                  width: isSelected ? 1.8 : 1.0,
+                      ? primaryColor.withAlpha(40)
+                      : (isRamadan ? const Color(0xFF0E172A).withAlpha(160) : const Color(0xFF161A22).withAlpha(160)),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected
+                        ? primaryColor
+                        : (isToday ? primaryColor.withAlpha(100) : Colors.white.withAlpha(15)),
+                    width: isSelected ? 1.8 : 1.0,
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _language == 'ur' ? ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'][index] : _shortDays[index],
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? primaryColor : const Color(0xFF8A94A6),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        dayLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? primaryColor : const Color(0xFF8A94A6),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Icon(
-                    isRestDay ? Icons.bedtime_outlined : Icons.local_fire_department_rounded,
-                    size: 16,
-                    color: isRestDay
-                        ? const Color(0xFF94A3B8)
-                        : (isSelected ? primaryColor : (isRamadan ? const Color(0xFFFFD166) : const Color(0xFFFF6D00))),
-                  ),
-                ],
+                    const SizedBox(height: 5),
+                    Icon(
+                      isRestDay ? Icons.bedtime_outlined : Icons.local_fire_department_rounded,
+                      size: 15,
+                      color: isRestDay
+                          ? const Color(0xFF94A3B8)
+                          : (isSelected ? primaryColor : (isRamadan ? const Color(0xFFFFD166) : const Color(0xFFFF6D00))),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
-        },
+        }),
       ),
     );
   }
@@ -384,7 +399,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
       onRefresh: () => loadWorkoutData(forceRefresh: true),
       color: primaryColor,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
         children: [
           // Workout Overview Hero Banner
           _buildDayHeroBanner(day, primaryColor, cardBg, isRamadan),
@@ -778,7 +793,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
 
   Widget _buildRestDayView(WorkoutDayModel day, Color primaryColor, Color cardBg, bool isRamadan) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 90),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
       children: [
         Container(
           padding: const EdgeInsets.all(24),

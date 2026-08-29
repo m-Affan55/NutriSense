@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
@@ -15,6 +14,7 @@ import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
 import 'barcode_scanner_screen.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class ScanMealScreen extends StatefulWidget {
   const ScanMealScreen({super.key});
@@ -26,7 +26,7 @@ class ScanMealScreen extends StatefulWidget {
 class _ScanMealScreenState extends State<ScanMealScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
-  String _loadingText = 'AI Analyzing Meal Plate...';
+  String _loadingText = 'Analyzing meal...';
   Timer? _loadingTimer;
   XFile? _selectedImage;
   String _language = 'en';
@@ -34,14 +34,23 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-    });
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
+    _loadingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _loadLanguage() {
+    if (mounted) {
+      setState(() {
+        _language = LanguageController.instance.currentLanguage;
+      });
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -16,6 +15,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
+import '../../../core/language_controller.dart';
 import 'clinic_finder_screen.dart';
 import 'voice_mode_overlay.dart';
 
@@ -57,8 +57,48 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    LanguageController.instance.addListener(_onLanguageChanged);
+    _language = LanguageController.instance.currentLanguage;
     _initSpeechAndTts();
     _loadLanguageAndGreeting();
+  }
+
+  void _updateGreetingMessage() {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final lang = LanguageController.instance.currentLanguage;
+    String greeting;
+    if (isRamadan) {
+      greeting = lang == 'ur'
+          ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
+          : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
+    } else {
+      greeting = lang == 'ur'
+          ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
+          : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
+    }
+
+    final newGreetingMap = {
+      'sender': lang == 'ur' ? 'کوچ' : 'Coach',
+      'text': greeting,
+      'isUser': false,
+      'time': _formatTime(DateTime.now()),
+    };
+
+    if (_messages.isEmpty) {
+      _messages.add(newGreetingMap);
+    } else if (!_messages[0]['isUser']) {
+      _messages[0] = newGreetingMap;
+    }
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    final newLang = LanguageController.instance.currentLanguage;
+    setState(() {
+      _language = newLang;
+      _updateGreetingMessage();
+    });
+    _tts.prewarm(_language);
   }
 
   @override
@@ -376,8 +416,6 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   Future<void> _loadLanguageAndGreeting() async {
-    final prefs = await SharedPreferences.getInstance();
-    
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
@@ -398,26 +436,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
     if (mounted) {
       setState(() {
-        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-        
-        final isRamadan = RamadanController.instance.isRamadanMode;
-        String greeting;
-        if (isRamadan) {
-          greeting = _language == 'ur'
-              ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
-              : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
-        } else {
-          greeting = _language == 'ur'
-              ? 'ہیلو! میں آپ کا اے آئی نیوٹریشن کوچ ہوں۔ میں آج آپ کے غذائی اہداف حاصل کرنے میں کس طرح مدد کر سکتا ہوں؟'
-              : 'Hello! I am your AI Nutrition Coach. How can I help you reach your dietary goals today?';
-        }
-            
-        _messages.add({
-          'sender': _language == 'ur' ? 'کوچ' : 'Coach',
-          'text': greeting,
-          'isUser': false,
-          'time': _formatTime(DateTime.now()),
-        });
+        _language = LanguageController.instance.currentLanguage;
+        _updateGreetingMessage();
       });
     }
 
@@ -693,6 +713,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    LanguageController.instance.removeListener(_onLanguageChanged);
     _silenceTimer?.cancel();
     _speechToText.cancel();
     // TtsService is a long-lived singleton, so detach this screen's callbacks
@@ -707,307 +728,322 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return ListenableBuilder(
+      listenable: LanguageController.instance,
+      builder: (context, _) {
+        final currentLang = LanguageController.instance.currentLanguage;
+        final isUrdu = currentLang == 'ur';
+        final theme = Theme.of(context);
+        final mediaQuery = MediaQuery.of(context);
+        final bottomInset = mediaQuery.viewPadding.bottom > 0
+            ? mediaQuery.viewPadding.bottom
+            : mediaQuery.padding.bottom;
+        final keyboardHeight = mediaQuery.viewInsets.bottom;
+        final inputBottomPadding = keyboardHeight > 0
+            ? (keyboardHeight + 10.0)
+            : (bottomInset + 88.0);
 
-    final title = _language == 'ur' ? 'اے آئی غذائی کوچ' : 'AI Nutrition Coach';
-    final subtitle = _language == 'ur' ? 'آن لائن · مدد کے لیے تیار' : 'Online · Ready to help';
-    final hint = _language == 'ur' 
-        ? 'کھانے، ترکیبوں یا متبادل کے بارے میں پوچھیں...' 
-        : 'Ask about meals, recipes, or swap options...';
+        final title = isUrdu ? 'اے آئی غذائی کوچ' : 'AI Nutrition Coach';
+        final subtitle = isUrdu ? 'آن لائن · مدد کے لیے تیار' : 'Online · Ready to help';
+        final hint = isUrdu 
+            ? 'کھانے، ترکیبوں یا متبادل کے بارے میں پوچھیں...' 
+            : 'Ask about meals, recipes, or swap options...';
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          RamadanBackgroundWrapper(
-            child: SafeArea(
-              bottom: false,
-              child: Column(
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(25),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
-                      ),
-                      child: Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 22),
+              RamadanBackgroundWrapper(
+                child: SafeArea(
+                  bottom: false,
+                  child: Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withAlpha(25),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
+                          ),
+                          child: Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                subtitle,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                            ),
+                            child: const Icon(Icons.local_hospital_rounded, color: Colors.redAccent, size: 18),
+                          ),
+                          tooltip: isUrdu ? 'قریبی کلینکس اور ہسپتال' : 'Nearby Clinics & Hospitals',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ClinicFinderScreen()),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(color: Colors.white.withAlpha(15), height: 1),
+
+                  // Voice Status Indicator (if active)
+                  if (_voiceState != VoiceAssistantState.idle)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      color: _getVoiceStateColor(theme).withAlpha(30),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(_getVoiceStateIcon(), size: 16, color: _getVoiceStateColor(theme)),
+                          const SizedBox(width: 8),
                           Text(
-                            title,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            _getVoiceStateText(),
+                            style: TextStyle(color: _getVoiceStateColor(theme), fontSize: 12, fontWeight: FontWeight.bold),
                           ),
-                          Text(
-                            subtitle,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
+                          if (_voiceState == VoiceAssistantState.speaking) ...[
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () {
+                                _stopSpeaking();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withAlpha(50),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('Stop Audio ⏹️', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                              ),
+                            )
+                          ]
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-                        ),
-                        child: const Icon(Icons.local_hospital_rounded, color: Colors.redAccent, size: 18),
-                      ),
-                      tooltip: _language == 'ur' ? 'قریبی کلینکس اور ہسپتال' : 'Nearby Clinics & Hospitals',
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ClinicFinderScreen()),
+
+                  // Messages List
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: _messages.length + (_isTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _messages.length && _isTyping) {
+                          return Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E2430),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Text(
+                                isUrdu ? 'ٹائپنگ...' : 'Typing...',
+                                style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 13),
+                              ),
+                            ),
+                          );
+                        }
+                        final msg = _messages[index];
+                        return _buildChatMessage(
+                          sender: msg['sender'],
+                          message: msg['text'],
+                          time: msg['time'],
+                          isUser: msg['isUser'],
+                          theme: theme,
+                          escalationAlert: msg['escalationAlert'],
                         );
                       },
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(color: Colors.white.withAlpha(15), height: 1),
-
-              // Voice Status Indicator (if active)
-              if (_voiceState != VoiceAssistantState.idle)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: _getVoiceStateColor(theme).withAlpha(30),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(_getVoiceStateIcon(), size: 16, color: _getVoiceStateColor(theme)),
-                      const SizedBox(width: 8),
-                      Text(
-                        _getVoiceStateText(),
-                        style: TextStyle(color: _getVoiceStateColor(theme), fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      if (_voiceState == VoiceAssistantState.speaking) ...[
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () {
-                            _stopSpeaking();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withAlpha(50),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text('Stop Audio ⏹️', style: TextStyle(color: Colors.redAccent, fontSize: 10)),
-                          ),
-                        )
-                      ]
-                    ],
                   ),
-                ),
 
-              // Messages List
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: _messages.length + (_isTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _messages.length && _isTyping) {
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E2430),
-                            borderRadius: BorderRadius.circular(18),
+                  // Quick Ramadan & Nutrition Prompt Chips
+                  Container(
+                    height: 42,
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      children: _getDynamicPrompts().map((prompt) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: _buildQuickPromptChip(
+                            isUrdu ? prompt.labelUrdu : prompt.labelEng,
+                            prompt.color,
                           ),
-                          child: Text(
-                            _language == 'ur' ? 'ٹائپنگ...' : 'Typing...',
-                            style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 13),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // Input Bar
+                  Container(
+                    padding: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: inputBottomPadding),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D0F14),
+                      border: Border(top: BorderSide(color: Colors.white.withAlpha(15))),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161A22).withAlpha(230),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: Colors.white.withAlpha(20)),
+                          ),
+                          child: Row(
+                            children: [
+                              // Mic Button
+                              GestureDetector(
+                                onTap: () {
+                                  if (_voiceState == VoiceAssistantState.listening) {
+                                    _stopListeningAndProcess();
+                                  } else {
+                                    _startListening();
+                                  }
+                                },
+                                child: Container(
+                                  height: 40,
+                                  width: 40,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: _voiceState == VoiceAssistantState.listening 
+                                        ? Colors.redAccent.withAlpha(80) 
+                                        : Colors.white.withAlpha(10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _voiceState == VoiceAssistantState.listening ? Icons.mic : Icons.mic_none,
+                                    color: _voiceState == VoiceAssistantState.listening ? Colors.redAccent : Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _controller,
+                                  enabled: !_isTyping,
+                                  style: const TextStyle(color: Colors.white),
+                                  textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+                                  decoration: InputDecoration(
+                                    hintText: _isTyping
+                                        ? (isUrdu ? 'کوچ جواب تیار کر رہا ہے...' : 'Coach is thinking...')
+                                        : (_voiceState == VoiceAssistantState.listening ? 'Listening...' : hint),
+                                    hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  ),
+                                  onSubmitted: _isTyping ? null : (_) => _sendMessage(),
+                                ),
+                              ),
+                              // Voice Mode Button (ChatGPT Style)
+                              GestureDetector(
+                                onTap: _isTyping ? null : _toggleVoiceMode,
+                                child: Container(
+                                  height: 40,
+                                  width: 40,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: _isVoiceModeOn ? theme.colorScheme.primary : Colors.white.withAlpha(10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _isVoiceModeOn ? Icons.close : Icons.graphic_eq,
+                                    color: _isVoiceModeOn ? theme.colorScheme.onPrimary : Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  gradient: _isTyping
+                                      ? LinearGradient(
+                                          colors: [Colors.grey.shade800, Colors.grey.shade700],
+                                        )
+                                      : const LinearGradient(
+                                          colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: _isTyping
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                                        )
+                                      : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                  onPressed: _isTyping ? null : _sendMessage,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    }
-                    final msg = _messages[index];
-                    return _buildChatMessage(
-                      sender: msg['sender'],
-                      message: msg['text'],
-                      time: msg['time'],
-                      isUser: msg['isUser'],
-                      theme: theme,
-                      escalationAlert: msg['escalationAlert'],
-                    );
-                  },
-                ),
-              ),
-
-              // Quick Ramadan & Nutrition Prompt Chips
-              Container(
-                height: 42,
-                margin: const EdgeInsets.only(bottom: 6),
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: _getDynamicPrompts().map((prompt) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: _buildQuickPromptChip(
-                        _language == 'ur' ? prompt.labelUrdu : prompt.labelEng,
-                        prompt.color,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              // Input Bar
-              Container(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 100),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D0F14),
-                  border: Border(top: BorderSide(color: Colors.white.withAlpha(15))),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF161A22).withAlpha(230),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: Colors.white.withAlpha(20)),
-                      ),
-                      child: Row(
-                        children: [
-                          // Mic Button
-                          GestureDetector(
-                            onTap: () {
-                              if (_voiceState == VoiceAssistantState.listening) {
-                                _stopListeningAndProcess();
-                              } else {
-                                _startListening();
-                              }
-                            },
-                            child: Container(
-                              height: 40,
-                              width: 40,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: _voiceState == VoiceAssistantState.listening 
-                                    ? Colors.redAccent.withAlpha(80) 
-                                    : Colors.white.withAlpha(10),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _voiceState == VoiceAssistantState.listening ? Icons.mic : Icons.mic_none,
-                                color: _voiceState == VoiceAssistantState.listening ? Colors.redAccent : Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              enabled: !_isTyping,
-                              style: const TextStyle(color: Colors.white),
-                              textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
-                              decoration: InputDecoration(
-                                hintText: _isTyping
-                                    ? (_language == 'ur' ? 'کوچ جواب تیار کر رہا ہے...' : 'Coach is thinking...')
-                                    : (_voiceState == VoiceAssistantState.listening ? 'Listening...' : hint),
-                                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              ),
-                              onSubmitted: _isTyping ? null : (_) => _sendMessage(),
-                            ),
-                          ),
-                          // Voice Mode Button (ChatGPT Style)
-                          GestureDetector(
-                            onTap: _isTyping ? null : _toggleVoiceMode,
-                            child: Container(
-                              height: 40,
-                              width: 40,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: _isVoiceModeOn ? theme.colorScheme.primary : Colors.white.withAlpha(10),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _isVoiceModeOn ? Icons.close : Icons.graphic_eq,
-                                color: _isVoiceModeOn ? theme.colorScheme.onPrimary : Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            height: 40,
-                            width: 40,
-                            decoration: BoxDecoration(
-                              gradient: _isTyping
-                                  ? LinearGradient(
-                                      colors: [Colors.grey.shade800, Colors.grey.shade700],
-                                    )
-                                  : const LinearGradient(
-                                      colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: _isTyping
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                                    )
-                                  : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                              onPressed: _isTyping ? null : _sendMessage,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-      if (_isVoiceModeOverlayVisible)
-        VoiceModeOverlay(
-          voiceState: _voiceState,
-          recognizedText: _controller.text,
-          onClose: () {
-            setState(() {
-              _isVoiceModeOn = false;
-              _isVoiceModeOverlayVisible = false;
-            });
-            _stopVoiceFeaturesCleanly();
-          },
-          onStopAudio: () {
-            _stopSpeaking();
-          },
-        ),
-      ],
-      ),
+          if (_isVoiceModeOverlayVisible)
+            VoiceModeOverlay(
+              voiceState: _voiceState,
+              recognizedText: _controller.text,
+              onClose: () {
+                setState(() {
+                  _isVoiceModeOn = false;
+                  _isVoiceModeOverlayVisible = false;
+                });
+                _stopVoiceFeaturesCleanly();
+              },
+              onStopAudio: () {
+                _stopSpeaking();
+              },
+            ),
+          ],
+          ),
+        );
+      },
     );
   }
 

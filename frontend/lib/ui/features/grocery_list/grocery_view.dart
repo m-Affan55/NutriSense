@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'grocery_viewmodel.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
+import '../../../core/language_controller.dart';
 
 class GroceryView extends StatefulWidget {
   const GroceryView({super.key});
@@ -17,12 +17,14 @@ class _GroceryViewState extends State<GroceryView> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _viewModel.addListener(_onViewModelChanged);
   }
 
   @override
   void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
     _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
     super.dispose();
@@ -34,11 +36,10 @@ class _GroceryViewState extends State<GroceryView> {
     }
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _loadLanguage() {
     if (mounted) {
       setState(() {
-        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        _language = LanguageController.instance.currentLanguage;
       });
     }
   }

@@ -1,11 +1,11 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/health_service.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
+import '../../../core/language_controller.dart';
 import 'health_sync_viewmodel.dart';
 
 class HealthSyncView extends StatefulWidget {
@@ -30,6 +30,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
     );
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     _vm.addListener(_onVmChanged);
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _vm.loadAll();
   }
@@ -44,17 +45,17 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
     }
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _loadLanguage() {
     if (mounted) {
       setState(() {
-        _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+        _language = LanguageController.instance.currentLanguage;
       });
     }
   }
 
   @override
   void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
     _vm.removeListener(_onVmChanged);
     _vm.dispose();
     _ringController.dispose();

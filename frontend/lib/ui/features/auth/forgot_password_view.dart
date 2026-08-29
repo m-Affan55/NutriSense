@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../core/language_controller.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -19,15 +19,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lang = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _loadLanguage() {
     if (mounted) {
       setState(() {
-        _language = lang;
+        _language = LanguageController.instance.currentLanguage;
       });
     }
   }
@@ -84,12 +90,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       }
     };
     return translations[_language]?[key] ?? key;
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
   }
 
   @override

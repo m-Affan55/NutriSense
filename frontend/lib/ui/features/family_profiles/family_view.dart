@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/family_member.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
+import '../../../core/language_controller.dart';
 import 'family_viewmodel.dart';
 
 class FamilyView extends StatefulWidget {
@@ -19,15 +19,23 @@ class _FamilyViewState extends State<FamilyView> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _viewModel.loadMembers();
   }
 
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-    });
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_loadLanguage);
+    super.dispose();
+  }
+
+  void _loadLanguage() {
+    if (mounted) {
+      setState(() {
+        _language = LanguageController.instance.currentLanguage;
+      });
+    }
   }
 
   Future<void> _deleteMember(FamilyMember member) async {
@@ -464,25 +472,26 @@ class _FamilyViewState extends State<FamilyView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_language == 'ur' ? 'خاندانی پروفائلز' : 'Family Profiles'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded),
-            tooltip: _language == 'ur' ? 'ممبر شامل کریں' : 'Add Member',
-            onPressed: () => _showAddEditMemberDialog(),
-          ),
-        ],
-      ),
-      body: RamadanBackgroundWrapper(
-        child: ListenableBuilder(
-          listenable: _viewModel,
-          builder: (context, _) {
-            final members = _viewModel.members;
-            final activeMember = _viewModel.activeMember;
+    return ListenableBuilder(
+      listenable: Listenable.merge([_viewModel, LanguageController.instance]),
+      builder: (context, _) {
+        _language = LanguageController.instance.currentLanguage;
+        final members = _viewModel.members;
+        final activeMember = _viewModel.activeMember;
 
-            return SingleChildScrollView(
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_language == 'ur' ? 'خاندانی پروفائلز' : 'Family Profiles'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                tooltip: _language == 'ur' ? 'ممبر شامل کریں' : 'Add Member',
+                onPressed: () => _showAddEditMemberDialog(),
+              ),
+            ],
+          ),
+          body: RamadanBackgroundWrapper(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,10 +807,10 @@ class _FamilyViewState extends State<FamilyView> {
                     ),
                 ],
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 

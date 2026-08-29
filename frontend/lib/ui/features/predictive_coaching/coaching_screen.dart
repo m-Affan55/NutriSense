@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 import '../../../core/swap_service.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
@@ -38,12 +38,14 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     
     MealSyncNotifier.instance.addListener(loadCoachingData);
+    LanguageController.instance.addListener(loadCoachingData);
     loadCoachingData();
   }
 
   @override
   void dispose() {
     MealSyncNotifier.instance.removeListener(loadCoachingData);
+    LanguageController.instance.removeListener(loadCoachingData);
     _ringController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -57,11 +59,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _language = LanguageController.instance.currentLanguage;
       if (mounted) {
-        setState(() {
-          _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-        });
+        setState(() {});
       }
 
       // 1. Fetch Habit Score & Summary
@@ -86,31 +86,31 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         debugPrint('Habit score fetch error: $scoreErr');
       }
 
-      // 2. Fetch Recent Meals for Food Swaps
+      // 2. Fetch Today's Meals for Food Swaps
       try {
-        final today = DateTime.now();
-        final sevenDaysAgo = today.subtract(const Duration(days: 7)).toIso8601String();
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day).toIso8601String();
         
         final mealsRes = await Supabase.instance.client
             .from('meal_logs')
             .select('notes')
             .eq('user_id', user.id)
-            .gte('logged_at', sevenDaysAgo)
+            .gte('logged_at', startOfToday)
             .order('logged_at', ascending: false)
             .limit(10);
             
-        final recentMealNotes = (mealsRes as List)
+        final todaysMealNotes = (mealsRes as List)
             .map((m) => m['notes']?.toString() ?? '')
             .where((n) => n.trim().isNotEmpty && n != 'null')
             .toList();
         
-        if (recentMealNotes.isNotEmpty) {
+        if (todaysMealNotes.isNotEmpty) {
           final swapRes = await http.post(
             Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
             headers: ApiClient.getHeaders(),
             body: jsonEncode({
               'user_id': user.id,
-              'recent_meals': recentMealNotes,
+              'recent_meals': todaysMealNotes,
               'language': _language,
             }),
           ).timeout(const Duration(seconds: 20));
@@ -118,10 +118,15 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
           if (swapRes.statusCode == 200) {
             final data = jsonDecode(swapRes.body);
             _foodSwaps = data['swaps'] ?? [];
+          } else {
+            _foodSwaps = [];
           }
+        } else {
+          _foodSwaps = [];
         }
       } catch (swapErr) {
         debugPrint('Food swaps fetch error: $swapErr');
+        _foodSwaps = [];
       }
 
       if (mounted) {
@@ -154,9 +159,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
       'en': {
         'title': 'AI Coaching',
         'consistency': '7-Day Consistency',
-        'swaps': 'Recommended Swaps',
-        'noSwapsTitle': 'No food swaps needed yet',
-        'noSwapsBody': 'Log your recent meals to receive personalized, healthier alternative swaps tailored to your health goals.',
+        'swaps': 'Today\'s Recommended Swaps',
+        'noSwapsTitle': 'No food swaps needed yet today',
+        'noSwapsBody': 'Log today\'s meals to receive personalized, healthier alternative swaps tailored to your health goals.',
         'insteadOf': 'Instead of',
         'trySwap': 'Try',
         'excellent': 'Excellent',
@@ -169,9 +174,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
       'ur': {
         'title': 'اے آئی کوچنگ',
         'consistency': '7 دن کا تسلسل',
-        'swaps': 'تجویز کردہ متبادل کھانے',
-        'noSwapsTitle': 'ابھی تک کسی متبادل کی ضرورت نہیں',
-        'noSwapsBody': 'صحت کے اہداف کے مطابق متبادل تجویز حاصل کرنے کے لیے حالیہ کھانے لاگ کریں۔',
+        'swaps': 'آج کے تجویز کردہ متبادل کھانے',
+        'noSwapsTitle': 'آج ابھی تک کسی متبادل کی ضرورت نہیں',
+        'noSwapsBody': 'صحت کے اہداف کے مطابق متبادل تجویز حاصل کرنے کے لیے آج کے کھانے لاگ کریں۔',
         'insteadOf': 'کے بجائے',
         'trySwap': 'استعمال کریں',
         'excellent': 'بہترین',
@@ -216,7 +221,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                 child: SingleChildScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 140),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

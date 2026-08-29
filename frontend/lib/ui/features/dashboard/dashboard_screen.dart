@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../navigation/main_navigation_screen.dart';
 import '../settings/settings_view.dart';
@@ -17,6 +16,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/language_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -78,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     FamilyViewModel.instance.addListener(_loadData);
     FamilyViewModel.instance.loadMembers();
     MealSyncNotifier.instance.addListener(_loadData);
+    LanguageController.instance.addListener(_loadData);
 
     _loadData();
   }
@@ -86,6 +87,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void dispose() {
     FamilyViewModel.instance.removeListener(_loadData);
     MealSyncNotifier.instance.removeListener(_loadData);
+    LanguageController.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
     super.dispose();
@@ -95,8 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    _language = LanguageController.instance.currentLanguage;
 
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
@@ -602,7 +603,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   onRefresh: _loadData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 140),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1500,19 +1501,22 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               const SizedBox(height: 14),
 
               // Ramadan Hydration Quick Presets
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
                 children: [
                   Text(
                     _language == 'ur' ? 'فوری پانی لاگ:' : 'Fast Hydration Log:',
                     style: const TextStyle(color: Colors.white60, fontSize: 11),
                   ),
-                  Row(
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
                       _buildQuickWaterChip('500ml', 500, _language == 'ur' ? 'افطار' : 'Iftar'),
-                      const SizedBox(width: 6),
                       _buildQuickWaterChip('250ml', 250, _language == 'ur' ? 'تراویح' : 'Taraweeh'),
-                      const SizedBox(width: 6),
                       _buildQuickWaterChip('500ml', 500, _language == 'ur' ? 'سحری' : 'Sehri'),
                     ],
                   ),
@@ -1568,20 +1572,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
                 children: [
                   // Primary User "Me" Chip
                   GestureDetector(
                     onTap: () {
                       familyVM.setActiveMember(null);
                     },
+                    behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
                         color: active == null
                             ? (isRamadan ? const Color(0xFFFFD166).withAlpha(40) : const Color(0xFF00E676).withAlpha(40))
@@ -1597,10 +1602,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🧑', style: TextStyle(fontSize: 14)),
-                          const SizedBox(width: 6),
+                          const Text('🧑', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 4),
                           Text(
-                            _language == 'ur' ? 'میں (ذاتی)' : 'Me (Self)',
+                            _language == 'ur' ? 'میں' : 'Me',
                             style: TextStyle(
                               color: active == null ? Colors.white : Colors.white60,
                               fontWeight: active == null ? FontWeight.bold : FontWeight.normal,
@@ -1619,10 +1624,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       onTap: () {
                         familyVM.setActiveMember(m);
                       },
+                      behavior: HitTestBehavior.opaque,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
                           color: isSelected ? m.color.withAlpha(40) : const Color(0xFF161A22),
                           borderRadius: BorderRadius.circular(20),
@@ -1634,14 +1640,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(m.relationshipEmoji, style: const TextStyle(fontSize: 14)),
-                            const SizedBox(width: 6),
-                            Text(
-                              m.name,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.white60,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 12,
+                            Text(m.relationshipEmoji, style: const TextStyle(fontSize: 13)),
+                            const SizedBox(width: 4),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 110),
+                              child: Text(
+                                m.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.white60,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ],
@@ -1658,8 +1669,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       );
                       _loadData();
                     },
+                    behavior: HitTestBehavior.opaque,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.white.withAlpha(10),
                         borderRadius: BorderRadius.circular(20),
@@ -1668,11 +1680,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.group_add_outlined, size: 14, color: Colors.white70),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.add_rounded, size: 14, color: Colors.white70),
+                          const SizedBox(width: 3),
                           Text(
-                            _language == 'ur' ? 'خاندان' : '+ Family',
-                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            _language == 'ur' ? 'خاندان' : 'Family',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11.5),
                           ),
                         ],
                       ),

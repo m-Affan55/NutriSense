@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import '../../../core/language_controller.dart';
 import 'macro_trend_chart.dart';
 
 class WeeklyReportScreen extends StatefulWidget {
@@ -38,14 +38,28 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   @override
   void initState() {
     super.initState();
+    LanguageController.instance.addListener(_onLanguageChanged);
+    _language = LanguageController.instance.currentLanguage;
     _loadReport();
+  }
+
+  @override
+  void dispose() {
+    LanguageController.instance.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      _language = LanguageController.instance.currentLanguage;
+      _loadReport();
+    }
   }
 
   Future<void> _loadReport() async {
     setState(() => _isLoading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+      _language = LanguageController.instance.currentLanguage;
 
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
