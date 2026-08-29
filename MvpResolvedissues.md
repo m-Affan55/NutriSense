@@ -30,3 +30,8 @@ This file tracks all resolved categories and issues from the Adversarial QA Audi
 - **Category 8: Android-Specific [Resolved ✅]**
   - **Issue 4 [Resolved ✅]**: Enabled Android launcher icon generation (`android: true`) under `flutter_launcher_icons` in `pubspec.yaml` and generated launcher icon assets for Android, iOS, Web, and Windows.
   - **Issue 5 [Skipped ⚠️]**: Kept `.env` file packaged as a Flutter asset as per user decision.
+
+- **Usability, Layout & Build Stability [Resolved ✅]**
+  - **Windows Compilation Mismatch [Resolved ✅]**: Switched `cancel(notifId)` to `cancel(id: notifId)` in `reminder_manager.dart` to support modern `flutter_local_notifications` v22.3.0 named parameter specifications, resolving the Windows compilation error.
+  - **System Navigation Overlap [Resolved ✅]**: Wrapped the floating bottom navigation bar in a `SafeArea` widget inside `main_navigation_screen.dart` and adjusted padding to ensure it floats cleanly above Android three-button system navigation bars and iOS home indicators.
+  - **ListTile Background Assertion [Resolved ✅]**: Wrapped `ExpansionTile` layout trees in both `workout_screen.dart` and `grocery_view.dart` in transparent `Material` widgets to satisfy the Flutter layout engine's requirement that any `ListTile` placed inside a decorated container must have a `Material` canvas.

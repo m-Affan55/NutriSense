@@ -97,13 +97,23 @@ This document outlines all feature implementations, architectural additions, and
 
 ---
 
-## 🧪 9. Verification Results
+## 🛠️ 9. Layout, Usability & Build Stability
+* **System Navigation Overlap Fix ([main_navigation_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/navigation/main_navigation_screen.dart))**:
+  - Wrapped the custom floating bottom navigation bar in a `SafeArea` widget and adjusted padding to ensure it floats cleanly above Android three-button system navigation bars and iOS home indicators.
+* **ListTile Background Assertion Fix ([workout_screen.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/workout/workout_screen.dart) & [grocery_view.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/ui/features/grocery_list/grocery_view.dart))**:
+  - Wrapped `ExpansionTile` layout trees in transparent `Material` widgets to satisfy the Flutter layout engine's requirement that any `ListTile` placed inside a decorated container must have a `Material` canvas.
+* **Workout Reminder Build Fix ([reminder_manager.dart](file:///d:/AI%20Hackathon/NutriSense/frontend/lib/core/reminder_manager.dart))**:
+  - Switched `cancel(notifId)` to `cancel(id: notifId)` to support modern `flutter_local_notifications` v22.3.0 named parameter specifications, resolving the Windows compilation error.
+
+---
+
+## 🧪 10. Verification Results
 
 - **Flutter Static Analysis**:
   ```bash
   cd frontend && flutter analyze
   ```
-  **Output**: `No issues found!` (0 errors, 0 warnings).
+  **Output**: `0 errors` (with 2 warnings, 1 info in `workout_screen.dart` for unused imports/fields, which are non-blocking for release).
 
 - **Automated Test Suite**:
   ```bash
