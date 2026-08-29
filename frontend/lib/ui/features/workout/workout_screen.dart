@@ -567,123 +567,126 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
               color: exercise.isCompleted ? primaryColor.withAlpha(120) : Colors.white.withAlpha(15),
             ),
           ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              leading: GestureDetector(
-                onTap: () async {
-                  setCardState(() {
-                    exercise.isCompleted = !exercise.isCompleted;
-                  });
-                  await WorkoutService.instance.toggleExerciseCompletion(
-                    dayName,
-                    exercise.name,
-                    exercise.isCompleted,
-                  );
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: exercise.isCompleted ? primaryColor : Colors.transparent,
-                    border: Border.all(
-                      color: exercise.isCompleted ? primaryColor : const Color(0xFF8A94A6),
-                      width: 1.5,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                leading: GestureDetector(
+                  onTap: () async {
+                    setCardState(() {
+                      exercise.isCompleted = !exercise.isCompleted;
+                    });
+                    await WorkoutService.instance.toggleExerciseCompletion(
+                      dayName,
+                      exercise.name,
+                      exercise.isCompleted,
+                    );
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: exercise.isCompleted ? primaryColor : Colors.transparent,
+                      border: Border.all(
+                        color: exercise.isCompleted ? primaryColor : const Color(0xFF8A94A6),
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: exercise.isCompleted
-                      ? const Icon(Icons.check, size: 18, color: Colors.black)
-                      : Center(
-                          child: Text(
-                            '$order',
-                            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF8A94A6), fontWeight: FontWeight.bold),
+                    child: exercise.isCompleted
+                        ? const Icon(Icons.check, size: 18, color: Colors.black)
+                        : Center(
+                            child: Text(
+                              '$order',
+                              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF8A94A6), fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
+                  ),
                 ),
-              ),
-              title: Text(
-                exercise.name,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: exercise.isCompleted ? const Color(0xFF94A3B8) : Colors.white,
-                  decoration: exercise.isCompleted ? TextDecoration.lineThrough : null,
+                title: Text(
+                  exercise.name,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: exercise.isCompleted ? const Color(0xFF94A3B8) : Colors.white,
+                    decoration: exercise.isCompleted ? TextDecoration.lineThrough : null,
+                  ),
                 ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Wrap(
-                  spacing: 6,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withAlpha(25),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${exercise.sets} sets × ${exercise.reps}',
-                        style: GoogleFonts.inter(fontSize: 11, color: primaryColor, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(10),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Rest: ${exercise.restSeconds}s',
-                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(
+                    spacing: 6,
                     children: [
-                      const Divider(color: Colors.white10),
-                      if (exercise.formCues.isNotEmpty) ...[
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.tips_and_updates_outlined, color: primaryColor, size: 16),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Form Cue: ${exercise.formCues}',
-                                style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, height: 1.3),
-                              ),
-                            ),
-                          ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withAlpha(25),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
-                      if (exercise.precautions.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 16),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Precaution: ${exercise.precautions}',
-                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFCD34D), height: 1.3),
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '${exercise.sets} sets × ${exercise.reps}',
+                          style: GoogleFonts.inter(fontSize: 11, color: primaryColor, fontWeight: FontWeight.w600),
                         ),
-                      ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Rest: ${exercise.restSeconds}s',
+                          style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8)),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(color: Colors.white10),
+                        if (exercise.formCues.isNotEmpty) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.tips_and_updates_outlined, color: primaryColor, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Form Cue: ${exercise.formCues}',
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, height: 1.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (exercise.precautions.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Precaution: ${exercise.precautions}',
+                                  style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFCD34D), height: 1.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
