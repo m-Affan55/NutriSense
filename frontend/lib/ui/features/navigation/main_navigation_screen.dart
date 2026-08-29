@@ -58,35 +58,37 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             index: _currentIndex,
             children: _screens,
           ),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 14, bottom: 20),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(40),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: isRamadan
-                        ? const Color(0xFF0E172A).withAlpha(220)
-                        : const Color(0xFF161A22).withAlpha(180),
-                    borderRadius: BorderRadius.circular(40),
-                    border: Border.all(
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 14, bottom: 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    height: 72,
+                    decoration: BoxDecoration(
                       color: isRamadan
-                          ? const Color(0xFF00D2FF).withAlpha(50)
-                          : Colors.white.withAlpha(20),
-                      width: 1.5,
+                          ? const Color(0xFF0E172A).withAlpha(220)
+                          : const Color(0xFF161A22).withAlpha(180),
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(
+                        color: isRamadan
+                            ? const Color(0xFF00D2FF).withAlpha(50)
+                            : Colors.white.withAlpha(20),
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
-                      _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, 'Meals', isRamadan),
-                      _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
-                      _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
-                      _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, 'Workout', isRamadan),
-                    ],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildNavItem(0, Icons.home_filled, Icons.home_outlined, 'Home', isRamadan),
+                        _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, 'Meals', isRamadan),
+                        _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, 'Coach', isRamadan),
+                        _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, 'Stats', isRamadan),
+                        _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, 'Workout', isRamadan),
+                      ],
+                    ),
                   ),
                 ),
               ),
