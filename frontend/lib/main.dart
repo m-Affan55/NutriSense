@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'core/platform_setup.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
@@ -18,6 +19,19 @@ final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>()
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Configure system overlays & edge-to-edge for responsive system bar handling across all Android devices
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   // Initialize platform specific configurations (desktop registry/FFI database setup)
   await initPlatformSetup(args);
 
