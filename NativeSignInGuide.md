@@ -18,13 +18,14 @@ This guide walks you through the step-by-step setup required to enable native Go
    - Click **Create Credentials** -> **OAuth client ID**.
    - Select **Android** as the Application type.
    - Set Name to `NutriSense Android Client`.
-   - Provide the Package name (found in `frontend/android/app/build.gradle.kts` as `applicationId`, typically `com.example.frontend` unless customized).
-   - Provide the **SHA-1 certificate fingerprint** of your signing key:
-     - For debug builds, run this command in your project terminal:
+   - Provide the Package name: `com.example.frontend` (from `frontend/android/app/build.gradle.kts`).
+   - Provide the **SHA-1 certificate fingerprint**:
+     - **Debug SHA-1**: `A4:38:21:7C:C9:9D:70:D1:FF:20:4D:97:C2:B1:72:39:1A:C1:C0:E5`
+     - **Debug SHA-256**: `A9:D8:EE:33:71:84:FE:76:12:C3:8D:35:83:94:85:13:98:A1:CC:CC:9C:FB:D4:B5:CF:BB:B4:B2:6F:C8:5E:E6`
+     - *(Optional)* To regenerate the fingerprint yourself:
        ```powershell
-       keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+       & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
        ```
-     - For release builds, generate the SHA-1 from your upload/production keystore.
    - Click **Create**.
 5. **Create OAuth 2.0 iOS Client ID (Optional):**
    - Click **Create Credentials** -> **OAuth client ID**.

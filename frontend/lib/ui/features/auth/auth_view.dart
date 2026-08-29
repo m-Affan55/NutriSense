@@ -137,6 +137,32 @@ class _AuthScreenState extends State<AuthScreen> {
         provider: OAuthProvider.google,
         idToken: idToken,
       );
+
+      if (!mounted) return;
+
+      // Check if user has completed onboarding / health profile
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final profileResponse = await supabase
+            .from('health_profiles')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        if (profileResponse != null) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+          return;
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+      );
     } catch (e) {
       if (mounted) {
         final errStr = e.toString();
