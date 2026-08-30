@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Frontend</string>
+	<string>NutriSense</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>frontend</string>
+	<string>NutriSense</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,10 +26,18 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>NutriSense requires camera access to scan your meals and barcodes for instant nutritional analysis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NutriSense requires photo library access so you can upload food photos for nutritional analysis.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app requires microphone access to let you speak to your AI Nutrition Coach.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>This app requires speech recognition to transcribe your voice into text for the AI Coach.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>NutriSense reads physical activity data (steps, calories, sleep) to adjust your personalized daily nutrition targets.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>NutriSense syncs meal nutrition and hydration logs with Apple Health.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
