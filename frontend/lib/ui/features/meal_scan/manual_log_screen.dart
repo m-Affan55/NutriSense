@@ -851,7 +851,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                       : 'Just describe your meal — our AI automatically calculates calories, protein, carbs, and fat!',
                                   style: TextStyle(
                                     color: Colors.white.withAlpha(220),
-                                    fontSize: 13,
+                                    fontSize: _language == 'ur' ? 15 : 13,
+                                    fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
                                     height: 1.4,
                                   ),
                                 ),
@@ -866,12 +867,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
+                            fontSize: _language == 'ur' ? 18 : null,
                           ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _nameController,
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.white, 
+                            fontSize: _language == 'ur' ? 18 : 16,
+                            fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
+                          ),
                           maxLines: 2,
                           textInputAction: TextInputAction.send,
                           onFieldSubmitted: (_) {
@@ -890,7 +897,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                             hintText: _language == 'ur'
                                 ? 'مثلاً: ۲ آلو کے پراٹھے اور ۱ کپ چائے...'
                                 : 'e.g. 2 Aloo Parathas and 1 cup Chai, or Chicken Biryani with Raita...',
-                            hintStyle: TextStyle(color: Colors.white.withAlpha(80), fontSize: 14),
+                            hintStyle: TextStyle(
+                              color: Colors.white.withAlpha(80), 
+                              fontSize: _language == 'ur' ? 16 : 14,
+                              fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
+                            ),
                             filled: true,
                             fillColor: const Color(0xFF161A22),
                             contentPadding: const EdgeInsets.all(16),
@@ -1255,11 +1266,12 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                 label,
                                 style: TextStyle(
                                   color: isSelected ? Colors.white : const Color(0xFF8A94A6),
-                                  fontSize: 11,
+                                  fontSize: _language == 'ur' ? 12 : 11,
+                                  fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 ),
                                 textAlign: TextAlign.center,
-                                maxLines: 1,
+                                maxLines: _language == 'ur' ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -1357,7 +1369,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   Widget _buildQuickChip(String textEn, String textUr) {
     final label = _language == 'ur' ? textUr : textEn;
     return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: _language == 'ur' ? 14 : 11.5,
+          color: Colors.white70,
+          fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
+        ),
+      ),
       backgroundColor: const Color(0xFF161A22),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),

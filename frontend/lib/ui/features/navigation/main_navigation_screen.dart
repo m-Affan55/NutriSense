@@ -99,7 +99,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  height: 68,
+                  height: isUrdu ? 76 : 68,
                   decoration: BoxDecoration(
                     color: isRamadan
                         ? const Color(0xFF0E172A).withAlpha(220)
