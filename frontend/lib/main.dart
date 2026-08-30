@@ -127,21 +127,13 @@ class NutriSenseAppState extends State<NutriSenseApp> {
       builder: (context, _) {
         final isRamadan = RamadanController.instance.isRamadanMode;
         final isUrdu = LanguageController.instance.isUrdu;
-        return MaterialApp(
+         return MaterialApp(
           title: 'NutriSense',
           navigatorKey: globalNavigatorKey,
           debugShowCheckedModeBanner: false,
           themeMode: _themeMode,
-          theme: isRamadan ? buildRamadanTheme() : buildLightTheme(),
-          darkTheme: isRamadan ? buildRamadanTheme() : buildDarkTheme(),
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaleFactor: isUrdu ? 1.18 : 1.0,
-              ),
-              child: child!,
-            );
-          },
+          theme: isRamadan ? buildRamadanTheme(isUrdu) : buildLightTheme(isUrdu),
+          darkTheme: isRamadan ? buildRamadanTheme(isUrdu) : buildDarkTheme(isUrdu),
           home: const SplashScreen(),
         );
       },

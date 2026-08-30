@@ -25,34 +25,62 @@ class RamadanColors {
   static const Color textGold = Color(0xFFFFE082);
 }
 
-ThemeData buildLightTheme() {
+TextTheme _buildUrduTextTheme([Color? textColor, Color? secondaryColor]) {
+  final color = textColor ?? Colors.white;
+  final secColor = secondaryColor ?? const Color(0xFF8A94A6);
+  return TextTheme(
+    displayLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
+    displayMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
+    displaySmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
+    headlineLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.bold, fontSize: 34, color: color),
+    headlineMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 30, color: color),
+    headlineSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 26, color: color),
+    titleLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 24, color: color),
+    titleMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w500, fontSize: 18, color: color),
+    titleSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w500, fontSize: 16, color: color),
+    bodyLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 18, color: color),
+    bodyMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 16, color: secColor),
+    bodySmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 14, color: secColor),
+    labelLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 16, color: color),
+    labelMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 14, color: secColor),
+    labelSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 12, color: secColor),
+  );
+}
+
+ThemeData buildLightTheme(bool isUrdu) {
   const fallbackFonts = ['JameelNooriNastaleeq'];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+    fontFamilyFallback: fallbackFonts,
     colorScheme: ColorScheme.fromSeed(
       seedColor: _primaryGreen,
       primary: _primaryGreen,
       secondary: _secondaryOrange,
     ),
-    textTheme: GoogleFonts.interTextTheme().copyWith(
-      bodyLarge: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
-      bodyMedium: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
-      bodySmall: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
-      headlineLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
-      headlineMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
-      headlineSmall: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
-      titleLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
-      titleMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
-    ),
+    textTheme: isUrdu
+        ? _buildUrduTextTheme(Colors.black, Colors.black87)
+        : GoogleFonts.interTextTheme().copyWith(
+            bodyLarge: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+            bodyMedium: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+            bodySmall: GoogleFonts.inter().copyWith(fontFamilyFallback: fallbackFonts),
+            headlineLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+            headlineMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+            headlineSmall: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+            titleLarge: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+            titleMedium: GoogleFonts.outfit().copyWith(fontFamilyFallback: fallbackFonts),
+          ),
   );
 }
 
-ThemeData buildDarkTheme() {
+ThemeData buildDarkTheme(bool isUrdu) {
   const fallbackFonts = ['JameelNooriNastaleeq'];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+    fontFamilyFallback: fallbackFonts,
     scaffoldBackgroundColor: _bgDark,
     colorScheme: const ColorScheme.dark(
       primary: _primaryGreen,
@@ -65,36 +93,42 @@ ThemeData buildDarkTheme() {
       color: _surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
-    textTheme: GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme).copyWith(
-      headlineLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.bold).copyWith(fontFamilyFallback: fallbackFonts),
-      headlineMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      headlineSmall: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      titleLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      titleMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w500).copyWith(fontFamilyFallback: fallbackFonts),
-      bodyLarge: GoogleFonts.inter(color: _textPrimaryDark).copyWith(fontFamilyFallback: fallbackFonts),
-      bodyMedium: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
-      bodySmall: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
-    ),
+    textTheme: isUrdu
+        ? _buildUrduTextTheme(_textPrimaryDark, _textSecondaryDark)
+        : GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme).copyWith(
+            headlineLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.bold).copyWith(fontFamilyFallback: fallbackFonts),
+            headlineMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            headlineSmall: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            titleLarge: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            titleMedium: GoogleFonts.outfit(color: _textPrimaryDark, fontWeight: FontWeight.w500).copyWith(fontFamilyFallback: fallbackFonts),
+            bodyLarge: GoogleFonts.inter(color: _textPrimaryDark).copyWith(fontFamilyFallback: fallbackFonts),
+            bodyMedium: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
+            bodySmall: GoogleFonts.inter(color: _textSecondaryDark).copyWith(fontFamilyFallback: fallbackFonts),
+          ),
     appBarTheme: AppBarTheme(
       backgroundColor: _bgDark,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.outfit(
-        color: _textPrimaryDark,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-      ).copyWith(fontFamilyFallback: fallbackFonts),
+      titleTextStyle: isUrdu
+          ? const TextStyle(color: _textPrimaryDark, fontSize: 22, fontWeight: FontWeight.w600, fontFamily: 'JameelNooriNastaleeq')
+          : GoogleFonts.outfit(
+              color: _textPrimaryDark,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ).copyWith(fontFamilyFallback: fallbackFonts),
       iconTheme: const IconThemeData(color: _textPrimaryDark),
     ),
   );
 }
 
 /// Specialized Ramadan Midnight Blue Theme
-ThemeData buildRamadanTheme() {
+ThemeData buildRamadanTheme(bool isUrdu) {
   const fallbackFonts = ['JameelNooriNastaleeq'];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+    fontFamilyFallback: fallbackFonts,
     scaffoldBackgroundColor: RamadanColors.bgMidnight,
     colorScheme: const ColorScheme.dark(
       primary: RamadanColors.primaryCyan,
@@ -111,25 +145,29 @@ ThemeData buildRamadanTheme() {
         side: const BorderSide(color: Color(0x2238BDF8), width: 1),
       ),
     ),
-    textTheme: GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme).copyWith(
-      headlineLarge: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.bold).copyWith(fontFamilyFallback: fallbackFonts),
-      headlineMedium: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      headlineSmall: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      titleLarge: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
-      titleMedium: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w500).copyWith(fontFamilyFallback: fallbackFonts),
-      bodyLarge: GoogleFonts.inter(color: RamadanColors.textPrimary).copyWith(fontFamilyFallback: fallbackFonts),
-      bodyMedium: GoogleFonts.inter(color: RamadanColors.textSecondary).copyWith(fontFamilyFallback: fallbackFonts),
-      bodySmall: GoogleFonts.inter(color: RamadanColors.textSecondary).copyWith(fontFamilyFallback: fallbackFonts),
-    ),
+    textTheme: isUrdu
+        ? _buildUrduTextTheme(RamadanColors.textPrimary, RamadanColors.textSecondary)
+        : GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme).copyWith(
+            headlineLarge: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.bold).copyWith(fontFamilyFallback: fallbackFonts),
+            headlineMedium: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            headlineSmall: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            titleLarge: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w600).copyWith(fontFamilyFallback: fallbackFonts),
+            titleMedium: GoogleFonts.outfit(color: RamadanColors.textPrimary, fontWeight: FontWeight.w500).copyWith(fontFamilyFallback: fallbackFonts),
+            bodyLarge: GoogleFonts.inter(color: RamadanColors.textPrimary).copyWith(fontFamilyFallback: fallbackFonts),
+            bodyMedium: GoogleFonts.inter(color: RamadanColors.textSecondary).copyWith(fontFamilyFallback: fallbackFonts),
+            bodySmall: GoogleFonts.inter(color: RamadanColors.textSecondary).copyWith(fontFamilyFallback: fallbackFonts),
+          ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.outfit(
-        color: RamadanColors.textPrimary,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-      ).copyWith(fontFamilyFallback: fallbackFonts),
+      titleTextStyle: isUrdu
+          ? const TextStyle(color: RamadanColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w600, fontFamily: 'JameelNooriNastaleeq')
+          : GoogleFonts.outfit(
+              color: RamadanColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ).copyWith(fontFamilyFallback: fallbackFonts),
       iconTheme: const IconThemeData(color: RamadanColors.textPrimary),
     ),
   );
