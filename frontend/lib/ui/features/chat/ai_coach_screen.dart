@@ -870,7 +870,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                               ),
                               child: Text(
                                 isUrdu ? 'ٹائپنگ...' : 'Typing...',
-                                style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 13),
+                                style: TextStyle(
+                                  color: Colors.white.withAlpha(150), 
+                                  fontSize: isUrdu ? 15 : 13,
+                                  fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                                ),
                               ),
                             ),
                           );
@@ -957,13 +961,21 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                                 child: TextField(
                                   controller: _controller,
                                   enabled: !_isTyping,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                                    fontSize: isUrdu ? 16 : null,
+                                  ),
                                   textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
                                   decoration: InputDecoration(
                                     hintText: _isTyping
                                         ? (isUrdu ? 'کوچ جواب تیار کر رہا ہے...' : 'Coach is thinking...')
                                         : (_voiceState == VoiceAssistantState.listening ? 'Listening...' : hint),
-                                    hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey.shade500, 
+                                      fontSize: isUrdu ? 16 : 14,
+                                      fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                                    ),
                                     border: InputBorder.none,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                   ),
@@ -1309,6 +1321,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   }
 
   Widget _buildInlineFormattedText(String text, bool isUser, ThemeData theme) {
+    final currentLang = LanguageController.instance.currentLanguage;
+    final isUrdu = currentLang == 'ur';
+    final fontFamily = isUrdu ? 'JameelNooriNastaleeq' : null;
+    final scale = isUrdu ? 1.2 : 1.0;
+
     final baseColor = isUser ? Colors.white : Colors.white.withValues(alpha: 0.92);
     final boldColor = isUser ? Colors.white : const Color(0xFFFFD166);
 
@@ -1320,7 +1337,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       if (match.start > lastMatchEnd) {
         spans.add(TextSpan(
           text: text.substring(lastMatchEnd, match.start),
-          style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.4),
+          style: TextStyle(
+            color: baseColor, 
+            fontSize: 13.5 * scale, 
+            height: 1.4,
+            fontFamily: fontFamily,
+          ),
         ));
       }
 
@@ -1331,8 +1353,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           style: TextStyle(
             color: boldColor,
             fontWeight: FontWeight.w700,
-            fontSize: 13.5,
+            fontSize: 13.5 * scale,
             height: 1.4,
+            fontFamily: fontFamily,
           ),
         ));
       } else if (match.group(2) != null) {
@@ -1342,8 +1365,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           style: TextStyle(
             color: baseColor,
             fontStyle: FontStyle.italic,
-            fontSize: 13.5,
+            fontSize: 13.5 * scale,
             height: 1.4,
+            fontFamily: fontFamily,
           ),
         ));
       }
@@ -1354,12 +1378,21 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     if (lastMatchEnd < text.length) {
       spans.add(TextSpan(
         text: text.substring(lastMatchEnd),
-        style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.4),
+        style: TextStyle(
+          color: baseColor, 
+          fontSize: 13.5 * scale, 
+          height: 1.4,
+          fontFamily: fontFamily,
+        ),
       ));
     }
 
     return RichText(
-      text: TextSpan(children: spans),
+      textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+      text: TextSpan(
+        style: TextStyle(fontFamily: fontFamily),
+        children: spans,
+      ),
     );
   }
 
@@ -1426,7 +1459,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
               text,
               style: TextStyle(
                 color: accent,
-                fontSize: 12,
+                fontSize: LanguageController.instance.isUrdu ? 14 : 12,
+                fontFamily: LanguageController.instance.isUrdu ? 'JameelNooriNastaleeq' : null,
                 fontWeight: FontWeight.w600,
               ),
             ),
