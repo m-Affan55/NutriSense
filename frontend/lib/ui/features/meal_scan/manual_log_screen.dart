@@ -1266,7 +1266,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                 label,
                                 style: TextStyle(
                                   color: isSelected ? Colors.white : const Color(0xFF8A94A6),
-                                  fontSize: _language == 'ur' ? 12 : 11,
+                                  fontSize: _language == 'ur' ? 16 : 11,
                                   fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 ),
@@ -1372,7 +1372,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       label: Text(
         label,
         style: TextStyle(
-          fontSize: _language == 'ur' ? 14 : 11.5,
+          fontSize: _language == 'ur' ? 16 : 11.5,
           color: Colors.white70,
           fontFamily: _language == 'ur' ? 'JameelNooriNastaleeq' : null,
         ),

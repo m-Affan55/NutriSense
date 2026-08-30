@@ -872,8 +872,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                                 isUrdu ? 'ٹائپنگ...' : 'Typing...',
                                 style: TextStyle(
                                   color: Colors.white.withAlpha(150), 
-                                  fontSize: isUrdu ? 15 : 13,
-                                  fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                                  fontSize: isUrdu ? 16 : 13,
+                                  fontFamilyFallback: isUrdu ? const ['JameelNooriNastaleeq'] : null,
                                 ),
                               ),
                             ),
@@ -1459,8 +1459,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
               text,
               style: TextStyle(
                 color: accent,
-                fontSize: LanguageController.instance.isUrdu ? 14 : 12,
-                fontFamily: LanguageController.instance.isUrdu ? 'JameelNooriNastaleeq' : null,
+                fontSize: LanguageController.instance.isUrdu ? 16 : 12,
+                fontFamilyFallback: LanguageController.instance.isUrdu ? const ['JameelNooriNastaleeq'] : null,
                 fontWeight: FontWeight.w600,
               ),
             ),

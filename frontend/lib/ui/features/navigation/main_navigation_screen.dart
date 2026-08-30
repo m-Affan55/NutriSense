@@ -99,7 +99,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  height: isUrdu ? 76 : 68,
+                  height: isUrdu ? 80 : 68,
                   decoration: BoxDecoration(
                     color: isRamadan
                         ? const Color(0xFF0E172A).withAlpha(220)
@@ -183,8 +183,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                     maxLines: 1,
                     style: TextStyle(
                       color: isSelected ? activeColor : const Color(0xFF8A94A6),
-                      fontSize: isUrdu ? 12.0 : 9.5,
-                      fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                      fontSize: isUrdu ? 15.0 : 9.5,
+                      fontFamilyFallback: isUrdu ? const ['JameelNooriNastaleeq'] : null,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),

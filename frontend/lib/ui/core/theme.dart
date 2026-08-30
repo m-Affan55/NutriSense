@@ -28,22 +28,23 @@ class RamadanColors {
 TextTheme _buildUrduTextTheme([Color? textColor, Color? secondaryColor]) {
   final color = textColor ?? Colors.white;
   final secColor = secondaryColor ?? const Color(0xFF8A94A6);
+  const fallback = ['JameelNooriNastaleeq'];
   return TextTheme(
-    displayLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
-    displayMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
-    displaySmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', color: color),
-    headlineLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.bold, fontSize: 34, color: color),
-    headlineMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 30, color: color),
-    headlineSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 26, color: color),
-    titleLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w600, fontSize: 24, color: color),
-    titleMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w500, fontSize: 18, color: color),
-    titleSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontWeight: FontWeight.w500, fontSize: 16, color: color),
-    bodyLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 18, color: color),
-    bodyMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 16, color: secColor),
-    bodySmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 14, color: secColor),
-    labelLarge: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 16, color: color),
-    labelMedium: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 14, color: secColor),
-    labelSmall: TextStyle(fontFamily: 'JameelNooriNastaleeq', fontSize: 12, color: secColor),
+    displayLarge: TextStyle(fontFamilyFallback: fallback, color: color),
+    displayMedium: TextStyle(fontFamilyFallback: fallback, color: color),
+    displaySmall: TextStyle(fontFamilyFallback: fallback, color: color),
+    headlineLarge: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.bold, fontSize: 34, color: color),
+    headlineMedium: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.w600, fontSize: 30, color: color),
+    headlineSmall: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.w600, fontSize: 26, color: color),
+    titleLarge: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.w600, fontSize: 24, color: color),
+    titleMedium: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.w500, fontSize: 18, color: color),
+    titleSmall: TextStyle(fontFamilyFallback: fallback, fontWeight: FontWeight.w500, fontSize: 16, color: color),
+    bodyLarge: TextStyle(fontFamilyFallback: fallback, fontSize: 18, color: color),
+    bodyMedium: TextStyle(fontFamilyFallback: fallback, fontSize: 18, color: secColor),
+    bodySmall: TextStyle(fontFamilyFallback: fallback, fontSize: 18, color: secColor),
+    labelLarge: TextStyle(fontFamilyFallback: fallback, fontSize: 18, color: color),
+    labelMedium: TextStyle(fontFamilyFallback: fallback, fontSize: 14, color: secColor),
+    labelSmall: TextStyle(fontFamilyFallback: fallback, fontSize: 12, color: secColor),
   );
 }
 
