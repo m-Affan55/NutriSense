@@ -50,7 +50,6 @@ dependencies:
   health: ^13.3.2
   path: ^1.9.1
   universal_io: ^2.2.2
-  win32_registry: ^3.0.3
   uuid: ^4.6.0
   sqflite_common_ffi: ^2.4.2+1
   speech_to_text: ^7.4.0
