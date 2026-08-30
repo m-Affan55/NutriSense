@@ -620,6 +620,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                     color: theme.colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(_getFormattedDate(), style: theme.textTheme.bodySmall),

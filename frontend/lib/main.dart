@@ -126,13 +126,14 @@ class NutriSenseAppState extends State<NutriSenseApp> {
       listenable: Listenable.merge([RamadanController.instance, LanguageController.instance]),
       builder: (context, _) {
         final isRamadan = RamadanController.instance.isRamadanMode;
-        return MaterialApp(
+        final isUrdu = LanguageController.instance.isUrdu;
+         return MaterialApp(
           title: 'NutriSense',
           navigatorKey: globalNavigatorKey,
           debugShowCheckedModeBanner: false,
           themeMode: _themeMode,
-          theme: isRamadan ? buildRamadanTheme() : buildLightTheme(),
-          darkTheme: isRamadan ? buildRamadanTheme() : buildDarkTheme(),
+          theme: isRamadan ? buildRamadanTheme(isUrdu) : buildLightTheme(isUrdu),
+          darkTheme: isRamadan ? buildRamadanTheme(isUrdu) : buildDarkTheme(isUrdu),
           home: const SplashScreen(),
         );
       },

@@ -99,7 +99,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  height: 68,
+                  height: isUrdu ? 80 : 68,
                   decoration: BoxDecoration(
                     color: isRamadan
                         ? const Color(0xFF0E172A).withAlpha(220)
@@ -122,11 +122,11 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildNavItem(0, Icons.home_filled, Icons.home_outlined, isUrdu ? 'ہوم' : 'Home', isRamadan),
-                      _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, isUrdu ? 'کھانے' : 'Meals', isRamadan),
-                      _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, isUrdu ? 'کوچ' : 'Coach', isRamadan),
-                      _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, isUrdu ? 'اعداد و شمار' : 'Stats', isRamadan),
-                      _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, isUrdu ? 'ورزش' : 'Workout', isRamadan),
+                       _buildNavItem(0, Icons.home_filled, Icons.home_outlined, isUrdu ? 'ہوم' : 'Home', isRamadan, isUrdu),
+                      _buildNavItem(1, Icons.restaurant, Icons.restaurant_outlined, isUrdu ? 'کھانے' : 'Meals', isRamadan, isUrdu),
+                      _buildNavItem(2, Icons.chat_bubble, Icons.chat_bubble_outline, isUrdu ? 'کوچ' : 'Coach', isRamadan, isUrdu),
+                      _buildNavItem(3, Icons.bar_chart, Icons.bar_chart_outlined, isUrdu ? 'اعداد و شمار' : 'Stats', isRamadan, isUrdu),
+                      _buildNavItem(4, Icons.fitness_center, Icons.fitness_center_outlined, isUrdu ? 'ورزش' : 'Workout', isRamadan, isUrdu),
                     ],
                   ),
                 ),
@@ -138,7 +138,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label, bool isRamadan) {
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label, bool isRamadan, bool isUrdu) {
     final isSelected = _currentIndex == index;
     final activeColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
 
@@ -183,7 +183,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
                     maxLines: 1,
                     style: TextStyle(
                       color: isSelected ? activeColor : const Color(0xFF8A94A6),
-                      fontSize: 9.5,
+                      fontSize: isUrdu ? 15.0 : 9.5,
+                      fontFamilyFallback: isUrdu ? const ['JameelNooriNastaleeq'] : null,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -196,4 +197,3 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 }
-
