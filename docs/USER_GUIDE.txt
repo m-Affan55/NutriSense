@@ -1,0 +1,316 @@
+================================================================================
+                    NUTRISENSE - COMPREHENSIVE USER GUIDE
+================================================================================
+Welcome to the NutriSense User Guide. This manual contains detailed step-by-step
+operating instructions, feature breakdowns, and screenshot guidelines to help
+you navigate and leverage the app's localized nutritional AI, fasting mode,
+family profile tracking, clinical workout plans, and predictive coaching.
+--------------------------------------------------------------------------------
+
+1. GETTING STARTED & ACCOUNT SETUP
+----------------------------------
+* Installation Instructions:
+  - Android Devices: Locate and download the NutriSense APK (v1.0.0) from the 
+    official GitHub repository releases tab. Tap the downloaded file and follow 
+    the system prompt to install (allow installation from unknown sources).
+  - Web Platforms: Open any modern web browser on your computer or phone and 
+    navigate to the NutriSense Web Application URL hosted on Vercel.
+  - Note: NutriSense is currently optimized for Android and Web and is not 
+    deployed for iOS systems.
+
+* Account Sign Up & Sign In:
+  - Launch the application to open the Welcome Screen.
+  - Tap "Sign Up" to create a new profile. Enter a valid email address and a 
+    strong password. Confirm your password and tap submit.
+  - Check your inbox for a confirmation email to verify your registration.
+  - If you already have an account, enter your email and password on the Login 
+    Screen and tap "Sign In".
+  - If you forget your password, tap "Forgot Password?" to receive a secure 
+    password reset link via email.
+
+* Interactive Onboarding Flow:
+  - On your first login, the app launches an interactive Onboarding dialog.
+  - Step 1: Input your age, gender, height (cm), and weight (kg).
+  - Step 2: Set your physical activity multiplier (Sedentary, Lightly Active, 
+    Moderately Active, Very Active).
+  - Step 3: Choose your primary fitness goal (Fat Loss, Muscle Gain, Healthy 
+    Lifestyle, or Maintenance).
+  - Step 4: Select any existing medical conditions (Diabetes, Hypertension, 
+    PCOS, High Cholesterol, or None).
+  - Step 5: Specify dietary restrictions/allergies (Halal, Vegetarian, Vegan, 
+    Nut Allergy, Gluten-Free, Lactose Intolerant, or None).
+  - Tap "Calculate Targets". The system uses Google Gemini to compute your 
+    daily calorie goal and water budget, loading them into your profile.
+
+* Required Screenshots:
+  - [SCREENSHOT: Onboarding Welcome Screen]
+  - [SCREENSHOT: Interactive Profile & Metrics Setup Dialog]
+  - [SCREENSHOT: Medical Conditions & Dietary Restrictions Selector]
+
+
+2. EXPLORING THE MAIN DASHBOARD
+-------------------------------
+* Dynamic Header:
+  - At the top of the dashboard, you are greeted by a personalized banner 
+    (e.g., "Hello, Affan!") alongside a dynamic calendar date switcher.
+
+* Calorie & Nutrition Ring:
+  - A prominent circular ring displays your calorie progress. It visualizes 
+    "Calories Logged" vs. your prescribed "Daily Caloric Budget".
+  - The center of the ring dynamically displays the remaining calories left 
+    for the current day.
+
+* Macronutrient Breakdown:
+  - Directly below the calorie ring, horizontal progress bars track the 
+    breakdown of Protein, Carbohydrates, and Fats consumed (in grams) against 
+    your daily macro targets.
+
+* Google Health Connect Integration:
+  - If enabled, the dashboard shows real-time physical telemetry synced from 
+    Google Health Connect: Steps taken, Active Calories burned, and Distance 
+    traveled.
+
+* Today's Meals Timeline:
+  - Shows a chronological list of meals logged today.
+  - Each item displays the food description, calculated calories, macro badge, 
+    and quick actions to Edit values or Delete the entry.
+
+* Hydration Tracker:
+  - Allows logging water intake with 1-tap logging chips (+250ml cup, +500ml 
+    bottle) or entering a custom amount.
+  - A circular blue ring tracks your hydration progress against your target.
+
+* Habit Score Card:
+  - Displays a rolling habit consistency rating out of 100 with active streak indicators to reward consecutive logging days.
+
+* Required Screenshots:
+  - [SCREENSHOT: Main Dashboard Overview / Active Calorie Ring]
+  - [SCREENSHOT: Hydration Tracker and Habit Streak Score Card]
+
+
+3. LOGGING MEALS WITH AI (ZERO-EFFORT NUTRITION)
+------------------------------------------------
+* Step-by-Step AI Meal Logging:
+  - Step 1: Open the app and tap the "Meals" tab in the bottom navigation bar 
+    (or tap the "+ Add Meal" shortcut button on the main dashboard).
+  - Step 2: In the natural language text field, describe what you ate. You can 
+    use English, Urdu, or mixed Roman-Urdu phrases (e.g., "1 plate Chicken 
+    Biryani and half glass Raita" or "2 Aloo Parathas with 1 cup Chai").
+  - Step 3: Select the Meal Category (Breakfast, Lunch, Dinner, or Snack).
+  - Step 4: (Optional) If you logged a common regional meal, tap any of the 
+    quick suggestion chips (e.g., "Egg & Roti", "Daal Chawal") to instantly 
+    pre-fill the field.
+  - Step 5: Tap "Log Meal with AI". The system queries Gemini, estimates 
+    nutritional metrics based on South Asian cuisine data, and displays the 
+    calculated macronutrients in a preview card.
+  - Step 6: Verify the details and tap "Confirm and Log". The meal is saved.
+
+* Editing and Correcting AI Values:
+  - If you need to override the AI's estimation, tap the "Edit Values" button 
+    on the preview card.
+  - Modify the calories, protein, carbs, or fats manually using the numerical 
+    input fields, then tap "Save Custom Log".
+
+* Required Screenshots:
+  - [SCREENSHOT: AI Meal Logging Text Entry Screen]
+  - [SCREENSHOT: AI Estimated Macronutrient Result & Edit Screen]
+
+
+4. INTERACTING WITH THE AI HEALTH COACH & VOICE ASSISTANT
+---------------------------------------------------------
+* AI Dietitian Chat:
+  - Tap the "Coach" tab to start a conversation with your AI Dietitian Coach.
+  - You can type questions in English or Urdu (e.g., "Explain how to manage 
+    hypertension with my diet" or "Suggest a high-protein dinner recipe").
+  - The AI dietitian processes your query against your profile metrics and 
+    medical conditions to return clinically-safe, bulleted markdown guides.
+
+* Text-to-Speech Language Playback:
+  - On any message returned by the AI Coach, tap the green 🔊 Speaker icon.
+  - The voice assistant will read the text aloud. The audio synthesizer 
+    dynamically switch pronunciations to read Urdu text in Urdu accent and 
+    English text in English accent.
+
+* Healthcare Clinic Quick Finder:
+  - In the AI Coach header, locate the red 🏥 Hospital icon.
+  - Tapping this icon instantly redirects you to the geospatial emergency 
+    clinic directory for fast access during health emergencies.
+
+* Required Screenshots:
+  - [SCREENSHOT: AI Health Coach Conversation Chat Screen]
+  - [SCREENSHOT: Text-to-Speech Language Playback Indicator]
+
+
+5. RAMADAN FASTING MODE
+-----------------------
+* Activating Ramadan Mode:
+  - Go to Settings or look at the top of the main dashboard.
+  - Locate the "Ramadan Fasting Mode" toggle and switch it ON. The dashboard 
+    will immediately update with crescent moon motifs, Islamic pattern borders, 
+    and specialized widgets.
+
+* Sehri & Iftar Timings:
+  - The dashboard displays a live countdown timer showing the hours, minutes, 
+    and seconds remaining until the next meal window (e.g., "Time until Iftar: 
+    3h 15m 12s" or "Time until Sehri: 5h 20m 00s").
+  - Timings are calculated automatically based on your GPS coordinates.
+
+* Ramadan Meal Logging:
+  - The standard Breakfast, Lunch, and Dinner slots are replaced by Sehri, 
+    Iftar, and Post-Taraweeh Snack meal categories.
+
+* Ramadan Paced Hydration:
+  - Because hydration is restricted to non-fasting hours, the water tracker 
+    presents quick-log buttons aligned with fasting schedules:
+    - "+500ml Iftar" (Fast Break Hydration)
+    - "+250ml Taraweeh" (During Prayer Hydration)
+    - "+500ml Sehri" (Pre-Fast Hydration)
+
+* Required Screenshots:
+  - [SCREENSHOT: Ramadan Mode Main Dashboard and Countdown Timer]
+  - [SCREENSHOT: Special Hydration Presets and Islamic Decorated Widgets]
+
+
+6. MANAGING FAMILY & DEPENDENT PROFILES
+---------------------------------------
+* Setting Up Dependent Profiles:
+  - Open the navigation menu and go to Settings -> Family Profiles.
+  - Tap "+ Add Family Member".
+  - Enter the family member's Name, select their Relationship (Child, Parent, 
+    Spouse, Sibling), and input their age, gender, height, and weight.
+  - Select their specific medical conditions and dietary restrictions.
+  - Select a custom avatar color to represent them, then tap "Save Profile".
+
+* Logging Meals for Dependents:
+  - When logging a meal, tap the profile dropdown menu (which defaults to 
+    "Myself") and select your family member's name.
+  - Input their meal description and tap "Log Meal with AI". The macros will 
+    be calculated based on their health profile and saved under their record.
+
+* Viewing Family Dashboard Telemetry:
+  - Open the profile selector at the top-left of the main dashboard.
+  - Tap the avatar of your child or parent.
+  - The main dashboard, calorie rings, step tracker, and timelines will 
+    instantly transition to display that specific family member's data.
+
+* Required Screenshots:
+  - [SCREENSHOT: Family Profile Management Panel]
+  - [SCREENSHOT: Active Dependent Calorie Ring & Dashboard View]
+
+
+7. EMERGENCY CLINIC & HOSPITAL FINDER
+-------------------------------------
+* Geolocation Emergency Querying:
+  - Go to Settings -> Nearby Clinics & Hospitals (or tap the Hospital icon 
+    in the Coach tab).
+  - Grant the app GPS location permission. The app queries the OpenStreetMap 
+    Overpass API to scan for medical centers.
+  - View the list of hospitals, clinics, and pharmacies sorted by proximity 
+    within a 5km to 15km radius.
+
+* Navigating to Facilities:
+  - Review the distance (in kilometers), phone contact link, and 24/7 
+    emergency indicators on each hospital card.
+  - Tap "Get Directions" on your chosen facility. The app instantly opens 
+    Google Maps with pre-populated turn-by-turn routing to guide you safely.
+
+* Required Screenshots:
+  - [SCREENSHOT: Nearby Clinics and Hospitals Map & Directory List]
+  - [SCREENSHOT: Navigation Directions Request Window]
+
+
+8. GROCERY LIST & WEEKLY HEALTH REPORT
+--------------------------------------
+* AI Smart Grocery List:
+  - Open Settings and tap "Smart Grocery List".
+  - The app aggregates your logged meals from the past 7 days, evaluates your 
+    macronutrient gaps, and compiles a categorized grocery list.
+  - The list recommends items in groups (Vitamins, Proteins, Grains) and 
+    flags items needed for your recommended healthy food swaps (e.g., listing 
+    whole-wheat flour to swap out white flour).
+
+* Exporting Weekly PDF Summaries:
+  - Open Settings and tap "Export Weekly Summary (PDF)".
+  - The app compiles your 7-day health metrics (average calorie intake, water 
+    totals, steps, active alerts, and AI dietitian comments) into a professional 
+    PDF document.
+  - Tap "Save PDF" to download it locally, print it, or share it with your doctor.
+
+* Required Screenshots:
+  - [SCREENSHOT: AI Smart Grocery List Categorized Display]
+  - [SCREENSHOT: Weekly Clinical PDF Health Report Output Preview]
+
+
+9. APP SETTINGS, LANGUAGE & ACCOUNT MANAGEMENT
+----------------------------------------------
+* Language Toggle:
+  - Open Settings and locate the Language section.
+  - Tap "Urdu" to instantly translate all menus, labels, and text fields into 
+    Urdu. Tap "English" to switch back.
+
+* System Theme Settings:
+  - Under Settings, locate the Theme selector.
+  - Toggle between Light Mode and Dark Mode. Dark Mode uses high-contrast dark 
+    backgrounds for optimal reading comfort and battery optimization.
+
+* Account Settings & Security:
+  - Change Password: Tap "Change Password", enter your current password, type 
+    your new password, and confirm to save.
+  - Account Deletion: Tap "Delete Account". Read the warning detailing that all 
+    records will be permanently removed. Enter your password and tap "Confirm 
+    Deletion" to purge all Supabase rows.
+
+* Required Screenshots:
+  - [SCREENSHOT: App Settings & Configuration Panel]
+  - [SCREENSHOT: Language Selection Options (English vs. Urdu)]
+
+
+10. PREDICTIVE AI COACHING & NUTRITIONAL SWAPS
+----------------------------------------------
+* Accessing Predictive Coaching:
+  - Tap the "Coaching" tab in the bottom navigation bar.
+  - This screen displays your algorithmic 7-day habit score and healthy food 
+    swap recommendations.
+
+* Habit Score Analysis:
+  - View your large consistency ring showing your score out of 100. A score of 
+    80+ indicates excellent compliance.
+  - Review the line chart illustrating your habit consistency over the past 
+    7 days to track your progress.
+
+* Recommended Food Swaps:
+  - The screen highlights specific food swaps compiled by Gemini based on your 
+    logged meals (e.g., recommending brown rice instead of white rice).
+  - Each food swap card lists the suggested healthier ingredient alongside a 
+    clinical explanation detailing how the swap improves your blood sugar, cholesterol, or blood pressure.
+
+* Required Screenshots:
+  - [SCREENSHOT: AI Coaching Dashboard showing Habit Score, 7-Day Consistency Chart, and Recommended Food Swaps]
+
+
+11. AI-GENERATED CLINICAL WORKOUT PLANS
+---------------------------------------
+* Viewing Daily Workouts:
+  - Tap the "Workout" tab in the bottom navigation bar.
+  - Tap "Generate Workout Plan" to have Gemini create a custom schedule based 
+    on your onboarding metrics and medical restrictions.
+  - Use the day-of-week tab bar selector at the top (Mon, Tue, Wed, etc.) to 
+    view the routine planned for each day.
+
+* Workout Walkthrough & Execution:
+  - View the overall focus of the day (e.g., "Strength", "Flexibility", "Rest").
+  - Tap the Warm-Up list to review warm-up routines.
+  - Swipe through the active exercise cards. Each card displays the exercise name, 
+    number of sets, target repetitions, rest interval, execution form tips, 
+    and clinical safety flags.
+  - As you complete each exercise, tap the circular checkbox to check it off. 
+    The progress bar at the top of the screen will update in real-time.
+  - Tap the Cool-Down list at the bottom to complete your cooldown stretch.
+
+* Regenerating Plans:
+  - If you switch to Ramadan Mode or update your medical profile, tap "Regenerate 
+    Workout" to recalculate your weekly training schedule to match your new state.
+
+* Required Screenshots:
+  - [SCREENSHOT: AI Workout Plan View with Daily Planner, Medical Advisories, and Interactive Exercise Cards]
+================================================================================
