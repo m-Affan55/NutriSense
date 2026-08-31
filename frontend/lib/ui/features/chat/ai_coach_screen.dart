@@ -739,9 +739,14 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
             ? mediaQuery.viewPadding.bottom
             : mediaQuery.padding.bottom;
         final keyboardHeight = mediaQuery.viewInsets.bottom;
+        // Dynamically match the floating nav bar height from MainNavigationScreen
+        // pill = 80dp (Urdu) / 68dp (English), margin = bottomInset+8 or 12
+        final navBarPillHeight = isUrdu ? 80.0 : 68.0;
+        final navBarBottomMargin = bottomInset > 0 ? (bottomInset + 8.0) : 12.0;
+        final navBarTotalHeight = navBarPillHeight + navBarBottomMargin;
         final inputBottomPadding = keyboardHeight > 0
-            ? (keyboardHeight + 10.0)
-            : (bottomInset + 88.0);
+            ? 10.0
+            : navBarTotalHeight;
 
         final title = isUrdu ? 'اے آئی غذائی کوچ' : 'AI Nutrition Coach';
         final subtitle = isUrdu ? 'آن لائن · مدد کے لیے تیار' : 'Online · Ready to help';
