@@ -491,6 +491,14 @@
         <span class="nav-num">8</span>
         <span>Deployment Diagram</span>
       </li>
+      <li class="nav-item" onclick="showDiagram(8)">
+        <span class="nav-num">9</span>
+        <span>AI Workout Flowchart</span>
+      </li>
+      <li class="nav-item" onclick="showDiagram(9)">
+        <span class="nav-num">10</span>
+        <span>AI Coaching & Swaps</span>
+      </li>
     </ul>
   </aside>
 
@@ -498,7 +506,7 @@
   <main class="main-content">
     <div class="top-bar">
       <div class="diagram-header">
-        <h2 id="diag-title">1. High-Level Layered Architecture</h2>
+        <h2 id="diag-title">Figure 01 : High-Level System Architecture Diagram</h2>
         <p id="diag-sub">Multi-tiered decoupled system architecture with vector shapes and clean typography.</p>
       </div>
 
@@ -515,8 +523,7 @@
       <div class="diagram-card active" id="card-0">
         <div class="a4-page" id="page-0">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">NutriSense High-Level Layered Architecture</h3>
-            <p style="font-size:12px; color:#64748B;">Decoupled 5-Tier Healthcare Architecture</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">Figure 01 : High-Level System Architecture Diagram</h3>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:14px;">
@@ -526,13 +533,15 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                 <span>Layer 1: Presentation Layer (Flutter 3.x Multi-Platform UI)</span>
               </div>
-              <div class="pill-grid">
+              <div class="pill-grid" style="grid-template-columns: repeat(4, 1fr);">
                 <div class="pill-card"><span class="pill-title">Dashboard</span><span class="pill-sub">Calorie Rings & Water</span></div>
                 <div class="pill-card"><span class="pill-title">AI Meal Logger</span><span class="pill-sub">Text & OCR Macros</span></div>
                 <div class="pill-card"><span class="pill-title">Clinical Coach</span><span class="pill-sub">Bilingual Voice & Chat</span></div>
                 <div class="pill-card"><span class="pill-title">Ramadan Tracker</span><span class="pill-sub">Fasting & Hydration</span></div>
                 <div class="pill-card"><span class="pill-title">Family Hub</span><span class="pill-sub">Multi-Profile Store</span></div>
                 <div class="pill-card"><span class="pill-title">Live Clinic Finder</span><span class="pill-sub">OSM Geocoding</span></div>
+                <div class="pill-card"><span class="pill-title">AI Workout Plan</span><span class="pill-sub">Personalized Routines</span></div>
+                <div class="pill-card"><span class="pill-title">Predictive Coaching</span><span class="pill-sub">Habit Score & Swaps</span></div>
               </div>
             </div>
 
@@ -547,11 +556,13 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 <span>Layer 2: Controller & State Management Layer</span>
               </div>
-              <div class="pill-grid" style="grid-template-columns: repeat(4, 1fr);">
+              <div class="pill-grid" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="pill-card"><span class="pill-title">FamilyViewModel</span><span class="pill-sub">Shared Profile State</span></div>
                 <div class="pill-card"><span class="pill-title">RamadanController</span><span class="pill-sub">Suhoor/Iftar Engine</span></div>
                 <div class="pill-card"><span class="pill-title">SyncService</span><span class="pill-sub">Background Queue</span></div>
                 <div class="pill-card"><span class="pill-title">ReminderManager</span><span class="pill-sub">Adaptive Streak Logic</span></div>
+                <div class="pill-card"><span class="pill-title">WorkoutService</span><span class="pill-sub">Exercise Planner</span></div>
+                <div class="pill-card"><span class="pill-title">SwapService</span><span class="pill-sub">Highlight Food Swaps</span></div>
               </div>
             </div>
 
@@ -566,11 +577,13 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C026D3" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                 <span>Layer 3: Backend API Gateway (FastAPI Python 3.11+)</span>
               </div>
-              <div class="pill-grid" style="grid-template-columns: repeat(4, 1fr);">
+              <div class="pill-grid" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="pill-card"><span class="pill-title">/api/v1/meals</span><span class="pill-sub">Search, Log & Barcode</span></div>
                 <div class="pill-card"><span class="pill-title">/api/v1/coach</span><span class="pill-sub">AI Clinical Chat & Triage</span></div>
                 <div class="pill-card"><span class="pill-title">/api/v1/family</span><span class="pill-sub">Dependent Records Store</span></div>
                 <div class="pill-card"><span class="pill-title">/api/v1/meals/report</span><span class="pill-sub">ReportLab PDF Engine</span></div>
+                <div class="pill-card"><span class="pill-title">/api/v1/workout</span><span class="pill-sub">Plan Gen & Refresh</span></div>
+                <div class="pill-card"><span class="pill-title">/api/v1/coaching</span><span class="pill-sub">Habit Score & Swaps</span></div>
               </div>
             </div>
 
@@ -604,9 +617,9 @@
                     <span class="pill-title">SQLite Local Database (app.db)</span>
                     <span class="pill-sub">Offline Cache & Pending Sync Queue (is_synced flag)</span>
                   </div>
-                  <div class="pill-card" style="text-align:left; align-items:flex-start; background:#EEF2FF; border-color:#C7D2FE;">
-                    <span class="pill-title" style="color:#3730A3;">Supabase PostgreSQL (Cloud)</span>
-                    <span class="pill-sub" style="color:#4F46E5;">JWT Auth & Row Level Security (RLS) policies</span>
+                  <div class="pill-card" style="text-align:left; align-items:flex-start;">
+                    <span class="pill-title">Supabase PostgreSQL (Cloud)</span>
+                    <span class="pill-sub">JWT Auth & Row Level Security (RLS) policies</span>
                   </div>
                 </div>
               </div>
@@ -624,8 +637,7 @@
       <div class="diagram-card" id="card-1">
         <div class="a4-page" id="page-1">
           <div style="text-align:center; margin-bottom: 24px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#2563EB; font-weight:700;">System UML Use Case Diagram</h3>
-            <p style="font-size:12px; color:#64748B;">Core Actors and Functional System Boundaries</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#2563EB; font-weight:700;">Figure 02 : Use Case Diagram</h3>
           </div>
 
           <div style="display:grid; grid-template-columns: 170px 1fr 170px; gap: 20px; align-items: center;">
@@ -659,6 +671,8 @@
                 <div class="pill-card" style="border-radius:20px; border-color:#DC2626; padding:8px 12px;"><span style="font-size:11px; font-weight:600; color:#991B1B;">UC6: Search Emergency Clinics</span></div>
                 <div class="pill-card" style="border-radius:20px; border-color:#4F46E5; padding:8px 12px;"><span style="font-size:11px; font-weight:600; color:#3730A3;">UC7: Sync Google Health Connect</span></div>
                 <div class="pill-card" style="border-radius:20px; border-color:#0891B2; padding:8px 12px;"><span style="font-size:11px; font-weight:600; color:#155E75;">UC8: Export Weekly PDF Report</span></div>
+                <div class="pill-card" style="border-radius:20px; border-color:#10B981; padding:8px 12px;"><span style="font-size:11px; font-weight:600; color:#0f766e;">UC10: AI Personalized Workout Plan</span></div>
+                <div class="pill-card" style="border-radius:20px; border-color:#7C3AED; padding:8px 12px;"><span style="font-size:11px; font-weight:600; color:#6d28d9;">UC11: Habits Score & Food Swaps</span></div>
                 <div class="pill-card" style="border-radius:20px; border-color:#475569; padding:8px 12px; grid-column: span 2;"><span style="font-size:11px; font-weight:600; color:#1E293B;">UC9: Offline Meal Logging & Auto-Sync Engine</span></div>
               </div>
             </div>
@@ -690,8 +704,7 @@
       <div class="diagram-card" id="card-2">
         <div class="a4-page" id="page-2">
           <div style="text-align:center; margin-bottom: 24px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#0284C7; font-weight:700;">Entity-Relationship Diagram (100% Supabase Schema)</h3>
-            <p style="font-size:12px; color:#64748B;">Complete PostgreSQL Database Design with Exact Tables, Types, and Relational Constraints</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#0284C7; font-weight:700;">Figure 03 : Entity-Relationship Diagram</h3>
           </div>
 
           <div class="erd-wrapper" id="erd-container">
@@ -988,8 +1001,7 @@
       <div class="diagram-card" id="card-3">
         <div class="a4-page" id="page-3">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">AI Meal Logging & Macro Estimation Flowchart</h3>
-            <p style="font-size:12px; color:#64748B;">End-to-End Request, Processing, and Offline-First Execution Pipeline</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">Figure 04 : AI Meal Logging & Macro Estimation Flowchart</h3>
           </div>
 
           <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
@@ -1053,8 +1065,7 @@
       <div class="diagram-card" id="card-4">
         <div class="a4-page" id="page-4">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#D97706; font-weight:700;">Gemini Multi-Key Failover Flowchart</h3>
-            <p style="font-size:12px; color:#64748B;">High-Availability Rate-Limit (HTTP 429) Automatic Fallback Architecture</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#D97706; font-weight:700;">Figure 05 : Gemini Multi-Key Failover Flowchart</h3>
           </div>
 
           <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
@@ -1112,8 +1123,7 @@
       <div class="diagram-card" id="card-5">
         <div class="a4-page" id="page-5">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#2563EB; font-weight:700;">UML Software Component Diagram</h3>
-            <p style="font-size:12px; color:#64748B;">Client Subsystems, Backend Microservices, and Infrastructure Data Interfaces</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#2563EB; font-weight:700;">Figure 06 : Software Component Diagram</h3>
           </div>
 
           <div class="erd-wrapper" id="cmp-container" style="min-height: 520px;">
@@ -1126,7 +1136,6 @@
                 <marker id="cmp-arrow-green" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M 0 1 L 10 5 L 0 9 z" fill="#059669" />
                 </marker>
-              </defs>
             </svg>
 
             <!-- 3 Columns Layout -->
@@ -1152,6 +1161,20 @@
                     <span class="pill-title">Sync Engine (SQLite)</span>
                     <span class="pill-sub">Offline Cache & Background Queue</span>
                     <div class="anchor-port anchor-right" id="p-cmp-sync-out"></div>
+                  </div>
+
+                  <div class="pill-card" id="cmp-workout-svc" style="text-align:left; align-items:flex-start; position:relative;">
+                    <span style="font-size:9.5px; color:#2563EB; font-weight:700;">&lt;&lt;component&gt;&gt;</span>
+                    <span class="pill-title">Workout Service</span>
+                    <span class="pill-sub">Weekly Schedule & Completion</span>
+                    <div class="anchor-port anchor-right" id="p-cmp-workout-out"></div>
+                  </div>
+
+                  <div class="pill-card" id="cmp-swap-svc" style="text-align:left; align-items:flex-start; position:relative;">
+                    <span style="font-size:9.5px; color:#2563EB; font-weight:700;">&lt;&lt;component&gt;&gt;</span>
+                    <span class="pill-title">Swap Service</span>
+                    <span class="pill-sub">Highlight Health Food Swaps</span>
+                    <div class="anchor-port anchor-right" id="p-cmp-swap-out"></div>
                   </div>
 
                   <div class="pill-card" id="cmp-voice" style="text-align:left; align-items:flex-start; position:relative;">
@@ -1191,6 +1214,22 @@
                     <span class="pill-sub">Bilingual Chat & Health Consult</span>
                     <div class="anchor-port anchor-left" id="p-cmp-coach-in"></div>
                     <div class="anchor-port anchor-right" id="p-cmp-coach-out"></div>
+                  </div>
+
+                  <div class="pill-card" id="cmp-workout-gen" style="text-align:left; align-items:flex-start; position:relative;">
+                    <span style="font-size:9.5px; color:#059669; font-weight:700;">&lt;&lt;service&gt;&gt;</span>
+                    <span class="pill-title">Workout Generator</span>
+                    <span class="pill-sub">Clinical Routine Planner</span>
+                    <div class="anchor-port anchor-left" id="p-cmp-workout-in"></div>
+                    <div class="anchor-port anchor-right" id="p-cmp-workout-out"></div>
+                  </div>
+
+                  <div class="pill-card" id="cmp-coaching-eng" style="text-align:left; align-items:flex-start; position:relative;">
+                    <span style="font-size:9.5px; color:#059669; font-weight:700;">&lt;&lt;service&gt;&gt;</span>
+                    <span class="pill-title">Coaching & Swaps Engine</span>
+                    <span class="pill-sub">Habit Score & Alternatives</span>
+                    <div class="anchor-port anchor-left" id="p-cmp-coaching-in"></div>
+                    <div class="anchor-port anchor-right" id="p-cmp-coaching-out"></div>
                   </div>
 
                   <div class="pill-card" id="cmp-pool-svc" style="text-align:left; align-items:flex-start; position:relative;">
@@ -1247,7 +1286,7 @@
                 </div>
               </div>
 
-            </div>
+            </div> </div>
           </div>
         </div>
         <div class="doc-caption">
@@ -1261,8 +1300,7 @@
       <div class="diagram-card" id="card-6">
         <div class="a4-page" id="page-6">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">State Machine: Offline-First Synchronization</h3>
-            <p style="font-size:12px; color:#64748B;">Connectivity Stream Lifecycle and Resilient Data Queueing</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#059669; font-weight:700;">Figure 07 : State Machine: Offline-First Synchronization</h3>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
@@ -1312,25 +1350,24 @@
       <div class="diagram-card" id="card-7">
         <div class="a4-page" id="page-7">
           <div style="text-align:center; margin-bottom: 20px;">
-            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#475569; font-weight:700;">Physical & Cloud Deployment Diagram</h3>
-            <p style="font-size:12px; color:#64748B;">Hardware Client Nodes, Containerized Cloud Backend, and AI Web Endpoints</p>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#475569; font-weight:700;">Figure 08 : Physical & Cloud Deployment Diagram</h3>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:16px;">
-            <!-- Node 1: Mobile -->
+            <!-- Node 1: Client Hardware & Hosting -->
             <div class="layer-box" style="background:#EFF6FF; border-color:#2563EB;">
               <div class="layer-header" style="color:#1E40AF;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
-                <span>Node 1: Client Hardware Tier (Android & iOS Devices)</span>
+                <span>Node 1: Client Tier (Android & Web Platforms)</span>
               </div>
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                 <div class="pill-card" style="text-align:left; align-items:flex-start;">
-                  <span class="pill-title">Android Device (API 26-36)</span>
-                  <span class="pill-sub">NutriSense Flutter APK • SQLite (app.db) • Google Health Connect</span>
+                  <span class="pill-title">Android Device (APK)</span>
+                  <span class="pill-sub">GitHub Release (NutriSense v1.0.0) • SQLite (app.db) • Google Health Connect Sync</span>
                 </div>
                 <div class="pill-card" style="text-align:left; align-items:flex-start;">
-                  <span class="pill-title">Apple iOS Device (iOS 15+)</span>
-                  <span class="pill-sub">NutriSense Flutter IPA • SQLite (app.db) • HealthKit Framework</span>
+                  <span class="pill-title">Web Browser Client</span>
+                  <span class="pill-sub">Vercel Web App Hosting • HTML5 LocalStorage • API Network Core</span>
                 </div>
               </div>
             </div>
@@ -1389,19 +1426,135 @@
         </div>
       </div>
 
+      <!-- =========================================================================
+           FIGURE 9: AI WORKOUT PLAN FLOWCHART
+           ========================================================================= -->
+      <div class="diagram-card" id="card-8">
+        <div class="a4-page" id="page-8">
+          <div style="text-align:center; margin-bottom: 20px;">
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#10B981; font-weight:700;">Figure 09 : AI Workout Plan Sequence Diagram</h3>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="flow-node" style="border-color:#2563EB; width:460px; background:#EFF6FF;">
+              <span class="flow-step-pill" style="background:#2563EB;">1</span>
+              <strong>User Trigger:</strong> User clicks <em>"Generate Workout Plan"</em> on Workout tab.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; width:460px; background:#ECFDF5;">
+              <span class="flow-step-pill" style="background:#059669;">2</span>
+              <strong>Backend Query:</strong> Fetches user age, weight, target fitness goal, and medical restrictions (e.g., Hypertension, PCOS, Diabetes) from Supabase.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#D97706; width:460px; background:#FFFBEB;">
+              <span class="flow-step-pill" style="background:#D97706;">3</span>
+              <strong>AI Plan Generation:</strong> Gemini LLM synthesizes a weekly schedule containing custom warm-ups, specific exercises (sets, reps, rest, safety cues), and cool-downs matching the clinical profile.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; width:460px; background:#ECFDF5;">
+              <span class="flow-step-pill" style="background:#059669;">4</span>
+              <strong>Database & Cache Storage:</strong> Workout schema saved to Supabase Cloud and cached locally in SQLite.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#C026D3; width:460px; background:#FDF4FF;">
+              <span class="flow-step-pill" style="background:#C026D3;">5</span>
+              <strong>Execution Logging:</strong> User checks off completed exercises. Flutter triggers <code>toggleExerciseCompletion</code> locally and updates Supabase.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#C026D3" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; background:#059669; color:white; text-align:center; font-weight:700; width:460px;">
+              ✓ Workout Screen Rendered with Interactive Progress & Safety Advisories
+            </div>
+          </div>
+        </div>
+        <div class="doc-caption">
+          <strong>Figure 9: AI Workout Plan Sequence & Execution Flowchart.</strong> Visualizes how profile details are retrieved, processed by Gemini, stored, and updated interactively during exercise execution.
+        </div>
+      </div>
+
+      <!-- =========================================================================
+           FIGURE 10: PREDICTIVE AI COACHING & SWAPS DATA FLOW
+           ========================================================================= -->
+      <div class="diagram-card" id="card-9">
+        <div class="a4-page" id="page-9">
+          <div style="text-align:center; margin-bottom: 20px;">
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#7C3AED; font-weight:700;">Figure 10 : Predictive AI Coaching & Recommended Swaps Data Flow</h3>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="flow-node" style="border-color:#2563EB; width:460px; background:#EFF6FF;">
+              <span class="flow-step-pill" style="background:#2563EB;">1</span>
+              <strong>Data Aggregation:</strong> SyncService pushes local meal logs to Cloud DB.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#7C3AED; width:460px; background:#F5F3FF;">
+              <span class="flow-step-pill" style="background:#7C3AED;">2</span>
+              <strong>Habit Scoring Engine:</strong> FastAPI `/coaching/habit-score/{user_id}` computes 7-day intake metrics (macro balances, timing consistency).
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#D97706; width:460px; background:#FFFBEB;">
+              <span class="flow-step-pill" style="background:#D97706;">3</span>
+              <strong>Food Swap Analyzer:</strong> POST request sent to `/coaching/food-swaps` sending today's meals. Gemini evaluates dietary targets.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-diamond" style="width:340px;">
+              Healthy Swaps Needed?
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; width:100%; max-width:650px;">
+              <div class="flow-node" style="border-color:#059669; background:#ECFDF5; text-align:center;">
+                <span class="flow-step-pill" style="background:#059669; border-radius:12px; width:auto; padding:3px 10px; display:inline-flex; align-items:center; justify-content:center; height:auto; margin-bottom:6px;">✓ Yes</span>
+                <p style="font-size:11px; color:#065F46; margin-top:4px;">Gemini proposes healthy alternatives (e.g., whole grains instead of white rice) and explains the clinical reason.</p>
+              </div>
+
+              <div class="flow-node" style="border-color:#64748B; background:#F8FAFC; text-align:center;">
+                <span class="flow-step-pill" style="background:#64748B; border-radius:12px; width:auto; padding:3px 10px; display:inline-flex; align-items:center; justify-content:center; height:auto; margin-bottom:6px;">✗ No</span>
+                <p style="font-size:11px; color:#334155; margin-top:4px;">Displays "No swaps needed yet today" message. Encourages user to maintain high score.</p>
+              </div>
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#7C3AED; background:#7C3AED; color:white; text-align:center; font-weight:700; width:460px;">
+              ✓ Render AI Coaching Panel with Habit Score, 7-Day Trend Chart & Swaps
+            </div>
+          </div>
+        </div>
+        <div class="doc-caption">
+          <strong>Figure 10: Predictive AI Coaching & Recommended Swaps Data Flow.</strong> Processing workflow mapping meal logs to consistency scores and generating alternative healthy ingredients with explanations.
+        </div>
+      </div>
+
     </div>
   </main>
 
   <script>
     const diagTitles = [
-      { title: "1. High-Level Layered Architecture", sub: "Multi-tiered decoupled system architecture with vector shapes and clean typography." },
-      { title: "2. System UML Use Case Diagram", sub: "Human actors, automated AI services, and functional use cases within the system boundary." },
-      { title: "3. Entity-Relationship Diagram (100% Supabase Schema)", sub: "Crow's foot relational database schema linking auth.users, profiles, and all child entities." },
-      { title: "4. AI Meal Logging & Macro Estimation Flowchart", sub: "Step-by-step flowchart pipeline from food prompt to AI macro extraction and offline sync." },
-      { title: "5. Gemini Multi-Key Failover Flowchart", sub: "High-availability rate limit handling (HTTP 429) with automatic key rotation." },
-      { title: "6. Software Component Diagram", sub: "Modular client packages, backend microservices, and external cloud interfaces." },
-      { title: "7. State Machine: Offline-First Synchronization", sub: "State transitions for network disconnections, SQLite queues, and background cloud sync." },
-      { title: "8. Physical & Cloud Deployment Diagram", sub: "Hardware nodes, Dockerized FastAPI containers, Supabase Cloud and Gemini endpoints." }
+      { title: "Figure 01 : High-Level System Architecture Diagram", sub: "Multi-tiered decoupled system architecture with vector shapes and clean typography." },
+      { title: "Figure 02 : Use Case Diagram", sub: "Human actors, automated AI services, and functional use cases within the system boundary." },
+      { title: "Figure 03 : Entity-Relationship Diagram", sub: "Crow's foot relational database schema linking auth.users, profiles, and all child entities." },
+      { title: "Figure 04 : AI Meal Logging & Macro Estimation Flowchart", sub: "Step-by-step flowchart pipeline from food prompt to AI macro extraction and offline sync." },
+      { title: "Figure 05 : Gemini Multi-Key Failover Flowchart", sub: "High-availability rate limit handling (HTTP 429) with automatic key rotation." },
+      { title: "Figure 06 : Software Component Diagram", sub: "Modular client packages, backend microservices, and external cloud interfaces." },
+      { title: "Figure 07 : State Machine: Offline-First Synchronization", sub: "State transitions for network disconnections, SQLite queues, and background cloud sync." },
+      { title: "Figure 08 : Physical & Cloud Deployment Diagram", sub: "Hardware nodes, Dockerized FastAPI containers, Supabase Cloud and Gemini endpoints." },
+      { title: "Figure 09 : AI Workout Plan Sequence Diagram", sub: "Clinical profile-tailored exercise routines generation and completion logging." },
+      { title: "Figure 10 : Predictive AI Coaching & Recommended Swaps Data Flow", sub: "Habit score processing loop and contextual healthy food swap mapping." }
     ];
 
     let currentIdx = 0;
@@ -1540,12 +1693,19 @@
       // Connect Client to Application Services
       connectCmp('p-cmp-ui-out', 'p-cmp-meal-in', '#2563EB', 'cmp-arrow');
       connectCmp('p-cmp-ui-out', 'p-cmp-coach-in', '#2563EB', 'cmp-arrow');
+      connectCmp('p-cmp-ui-out', 'p-cmp-workout-in', '#2563EB', 'cmp-arrow');
+      connectCmp('p-cmp-ui-out', 'p-cmp-coaching-in', '#2563EB', 'cmp-arrow');
       connectCmp('p-cmp-sync-out', 'p-cmp-supabase-in', '#2563EB', 'cmp-arrow');
       connectCmp('p-cmp-ramadan-out', 'p-cmp-osm-in', '#2563EB', 'cmp-arrow');
+      connectCmp('p-cmp-workout-out', 'p-cmp-workout-in', '#2563EB', 'cmp-arrow');
+      connectCmp('p-cmp-swap-out', 'p-cmp-coaching-in', '#2563EB', 'cmp-arrow');
 
       // Connect Application Services to Infrastructure
       connectCmp('p-cmp-meal-out', 'p-cmp-pool-in', '#059669', 'cmp-arrow-green');
       connectCmp('p-cmp-coach-out', 'p-cmp-pool-in', '#059669', 'cmp-arrow-green');
+      connectCmp('p-cmp-workout-out', 'p-cmp-pool-in', '#059669', 'cmp-arrow-green');
+      connectCmp('p-cmp-coaching-out', 'p-cmp-pool-in', '#059669', 'cmp-arrow-green');
+      connectCmp('p-cmp-coaching-out', 'p-cmp-supabase-in', '#059669', 'cmp-arrow-green');
       connectCmp('p-cmp-meal-out', 'p-cmp-off-in', '#059669', 'cmp-arrow-green');
       connectCmp('p-cmp-pool-out', 'p-cmp-gemini-in', '#059669', 'cmp-arrow-green');
     }

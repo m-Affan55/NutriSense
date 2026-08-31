@@ -1,0 +1,76 @@
+================================================================================
+                    NUTRISENSE - DIAGRAM EXPLANATORY POINTS
+================================================================================
+This file contains the replacement bullet points (3-5 points per diagram) for 
+all 10 software engineering diagrams of the NutriSense system.
+--------------------------------------------------------------------------------
+
+Figure 01 : High-Level System Architecture Diagram
+- Tiered Decoupling: The system is structured into 5 isolated tiers (Presentation, Controller, Gateway, AI/Microservices, and Persistence) to maintain clean separation of concerns.
+- Reactive Data Binding: The Presentation layer (Flutter UI) communicates with the Controller layer using ViewModels and change notifier listeners, ensuring zero-latency interface updates.
+- Central API Routing: The Controller tier sends queries through a network client to FastAPI server endpoints, which serve as the unified gatekeeper for business logic.
+- Asynchronous Services: The Backend server coordinates external integrations (Gemini AI, OpenStreetMap, and OpenFoodFacts) asynchronously without blocking database transactions.
+- Dual-Database Persistence: Write actions are committed locally to a SQLite mobile database and mirrored securely in a remote Supabase PostgreSQL cloud database.
+
+Figure 02 : Use Case Diagram
+- Actor Classifications: The system separates human actors (Primary Users and Family Dependents) from automated system actors (AI Health Coach and Emergency Map Services).
+- Primary Workflows: Primary Users can execute core use cases such as log meals, consult the AI Coach, enable fasting mode, and switch profiles to track children or parents.
+- AI Coach Interactions: The AI Clinical Coach initiates active use cases like symptom triage, alert escalations, and Urdu/English text-to-speech voice guidance.
+- System Boundaries: Integrations like Google Health Connect (for health sync) and OpenStreetMap (for clinic routing) are modeled outside the primary application boundary.
+- Offline Operations: Use cases explicitly define the transition between offline-capable caching and background synchronizations when connectivity is restored.
+
+Figure 03 : Entity-Relationship Diagram
+- Strict Authorization: The database schema anchors all tables to the core `users` authentication entity, securing data rows with PostgreSQL Row-Level Security (RLS).
+- 1-to-1 Profile Mapping: The `health_profiles` table maintains a 1-to-1 relationship with `users` to store clinical metrics, medical conditions, and allergy rules.
+- 1-to-N Household Hierarchies: The primary user's account links to a child `family_members` table to allow tracking dependents with isolated calorie and allergy thresholds.
+- Transactional Event Logs: Tables for `meal_logs`, `water_logs`, and `chat_history` store discrete logged events with timestamps, foreign keys, and synchronization markers.
+- Algorithmic Score tracking: The `habit_scores` table tracks rolling 30-day nutrition scores and tracking streak milestones to drive user behavior consistency.
+
+Figure 04 : AI Meal Logging & Macro Estimation Flowchart
+- Conversational Prompt Capture: The user enters a natural language meal text (e.g., '1 plate Daal Chawal with salad') which is sent directly to the FastAPI server.
+- Prompt Grounding: FastAPI passes the query to the Gemini Flash model, grounded with South Asian food dictionaries, portion metrics, and cooking styles.
+- Structured JSON Estimation: Gemini outputs a validated JSON payload containing the calorie count, portions, protein, fats, and carbs.
+- Instant Local Commit: On user confirmation, the Flutter app instantly saves the entry in the local SQLite table (`is_synced = false`) to refresh UI rings instantly.
+- Background Data Mirror: A background sync worker uploads the meal log to Supabase in a transaction and switches the SQLite sync flag to `true`.
+
+Figure 05 : Gemini Multi-Key Failover Flowchart
+- Quota Rate-Limit Monitoring: The server monitors outbound Gemini API requests and intercepts rate-limiting exceptions (HTTP 429 Error).
+- Automated Key Interception: When a rate-limit error is caught, the Uvicorn gateway blocks standard flow and triggers the thread-safe `GeminiPool` key rotation.
+- Redacted Key Switching: The pool rotates the pointer to the next valid key index, automatically redacting and masking API keys inside the backend console logs.
+- Transparent Client Retries: The API server transparently resends the inference request using the new rotated key, completing the transaction in less than 500ms.
+- High Availability: The round-robin key failover pool ensures uninterrupted clinical chat, macro estimation, and workout planning with zero user-facing downtime.
+
+Figure 06 : Software Component Diagram
+- Modular Client Subsystems: The frontend Flutter application separates UI modules, Local Caching Services, state Controllers, and the Speech TTS Engine.
+- Stateless Backend Endpoints: The FastAPI backend acts as a stateless coordinator using distinct routers for auth, meal logging, clinical coaching, and PDF reports.
+- External Integration Connectors: Unified interfaces decouple the core backend code from third-party services like OpenStreetMap geocoding and the OpenFoodFacts database.
+- Database Bridges: SQLite database services (client-side) and Supabase Client APIs (cloud-side) are encapsulated to allow backend or storage modifications without UI changes.
+- Integration Interface Contracts: Component adapters enforce strict JSON contracts for all communication, making backend testing and upgrades straightforward.
+
+Figure 07 : State Machine: Offline-First Synchronization
+- Initial Sync State: The application starts in an Idle state, actively listening to local inputs and monitoring network status streams.
+- Event Capture: When a user logs meals, water, or workouts, the app checks the current network state before deciding the data routing path.
+- Resilient Offline Path: If offline, the transaction is logged to SQLite with `is_synced = false`, and a visual "saved offline" message is displayed.
+- Auto-Reconnect Sync: A connectivity stream listener detects when the network is restored and immediately triggers a background worker thread.
+- Supabase Push: The worker batch-uploads pending records, handles synchronization conflicts, and updates local rows as fully synchronized (`is_synced = true`).
+
+Figure 08 : Physical & Cloud Deployment Diagram
+- Multi-Platform Client Runtimes: Clients run natively on Android devices (downloaded via GitHub Releases v1.0.0) or in modern web browsers (hosted on Vercel).
+- Containerized REST Nodes: The FastAPI server runs in a containerized environment (hosted on Render / GCP) with Uvicorn ASGI servers handling client requests.
+- Database Cloud Layer: Supabase runs on a managed cloud container hosting PostgreSQL, executing Row-Level Security policies and secure JSON Web Token verification.
+- Protected Server Gateways: Cloudflare SSL edges secure the server nodes, shielding Uvicorn ASGI backends from DDoS attacks and unauthorized network requests.
+- AI Cloud Endpoints: Outbound API gateways handle secure connections to the Google GenAI Cloud for high-throughput Gemini model executions.
+
+Figure 09 : AI Workout Plan Sequence Diagram
+- Interactive Request Event: The user clicks the plan generation button in the app, initiating an asynchronous request to the backend `/workout/plan` endpoint.
+- Medical & Target Profile Lookup: The FastAPI server queries Supabase to retrieve age, weight, target goal, and active medical restrictions (e.g., Hypertension or Diabetes).
+- Clinical Routine Synthesis: The Gemini model parses user targets and restrictions to generate a balanced 7-day schedule with safety alerts and warm-ups.
+- Double-Database Caching: The generated workout plan is saved in Supabase PostgreSQL and cached locally in the client SQLite database.
+- Execution Checklist State: The user reviews exercises on the Workout tab and checks them off, syncing completion progress instantly between local and cloud databases.
+
+Figure 10 : Predictive AI Coaching & Recommended Swaps Data Flow
+- Nutrition Telemetry Sync: The SyncService uploads all meal logs to Supabase, making the raw meal history available for rolling telemetry calculations.
+- Habit Ring Calculation: FastAPI `/coaching/habit-score` processes 7-day intake data to calculate calorie consistency, macro balances, and logging streaks.
+- Gemini Food Swap Inspection: Today's meal logs are analyzed by Gemini to search for high-glycemic or unhealthy items that conflict with the user's goals.
+- Clinical Swap Generation: If violations are found, Gemini generates healthy South Asian swaps (e.g., brown rice for white rice) along with detailed clinical justifications.
+- Dashboard Render: The frontend UI receives the scores and swap cards, updating habit rings, trend charts, and healthy swap recommendations in the Coaching panel.
