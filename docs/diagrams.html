@@ -491,6 +491,14 @@
         <span class="nav-num">8</span>
         <span>Deployment Diagram</span>
       </li>
+      <li class="nav-item" onclick="showDiagram(8)">
+        <span class="nav-num">9</span>
+        <span>AI Workout Flowchart</span>
+      </li>
+      <li class="nav-item" onclick="showDiagram(9)">
+        <span class="nav-num">10</span>
+        <span>AI Coaching & Swaps</span>
+      </li>
     </ul>
   </aside>
 
@@ -1389,6 +1397,122 @@
         </div>
       </div>
 
+      <!-- =========================================================================
+           FIGURE 9: AI WORKOUT PLAN FLOWCHART
+           ========================================================================= -->
+      <div class="diagram-card" id="card-8">
+        <div class="a4-page" id="page-8">
+          <div style="text-align:center; margin-bottom: 20px;">
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#10B981; font-weight:700;">AI Workout Plan Sequence & Execution Flowchart</h3>
+            <p style="font-size:12px; color:#64748B;">Personalized Physical Training Protocol Generation and Progress Logging</p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="flow-node" style="border-color:#2563EB; width:460px; background:#EFF6FF;">
+              <span class="flow-step-pill" style="background:#2563EB;">1</span>
+              <strong>User Trigger:</strong> User clicks <em>"Generate Workout Plan"</em> on Workout tab.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; width:460px; background:#ECFDF5;">
+              <span class="flow-step-pill" style="background:#059669;">2</span>
+              <strong>Backend Query:</strong> Fetches user age, weight, target fitness goal, and medical restrictions (e.g., Hypertension, PCOS, Diabetes) from Supabase.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#D97706; width:460px; background:#FFFBEB;">
+              <span class="flow-step-pill" style="background:#D97706;">3</span>
+              <strong>AI Plan Generation:</strong> Gemini LLM synthesizes a weekly schedule containing custom warm-ups, specific exercises (sets, reps, rest, safety cues), and cool-downs matching the clinical profile.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; width:460px; background:#ECFDF5;">
+              <span class="flow-step-pill" style="background:#059669;">4</span>
+              <strong>Database & Cache Storage:</strong> Workout schema saved to Supabase Cloud and cached locally in SQLite.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#C026D3; width:460px; background:#FDF4FF;">
+              <span class="flow-step-pill" style="background:#C026D3;">5</span>
+              <strong>Execution Logging:</strong> User checks off completed exercises. Flutter triggers <code>toggleExerciseCompletion</code> locally and updates Supabase.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#C026D3" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#059669; background:#059669; color:white; text-align:center; font-weight:700; width:460px;">
+              ✓ Workout Screen Rendered with Interactive Progress & Safety Advisories
+            </div>
+          </div>
+        </div>
+        <div class="doc-caption">
+          <strong>Figure 9: AI Workout Plan Sequence & Execution Flowchart.</strong> Visualizes how profile details are retrieved, processed by Gemini, stored, and updated interactively during exercise execution.
+        </div>
+      </div>
+
+      <!-- =========================================================================
+           FIGURE 10: PREDICTIVE AI COACHING & SWAPS DATA FLOW
+           ========================================================================= -->
+      <div class="diagram-card" id="card-9">
+        <div class="a4-page" id="page-9">
+          <div style="text-align:center; margin-bottom: 20px;">
+            <h3 style="font-family:'Outfit',sans-serif; font-size:18px; color:#7C3AED; font-weight:700;">Predictive AI Coaching & Food Swaps Data Flow</h3>
+            <p style="font-size:12px; color:#64748B;">Rolling 7-Day Consistency Processing and Nutritional Optimization Mechanism</p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div class="flow-node" style="border-color:#2563EB; width:460px; background:#EFF6FF;">
+              <span class="flow-step-pill" style="background:#2563EB;">1</span>
+              <strong>Data Aggregation:</strong> SyncService pushes local meal logs to Cloud DB.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#7C3AED; width:460px; background:#F5F3FF;">
+              <span class="flow-step-pill" style="background:#7C3AED;">2</span>
+              <strong>Habit Scoring Engine:</strong> FastAPI `/coaching/habit-score/{user_id}` computes 7-day intake metrics (macro balances, timing consistency).
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#D97706; width:460px; background:#FFFBEB;">
+              <span class="flow-step-pill" style="background:#D97706;">3</span>
+              <strong>Food Swap Analyzer:</strong> POST request sent to `/coaching/food-swaps` sending today's meals. Gemini evaluates dietary targets.
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-diamond" style="width:340px;">
+              Healthy Swaps Needed?
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; width:100%; max-width:650px;">
+              <div class="flow-node" style="border-color:#059669; background:#ECFDF5; text-align:center;">
+                <span class="flow-step-pill" style="background:#059669;">✓ Yes</span>
+                <p style="font-size:11px; color:#065F46; margin-top:4px;">Gemini proposes healthy alternatives (e.g., whole grains instead of white rice) and explains the clinical reason.</p>
+              </div>
+
+              <div class="flow-node" style="border-color:#64748B; background:#F8FAFC; text-align:center;">
+                <span class="flow-step-pill" style="background:#64748B;">✗ No</span>
+                <p style="font-size:11px; color:#334155; margin-top:4px;">Displays "No swaps needed yet today" message. Encourages user to maintain high score.</p>
+              </div>
+            </div>
+
+            <svg width="18" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+
+            <div class="flow-node" style="border-color:#7C3AED; background:#7C3AED; color:white; text-align:center; font-weight:700; width:460px;">
+              ✓ Render AI Coaching Panel with Habit Score, 7-Day Trend Chart & Swaps
+            </div>
+          </div>
+        </div>
+        <div class="doc-caption">
+          <strong>Figure 10: Predictive AI Coaching & Recommended Swaps Data Flow.</strong> Processing workflow mapping meal logs to consistency scores and generating alternative healthy ingredients with explanations.
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -1401,7 +1525,9 @@
       { title: "5. Gemini Multi-Key Failover Flowchart", sub: "High-availability rate limit handling (HTTP 429) with automatic key rotation." },
       { title: "6. Software Component Diagram", sub: "Modular client packages, backend microservices, and external cloud interfaces." },
       { title: "7. State Machine: Offline-First Synchronization", sub: "State transitions for network disconnections, SQLite queues, and background cloud sync." },
-      { title: "8. Physical & Cloud Deployment Diagram", sub: "Hardware nodes, Dockerized FastAPI containers, Supabase Cloud and Gemini endpoints." }
+      { title: "8. Physical & Cloud Deployment Diagram", sub: "Hardware nodes, Dockerized FastAPI containers, Supabase Cloud and Gemini endpoints." },
+      { title: "9. AI Workout Plan Sequence Diagram", sub: "Clinical profile-tailored exercise routines generation and completion logging." },
+      { title: "10. Predictive AI Coaching & Recommended Swaps Data Flow", sub: "Habit score processing loop and contextual healthy food swap mapping." }
     ];
 
     let currentIdx = 0;
