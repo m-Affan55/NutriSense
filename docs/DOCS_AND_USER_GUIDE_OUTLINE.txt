@@ -79,6 +79,10 @@ PART 1: TECHNICAL PROJECT DETAIL DOCUMENT (SOFTWARE SPECIFICATION & ARCHITECTURE
      - States: Network Available vs Network Disconnected -> Write to SQLite (Pending) -> Network Listener Detects Online -> Background SyncWorker Triggered -> Push to Supabase -> Mark Row as Synced.
    * Diagram 8: Deployment Diagram
      - Hardware & Cloud Nodes: Mobile Device (Flutter APK / iOS), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
+   * Diagram 9: AI Workout Plan Sequence Diagram
+     - Flow: User requests plan -> Backend queries Profile & Medical Conditions -> Gemini synthesizes daily routines -> Exercises, warm-up/cool-down, safety notes, form tips created -> Saved to Supabase -> Stored in local cache -> Loaded in Workout Screen.
+   * Diagram 10: Predictive AI Coaching & Recommended Swaps Data Flow
+     - Flow: SyncService uploads meal logs -> FastAPI parses foods -> LLM generates Habit Score & selects meal logs for swaps -> Habit Score Trend calculated -> Healthy Swaps recommended.
 
 4. CORE FUNCTIONAL MODULE SPECIFICATIONS
    * Module 1: AI Auto-Macro Estimator (`manual_log_screen.dart` + `gemini_service.py`)
@@ -104,6 +108,14 @@ PART 1: TECHNICAL PROJECT DETAIL DOCUMENT (SOFTWARE SPECIFICATION & ARCHITECTURE
    * Module 7: Weekly Clinical Report & PDF Export (`report_service.py`)
      - Aggregates 7-day caloric balance, macro compliance, habit consistency scores.
      - Generates downloadable clinical PDF receipts for doctor appointments.
+   * Module 8: AI-Driven Workout Generator (`workout_screen.dart` + `workout_service.dart`)
+     - Personalized daily workout generation considering user medical history and target goals.
+     - Tracks completion of individual exercises (sets, reps, rest, dynamic warm-up/cool-down).
+     - Seamless UI toggling and custom regeneration of plans based on fasting status (Ramadan vs Standard).
+   * Module 9: Predictive AI Coaching & Healthy Food Swaps (`coaching_screen.dart` + `swap_service.dart`)
+     - Generates a 7-day habit score out of 100 showing consistency.
+     - Evaluates user meals and returns tailored healthy alternatives (food swaps) with clinical rationale.
+     - Highlight notification indicator for immediate focus on recommended swaps.
 
 5. SECURITY, COMPLIANCE & NON-FUNCTIONAL REQUIREMENTS
    * Authentication: Supabase JWT token verification, encrypted local credential store.
@@ -127,6 +139,10 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
      - Selecting Medical Conditions (Diabetes, Hypertension, PCOS, High Cholesterol, None).
      - Selecting Dietary Restrictions (Halal, Vegetarian, Vegan, Nut Allergy, Gluten Free, Lactose Intolerant).
      - Automatic Calculation of Daily Calorie Target and Water Intake.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: Onboarding Welcome Screen]
+     - [SCREENSHOT: Interactive Profile & Metrics Setup Dialog]
+     - [SCREENSHOT: Medical Conditions & Dietary Restrictions Selector]
 
 2. EXPLORING THE MAIN DASHBOARD
    * Personalized Header: Dynamic greeting and active date display.
@@ -136,6 +152,9 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
    * Today's Meals Timeline: Chronological list of logged meals with calorie badges and delete/edit actions.
    * Hydration Tracker: Quick 1-tap water logging (+250ml, +500ml, custom amount) with goal tracking.
    * Habit Health Score: AI-computed consistency rating (0 to 100) with streak rewards.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: Main Dashboard Overview / Active Calorie Ring]
+     - [SCREENSHOT: Hydration Tracker and Habit Streak Score Card]
 
 3. LOGGING MEALS WITH AI (ZERO-EFFORT NUTRITION)
    * How to Log a Meal:
@@ -146,6 +165,9 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
      5. Tap "Log Meal with AI" — The AI instantly estimates calories, protein, carbs, and fats and logs the meal!
    * Custom Macro Adjustments:
      - Tap "Edit Values" on the AI Macro card to fine-tune exact grams or calories if desired.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: AI Meal Logging Text Entry Screen]
+     - [SCREENSHOT: AI Estimated Macronutrient Result & Edit Screen]
 
 4. INTERACTING WITH THE AI HEALTH COACH & VOICE ASSISTANT
    * Asking Nutritional Questions:
@@ -154,6 +176,9 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
      - Tap the 🔊 Speaker icon on any AI message to listen to the coach read the advice aloud in natural English or Urdu.
    * Clinic & Hospital 1-Tap Access:
      - Tap the red 🏥 Hospital icon in the AI Coach header to view nearby healthcare facilities immediately.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: AI Health Coach Conversation Chat Screen]
+     - [SCREENSHOT: Text-to-Speech Language Playback Indicator]
 
 5. RAMADAN FASTING MODE
    * Activating Ramadan Mode:
@@ -164,6 +189,9 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
      - Quick chips for Iftar (500ml), Taraweeh (250ml), and Sehri (500ml) to ensure hydration goals during non-fasting hours.
    * Ramadan Meal Categorization:
      - Meal slots dynamically change to Sehri, Iftar, and Post-Taraweeh Snack.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: Ramadan Mode Main Dashboard and Countdown Timer]
+     - [SCREENSHOT: Special Hydration Presets and Islamic Decorated Widgets]
 
 6. MANAGING FAMILY & DEPENDENT PROFILES
    * Adding Family Members:
@@ -173,12 +201,18 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
      - Select the family member from the dropdown when logging any meal.
    * Switching Active Dashboard View:
      - Switch the dashboard view to view nutrition, calorie progress, and meals specifically for any child or family member.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: Family Profile Management Panel]
+     - [SCREENSHOT: Active Dependent Calorie Ring & Dashboard View]
 
 7. EMERGENCY CLINIC & HOSPITAL FINDER
    * How to Find Nearby Medical Care:
      - Open Settings -> "Nearby Clinics & Hospitals" (or tap Hospital icon in AI Coach).
      - Allows GPS location access to fetch all certified clinics and hospitals within 5km to 15km.
      - View Hospital Name, Emergency Status, Distance in km, and tap "Get Directions" to open Google Maps navigation.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: Nearby Clinics and Hospitals Map & Directory List]
+     - [SCREENSHOT: Navigation Directions Request Window]
 
 8. GROCERY LIST & WEEKLY HEALTH REPORT
    * AI Smart Grocery Generator:
@@ -186,12 +220,35 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
    * Exporting PDF Report:
      - Open Settings -> "Export Weekly Summary (PDF)".
      - Generates a clinical nutritional PDF receipt showing weekly compliance, calorie averages, and dietitian summary.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: AI Smart Grocery List Categorized Display]
+     - [SCREENSHOT: Weekly Clinical PDF Health Report Output Preview]
 
 9. APP SETTINGS, LANGUAGE & ACCOUNT MANAGEMENT
    * Language Switcher: Toggle between English and Urdu with 1 tap.
    * Dark Mode Theme: High-contrast Dark theme for battery saving and eye comfort.
    * Changing Password: Secure password update screen in Settings.
    * Deleting Account: Account deletion option with explicit safety confirmation dialog.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: App Settings & Configuration Panel]
+     - [SCREENSHOT: Language Selection Options (English vs. Urdu)]
+
+10. PREDICTIVE AI COACHING & NUTRITIONAL SWAPS
+   * Overview: Assessing user nutritional consistency over a rolling 7-day period and advising smart dietary swaps.
+   * Habit Score Ring: Visually gauging daily intake consistency on a scale of 0 to 100.
+   * Recommended Swaps: Analyzing recent meal logs and dynamically suggesting healthy alternatives.
+   * Highlight Indicator: Directly focusing attention on high-impact swap suggestions.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: AI Coaching Dashboard showing Habit Score, 7-Day Consistency Chart, and Recommended Food Swaps]
+
+11. AI-GENERATED CLINICAL WORKOUT PLANS
+   * Overview: Personalized, daily physical training plan designed around user health profiles and clinical guidelines.
+   * Daily Selector: Tabbed selector to view exercises, target focus, warm-up, and cool-down routines for any day of the week.
+   * Exercise Completion Checklist: Interactive check circle icons to toggle exercise completion and log progress.
+   * Clinical Safety Guidelines: Advisory warnings detailing medical precautions, form/execution tips, and safety instructions.
+   * Dynamic Regeneration: One-tap regeneration to recalculate workouts based on fasting mode or profile updates.
+   * Required Screen Screenshots:
+     - [SCREENSHOT: AI Workout Plan View with Daily Planner, Medical Advisories, and Interactive Exercise Cards]
 
 ================================================================================
                               END OF OUTLINE
