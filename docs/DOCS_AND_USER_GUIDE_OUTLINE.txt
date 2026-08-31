@@ -78,7 +78,7 @@ PART 1: TECHNICAL PROJECT DETAIL DOCUMENT (SOFTWARE SPECIFICATION & ARCHITECTURE
    * Diagram 7: State Machine / Activity Diagram - Offline-First Sync Workflow
      - States: Network Available vs Network Disconnected -> Write to SQLite (Pending) -> Network Listener Detects Online -> Background SyncWorker Triggered -> Push to Supabase -> Mark Row as Synced.
    * Diagram 8: Deployment Diagram
-     - Hardware & Cloud Nodes: Mobile Device (Flutter APK / iOS), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
+     - Hardware & Cloud Nodes: Android Device (Flutter APK deployed via GitHub Release v1.0.0) & Web Browser Client (hosted on Vercel), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
    * Diagram 9: AI Workout Plan Sequence Diagram
      - Flow: User requests plan -> Backend queries Profile & Medical Conditions -> Gemini synthesizes daily routines -> Exercises, warm-up/cool-down, safety notes, form tips created -> Saved to Supabase -> Stored in local cache -> Loaded in Workout Screen.
    * Diagram 10: Predictive AI Coaching & Recommended Swaps Data Flow
@@ -129,7 +129,7 @@ PART 2: COMPREHENSIVE USER GUIDE & APP MANUAL
 --------------------------------------------------------------------------------
 
 1. GETTING STARTED & ACCOUNT SETUP
-   * Installation: Installing NutriSense APK on Android or running on Web/iOS.
+   * Installation: Installing NutriSense APK on Android (via GitHub Release v1.0.0) or accessing the Web Application hosted on Vercel (not deployed for iOS).
    * Sign Up & Sign In:
      - Creating an account with Email & Password.
      - Secure password reset and recovery.
