@@ -42,47 +42,47 @@ PART 1: TECHNICAL PROJECT DETAIL DOCUMENT (SOFTWARE SPECIFICATION & ARCHITECTURE
      - PDF Generation: `reportlab` for weekly clinical summary receipts.
 
 3. RECOMMENDED SOFTWARE ENGINEERING DIAGRAMS
-   * Diagram 1: High-Level System Architecture Diagram (Layered Architecture)
-     - Presentation Layer: Flutter UI screens (Dashboard, AI Coach, Meals, Stats, Family, Settings).
-     - Service / Controller Layer: SyncService, ReminderManager, RamadanController, FamilyViewModel.
-     - Backend API Gateway: FastAPI REST Endpoints (`/meals`, `/coach`, `/health`, `/family`, `/profile`).
-     - AI & External Service Layer: Gemini API Pool, OpenFoodFacts, Overpass API, Aladhan API.
-     - Data Persistence Layer: Supabase PostgreSQL (Cloud) & SQLite (Local Mobile Cache).
-   * Diagram 2: Use Case Diagram (UML)
-     - Actors: Primary User, Family Dependent, AI Health Coach, Emergency Services / Clinics.
-     - Use Cases:
-       * Log Meal via Natural Language AI (Auto Macro Calculation)
-       * Interact with AI Coach (Text & TTS Voice Q&A in English/Urdu)
-       * Scan Barcode & Evaluate Allergen / Medical Conflicts
-       * Manage Multi-Member Family Profiles & Dietary Rules
-       * Enable / Configure Ramadan Fasting Mode & View Timers
-       * Discover Nearby Hospitals & Emergency Clinics
-       * Sync Activity Data from Google Health Connect
-       * Export Weekly Clinical Nutritional PDF Report
-       * Offline Meal Logging & Auto-Sync on Network Reconnection
-   * Diagram 3: Entity-Relationship Diagram (ERD / Database Schema)
-     - Table: `users` (id, email, created_at, last_sign_in)
-     - Table: `health_profiles` (user_id, age, gender, height_cm, weight_kg, goal, daily_calorie_target, daily_water_target_ml, medical_conditions[], dietary_restrictions[], created_at, updated_at)
-     - Table: `family_members` (id, primary_user_id, name, relationship, age, gender, daily_calorie_target, medical_conditions[], dietary_restrictions[], color_hex, created_at)
-     - Table: `meal_logs` (id, user_id, family_member_id, meal_type, notes, total_calories, total_protein_g, total_carbs_g, total_fat_g, logged_at, is_synced)
-     - Table: `chat_history` (id, user_id, sender, message, response_metadata, timestamp)
-     - Table: `water_logs` (id, user_id, amount_ml, logged_at)
-     - Table: `habit_scores` (id, user_id, score, streak_days, last_calculated_at)
-   * Diagram 4: Sequence Diagram 1 - AI Meal Logging & Auto Macro Estimation
-     - Participant Lifecycle: User -> Flutter UI -> FastAPI Backend -> Gemini Multi-Key Pool -> SQLite Cache -> Supabase Cloud DB.
-     - Flow: User types query -> App queries `/meals/search-food` -> Gemini estimates calories/protein/carbs/fat -> Response rendered in UI -> User confirms -> SQLite stores local row -> SyncService pushes to Supabase asynchronously.
-   * Diagram 5: Sequence Diagram 2 - Gemini Multi-Key Failover Flow
-     - Participant Lifecycle: Backend Client -> GeminiPool -> Key #1 -> (429 Rate Limit) -> Auto Key Failover -> Key #2 -> (Success 200 OK) -> Response returned.
-   * Diagram 6: Component Diagram
-     - Modules: UI Component Library, Auth Module, Meal Analytics Engine, Health Connect Bridge, Voice Engine, Fasting Engine, Geo-Clinic Service.
-   * Diagram 7: State Machine / Activity Diagram - Offline-First Sync Workflow
-     - States: Network Available vs Network Disconnected -> Write to SQLite (Pending) -> Network Listener Detects Online -> Background SyncWorker Triggered -> Push to Supabase -> Mark Row as Synced.
-   * Diagram 8: Deployment Diagram
-     - Hardware & Cloud Nodes: Android Device (Flutter APK deployed via GitHub Release v1.0.0) & Web Browser Client (hosted on Vercel), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
-   * Diagram 9: AI Workout Plan Sequence Diagram
-     - Flow: User requests plan -> Backend queries Profile & Medical Conditions -> Gemini synthesizes daily routines -> Exercises, warm-up/cool-down, safety notes, form tips created -> Saved to Supabase -> Stored in local cache -> Loaded in Workout Screen.
-   * Diagram 10: Predictive AI Coaching & Recommended Swaps Data Flow
-     - Flow: SyncService uploads meal logs -> FastAPI parses foods -> LLM generates Habit Score & selects meal logs for swaps -> Habit Score Trend calculated -> Healthy Swaps recommended.
+    * Figure 01 : High-Level System Architecture Diagram
+      - Presentation Layer: Flutter UI screens (Dashboard, AI Coach, Meals, Stats, Family, Settings).
+      - Service / Controller Layer: SyncService, ReminderManager, RamadanController, FamilyViewModel.
+      - Backend API Gateway: FastAPI REST Endpoints (`/meals`, `/coach`, `/health`, `/family`, `/profile`).
+      - AI & External Service Layer: Gemini API Pool, OpenFoodFacts, Overpass API, Aladhan API.
+      - Data Persistence Layer: Supabase PostgreSQL (Cloud) & SQLite (Local Mobile Cache).
+    * Figure 02 : Use Case Diagram
+      - Actors: Primary User, Family Dependent, AI Health Coach, Emergency Services / Clinics.
+      - Use Cases:
+        * Log Meal via Natural Language AI (Auto Macro Calculation)
+        * Interact with AI Coach (Text & TTS Voice Q&A in English/Urdu)
+        * Scan Barcode & Evaluate Allergen / Medical Conflicts
+        * Manage Multi-Member Family Profiles & Dietary Rules
+        * Enable / Configure Ramadan Fasting Mode & View Timers
+        * Discover Nearby Hospitals & Emergency Clinics
+        * Sync Activity Data from Google Health Connect
+        * Export Weekly Clinical Nutritional PDF Report
+        * Offline Meal Logging & Auto-Sync on Network Reconnection
+    * Figure 03 : Entity-Relationship Diagram
+      - Table: `users` (id, email, created_at, last_sign_in)
+      - Table: `health_profiles` (user_id, age, gender, height_cm, weight_kg, goal, daily_calorie_target, daily_water_target_ml, medical_conditions[], dietary_restrictions[], created_at, updated_at)
+      - Table: `family_members` (id, primary_user_id, name, relationship, age, gender, daily_calorie_target, medical_conditions[], dietary_restrictions[], color_hex, created_at)
+      - Table: `meal_logs` (id, user_id, family_member_id, meal_type, notes, total_calories, total_protein_g, total_carbs_g, total_fat_g, logged_at, is_synced)
+      - Table: `chat_history` (id, user_id, sender, message, response_metadata, timestamp)
+      - Table: `water_logs` (id, user_id, amount_ml, logged_at)
+      - Table: `habit_scores` (id, user_id, score, streak_days, last_calculated_at)
+    * Figure 04 : AI Meal Logging & Macro Estimation Flowchart
+      - Participant Lifecycle: User -> Flutter UI -> FastAPI Backend -> Gemini Multi-Key Pool -> SQLite Cache -> Supabase Cloud DB.
+      - Flow: User types query -> App queries `/meals/search-food` -> Gemini estimates calories/protein/carbs/fat -> Response rendered in UI -> User confirms -> SQLite stores local row -> SyncService pushes to Supabase asynchronously.
+    * Figure 05 : Gemini Multi-Key Failover Flowchart
+      - Participant Lifecycle: Backend Client -> GeminiPool -> Key #1 -> (429 Rate Limit) -> Auto Key Failover -> Key #2 -> (Success 200 OK) -> Response returned.
+    * Figure 06 : Software Component Diagram
+      - Modules: UI Component Library, Auth Module, Meal Analytics Engine, Health Connect Bridge, Voice Engine, Fasting Engine, Geo-Clinic Service.
+    * Figure 07 : State Machine: Offline-First Synchronization
+      - States: Network Available vs Network Disconnected -> Write to SQLite (Pending) -> Network Listener Detects Online -> Background SyncWorker Triggered -> Push to Supabase -> Mark Row as Synced.
+    * Figure 08 : Physical & Cloud Deployment Diagram
+      - Hardware & Cloud Nodes: Android Device (Flutter APK deployed via GitHub Release v1.0.0) & Web Browser Client (hosted on Vercel), Cloud Server (FastAPI Container on Render / Railway / GCP), Supabase Managed Cloud (PostgreSQL + Auth + Storage), Google Gemini Cloud API Servers.
+    * Figure 09 : AI Workout Plan Sequence Diagram
+      - Flow: User requests plan -> Backend queries Profile & Medical Conditions -> Gemini synthesizes daily routines -> Exercises, warm-up/cool-down, safety notes, form tips created -> Saved to Supabase -> Stored in local cache -> Loaded in Workout Screen.
+    * Figure 10 : Predictive AI Coaching & Recommended Swaps Data Flow
+      - Flow: SyncService uploads meal logs -> FastAPI parses foods -> LLM generates Habit Score & selects meal logs for swaps -> Habit Score Trend calculated -> Healthy Swaps recommended.
 
 4. CORE FUNCTIONAL MODULE SPECIFICATIONS
    * Module 1: AI Auto-Macro Estimator (`manual_log_screen.dart` + `gemini_service.py`)
