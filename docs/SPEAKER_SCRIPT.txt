@@ -1,71 +1,85 @@
 ================================================================================
                     NUTRISENSE — HACKATHON SPEAKER SCRIPT
 ================================================================================
-Project: NutriSense
+Project: NutriSense — AI-Powered Nutrition, Clinical Safety & Metabolic Health
 Presenters: Jamal Matloob & Affan Asim
 Target Duration: 3 to 5 Minutes
-Recommended Pace: Clear, confident, and conversational.
+Note: Live Demo will be conducted separately after this pitch.
 ================================================================================
 
 --------------------------------------------------------------------------------
-SLIDE 1: TITLE & HOOK (0:00 – 0:30)
+SLIDE 1: TITLE SLIDE (0:00 – 0:30)
 --------------------------------------------------------------------------------
-[On Screen: NutriSense Title Slide, Team Members Jamal Matloob & Affan Asim]
+[On Screen: NutriSense Title, Subtitle, Presented by Jamal Matloob & Affan Asim]
 
 [Speaker (Jamal / Affan)]:
 "Respected judges and fellow innovators, good day! We are Jamal Matloob and
 Affan Asim, and today we are proud to present NutriSense — an AI-powered precision
-nutrition, clinical safety, and metabolic health suite tailored for South Asian
+nutrition, clinical safety, and metabolic health suite purpose-built for South Asian
 demographics.
 
 Every international nutrition app on the market today—like MyFitnessPal—completely
-breaks down when you show it a plate of Nihari, Biryani, or Daal with Tarka.
-More dangerously, generic AI chatbots give risky advice to diabetic and hypertensive
-patients. We built NutriSense to bridge this gap with clinical rigor and cultural
-accuracy."
+fails when you show it a plate of Nihari, Biryani, or Daal with Tarka.
+More critically, unconstrained AI chatbots give dangerous advice to diabetic and
+hypertensive patients. We built NutriSense to bridge this gap with clinical rigor
+and cultural precision."
 
 --------------------------------------------------------------------------------
-SLIDE 2: THE PROBLEM (0:30 – 1:00)
+SLIDE 2: KEY PLATFORM FEATURES (0:30 – 1:00)
+--------------------------------------------------------------------------------
+[On Screen: Key Platform Features & Core Innovations]
+
+[Speaker]:
+"Here is an executive overview of our four flagship innovations:
+
+1. South Asian Multimodal Vision: Powered by Gemini Vision, calculating composite
+   gravies, hidden oils, and cooking ghee with 1-tap live portion modifiers.
+
+2. 3-Step Clinical RAG Architecture: A strict safety pipeline with an independent
+   risk evaluator and a sub-50ms hypoglycemia interceptor.
+
+3. Ramadan & Workout Engine: Dynamic meal remapping, real-time Sehri/Iftar clocks,
+   and condition-aware workout splits for diabetes, hypertension, and arthritis.
+
+4. Family Profiles & Urdu Voice: Single-device multi-dependent management with
+   authentic Nastaleeq and spoken Neural Urdu Voice coaching."
+
+--------------------------------------------------------------------------------
+SLIDE 3: THE PROBLEM (1:00 – 1:30)
 --------------------------------------------------------------------------------
 [On Screen: The South Asian Chronic Health & Nutrition Gap]
 
 [Speaker]:
-"Let’s look at why this problem is so urgent:
+"Let’s look at why this is an urgent regional crisis:
 
-First, South Asians face a disproportionately high burden of Type-2 Diabetes and
-Cardiovascular Disease—often diagnosed an entire decade earlier than global averages.
+First, South Asians face disproportionately high rates of Type-2 Diabetes and
+Cardiovascular Disease—diagnosed up to a decade earlier than Western averages.
 
-Second, our cooking methods are composite. Traditional dishes like Karahi, Nihari,
-and Biryani have hidden cooking fats and gravies that standard databases cannot parse.
+Second, our composite cooking (curries, ghee, tarka) cannot be parsed by Western
+isolated-food databases.
 
-Third, generic AI advice is dangerous. Asking an unconstrained chatbot for a workout
+Third, generic AI advice is dangerous. Asking an unconstrained chatbot for exercise
 can prescribe heavy breath-holding lifts that cause severe hypertensive spikes, or
-miss acute hypoglycemia symptoms.
+miss acute low blood sugar symptoms.
 
 Lastly, in our region, a single smartphone is often shared to manage health for
-elderly parents, children, and spouses. Single-user apps simply don't fit our families."
+elderly parents, children, and spouses."
 
 --------------------------------------------------------------------------------
-SLIDE 3: THE SOLUTION: NUTRISENSE (1:00 – 1:30)
+SLIDE 4: THE SOLUTION (1:30 – 2:00)
 --------------------------------------------------------------------------------
-[On Screen: NutriSense: Precision Health Built for Reality — 3 Core Pillars]
+[On Screen: NutriSense: Precision Health Built for Reality]
 
 [Speaker]:
-"NutriSense solves these challenges with three tightly integrated pillars:
+"NutriSense directly solves these challenges:
 
-1. Culturally Calibrated Multimodal Vision: Powered by Google Gemini Vision, calibrated
-   for South Asian portion units like Katoris, Rotis, and Tolas, with instant 1-tap
-   live portion modifiers.
-
-2. A 3-Step Clinical Safety Architecture: An independent evaluator and a sub-50ms
-   hypoglycemia interceptor that eliminates dangerous medical advice.
-
-3. Cultural & Family Inclusivity: Single-device dependent profiles, an intelligent
-   Ramadan fasting suite, and authentic Urdu Nastaleeq typography with spoken
-   Neural Urdu Voice coaching."
+• We provide culturally grounded multimodal AI that understands local culinary realities.
+• We enforce a 3-step clinical guardrail system that prevents hazardous medical advice.
+• We ensure complete family and regional inclusivity with 1-tap dependent switching,
+  offline SQLite sync, and spoken Urdu audio coaching."
 
 --------------------------------------------------------------------------------
-SLIDE 4: MULTIMODAL PLATE SCANNER (1:30 – 2:00)
+SLIDE 5: MULTIMODAL PLATE SCANNER (2:00 – 2:30)
 --------------------------------------------------------------------------------
 [On Screen: Multimodal Plate Scanning & Dynamic Portions]
 
@@ -76,11 +90,11 @@ protein, carbohydrate, and cooking fat ratios.
 If a user eats half a katori or an extra roti, our non-blocking UI allows 1-tap live
 portion adjustments that recalculate macros in real-time. 
 
-Furthermore, we integrate barcode scanning via OpenFoodFacts to flag high sodium,
-sugar, and allergens based on the patient’s medical history."
+Furthermore, our barcode scanner cross-references packaged foods via OpenFoodFacts
+to flag high sodium, sugar, and allergens based on the patient’s medical profile."
 
 --------------------------------------------------------------------------------
-SLIDE 5: CLINICAL SAFETY & HYPOGLYCEMIA GUARD (2:00 – 2:30)
+SLIDE 6: CLINICAL SAFETY & HYPOGLYCEMIA GUARD (2:30 – 3:00)
 --------------------------------------------------------------------------------
 [On Screen: 3-Step Clinical RAG & Hypoglycemia Interceptor]
 
@@ -88,33 +102,31 @@ SLIDE 5: CLINICAL SAFETY & HYPOGLYCEMIA GUARD (2:00 – 2:30)
 "We take clinical safety extremely seriously. We never allow raw AI responses to reach
 the user directly.
 
-Instead, we use a 3-step RAG pipeline: We retrieve patient history, generate
-contextual guidance, and then pass it through an independent clinical risk evaluator
-that attaches explicit medical warnings.
+Our 3-step RAG pipeline retrieves patient history, generates contextual guidance,
+and validates output through an independent clinical risk evaluator.
 
-Crucially, we built a deterministic, sub-50-millisecond Hypoglycemia Scanner. If a user
-logs blood sugar below 70 mg/dL or reports dizziness, the app immediately halts chat
-and provides emergency fast-acting glucose protocols with an integrated GPS hospital locator."
+Crucially, we engineered a deterministic, sub-50ms Hypoglycemia Scanner. If a user
+logs blood sugar below 70 mg/dL or reports distress, the app immediately halts chat
+and displays emergency glucose protocols with an integrated GPS hospital locator."
 
 --------------------------------------------------------------------------------
-SLIDE 6: RAMADAN FASTING & CLINICAL WORKOUT ENGINE (2:30 – 3:00)
+SLIDE 7: RAMADAN FASTING & CLINICAL WORKOUT ENGINE (3:00 – 3:30)
 --------------------------------------------------------------------------------
 [On Screen: Ramadan Fasting Suite & Clinical Workouts]
 
 [Speaker]:
-"During Ramadan, user metabolic patterns change drastically. NutriSense automatically
-transforms into a dedicated Ramadan suite:
-- Meal slots re-map dynamically to Sehri, Iftar, Post-Iftar, and Taraweeh Snack.
+"During Ramadan, NutriSense automatically transforms into a specialized suite:
+- Meal slots re-map to Sehri, Iftar, Post-Iftar, and Taraweeh Snack.
 - Dual live countdown clocks track local Sehri and Iftar times.
-- Daily hydration is intelligently paced across non-fasting night hours.
+- Daily hydration is paced across non-fasting night hours.
 
 Alongside this, our Workout Engine creates condition-aware exercise routines:
-- For Diabetics, it prioritizes post-meal glucose-blunting cardio.
-- For Hypertensive users, it strictly prohibits heavy Valsalva maneuvers.
-- For Arthritis, it substitutes high-impact jumps with zero-impact isometric routines."
+- For Diabetics: Post-meal glucose-blunting cardio and insulin sensitization.
+- For Hypertensive users: Strictly prohibits heavy Valsalva maneuvers.
+- For Arthritis: Replaces high-impact movements with zero-impact isometric routines."
 
 --------------------------------------------------------------------------------
-SLIDE 7: FAMILY PROFILES & URDU ACCESSIBILITY (3:00 – 3:30)
+SLIDE 8: FAMILY PROFILES & URDU ACCESSIBILITY (3:30 – 4:00)
 --------------------------------------------------------------------------------
 [On Screen: Family Profiles & Urdu Voice Inclusion]
 
@@ -123,39 +135,27 @@ SLIDE 7: FAMILY PROFILES & URDU ACCESSIBILITY (3:00 – 3:30)
 - Our 1-tap Dependent Switcher allows a single user to manage custom macro goals for
   elderly diabetic parents and growing children on one phone.
 - We built full bilingual localization with authentic Jameel Noori Nastaleeq script.
-- For elderly or illiterate family members who cannot read text, our Neural Urdu Voice
-  Coach plays audio guidance in natural, spoken Urdu.
-- Plus, an offline SQLite database with UUID v4 idempotency ensures users can log meals
-  and water without internet connectivity."
+- For elderly or illiterate family members, our Neural Urdu Voice Coach plays guidance
+  in natural, spoken Urdu.
+- Plus, an offline SQLite database with UUID v4 idempotency ensures logging works
+  reliably without internet connectivity."
 
 --------------------------------------------------------------------------------
-SLIDE 8: TECH STACK & ENGINEERING RESILIENCE (3:30 – 4:00)
+SLIDE 9: TECH STACK & ENGINEERING RESILIENCE (4:00 – 4:30)
 --------------------------------------------------------------------------------
 [On Screen: Technical Architecture & Multi-Model Resilience]
 
 [Speaker]:
 "Under the hood, NutriSense is engineered for production reliability:
 - Backend: High-performance FastAPI with JWT caching and Pydantic validation.
-- Multi-Key Gemini Pooling: We auto-cycle across Gemini 2.5-Flash and 3.7-Flash models
-  with stateful 60-second cooldowns, ensuring 100% uptime with zero rate-limit crashes.
-- Database: Supabase PostgreSQL with Row Level Security (RLS) ensuring total patient data privacy.
+- Multi-Key Gemini Pool: Auto-rotates across Gemini 2.5-Flash and 3.7-Flash with
+  stateful cooldowns, ensuring 100% uptime with zero rate-limit crashes.
+- Database: Supabase PostgreSQL with Row Level Security (RLS) ensuring strict privacy.
 - Clinical Reports: A zero-dependency pure Python PDF 1.4 engine generating weekly
-  doctor-ready metabolic health reports."
+  doctor-ready metabolic reports."
 
 --------------------------------------------------------------------------------
-SLIDE 9: LIVE DEMO HIGHLIGHTS (4:00 – 4:30)
---------------------------------------------------------------------------------
-[On Screen: Live Demonstration Flow (90 Seconds)]
-
-[Speaker]:
-"In our live demo, we will demonstrate:
-1. Scanning a plate of local food with instant macro breakdown.
-2. Switching to 'Abu's' profile to show how targets instantly adapt to senior diabetes.
-3. Triggering our safety guard with an acute low sugar reading.
-4. Previewing our live Ramadan timer and listening to the Urdu Neural Voice Coach."
-
---------------------------------------------------------------------------------
-SLIDE 10: MARKET IMPACT & CONCLUSION (4:30 – 5:00)
+SLIDE 10: MARKET IMPACT, ROADMAP & CONCLUSION (4:30 – 5:00)
 --------------------------------------------------------------------------------
 [On Screen: Market Impact, Monetization & Roadmap]
 
@@ -169,7 +169,8 @@ direct Urdu voice meal logging, and blood report lab OCR.
 NutriSense makes metabolic health culturally accurate, clinically safe, and
 accessible to every household.
 
-Thank you very much, and we are now open for your questions!"
+Thank you very much! We are now ready to demonstrate the live app on our device
+and answer your questions."
 
 ================================================================================
                         END OF SPEAKER SCRIPT
