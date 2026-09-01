@@ -1,0 +1,185 @@
+================================================================================
+                    NUTRISENSE - HACKATHON PRESENTATION PLAN & SLIDE GUIDE
+================================================================================
+Project: NutriSense — AI-Powered Precision Nutrition, Clinical Safety & Metabolic Health Suite
+Team Members: Jamal Matloob | Affan Asim
+Demographic Focus: South Asian & Pakistani Context + Global Clinical Standards
+Target Presentation Time: 3 to 5 Minutes (7 - 10 Slides)
+================================================================================
+
+--------------------------------------------------------------------------------
+SLIDE 1: TITLE & HOOK (First Impression)
+--------------------------------------------------------------------------------
+[Slide Title]: NutriSense
+[Subtitle]: AI-Powered Precision Nutrition, Clinical Safety & Metabolic Health Suite
+[Presented By / Team]: Jamal Matloob & Affan Asim
+[Visual Suggestion]: High-resolution mockup of NutriSense on a mobile device showing the
+                    Dashboard and Multimodal Food Scanner.
+[Key Bullet Points on Slide]:
+  • Presented by: Jamal Matloob & Affan Asim
+  • Multimodal South Asian Vision Scanner (Biryani, Nihari, Karahi, Tarka)
+  • 3-Step Clinical RAG Evaluator & Sub-Second Hypoglycemia Interceptor
+  • Condition-Aware AI Workout Engine (Diabetes, Hypertension, Joint Pain)
+  • Dynamic Ramadan Fasting Suite & Dual Countdown Clocks
+  • Single-Device Family Profiles (خاندانی پروفائلز) & Urdu Voice Coaching
+[Speaker Script / Opening Hook]:
+  "Good day, esteemed judges! We are Jamal Matloob and Affan Asim, and this is NutriSense.
+  Every international nutrition app (like MyFitnessPal) completely fails when you
+  show it a plate of Nihari, Biryani, or Daal with Tarka. More critically, generic AI
+  chatbots can provide dangerous advice to diabetic or hypertensive patients. We built
+  NutriSense to make metabolic health culturally accurate, clinically safe, and
+  accessible to every household."
+
+--------------------------------------------------------------------------------
+SLIDE 2: THE PROBLEM (Regional Health Crisis & Diet Gap)
+--------------------------------------------------------------------------------
+[Slide Title]: The Problem: South Asian Chronic Health Crisis & Nutrition Blindspot
+[Visual Suggestion]: Split graphics showing regional Diabetes/Hypertension stats vs.
+                    Western nutrition apps failing on local food.
+[Key Bullet Points on Slide]:
+  1. High Regional Disease Burden: South Asians face disproportionately high rates of
+     Type-2 Diabetes, Hypertension, and early Cardiovascular Disease (CVD).
+  2. Composite Cooking Blindspot: Traditional dishes (composite curries, ghee, tarka,
+     deep-frying) cannot be accurately tracked by Western calorie databases.
+  3. Generic AI Hallucinations & Risks: Standard AI chatbots lack clinical constraints
+     and can recommend hazardous workouts (Valsalva lifts for hypertensive users) or
+     fail during acute hypoglycemic episodes.
+  4. Single-Device Household Reality: In many South Asian households, one smartphone
+     is shared to manage the health of elderly diabetic parents, children, and spouses.
+
+--------------------------------------------------------------------------------
+SLIDE 3: THE SOLUTION: NUTRISENSE
+--------------------------------------------------------------------------------
+[Slide Title]: NutriSense — Precision Health Built for Reality
+[Visual Suggestion]: 3 core solution pillars with icons:
+                    [📸 Vision AI] -> [🩺 Clinical Safety] -> [👨‍👩‍👧‍👦 Family & Cultural Inclusivity]
+[Key Bullet Points on Slide]:
+  • Culturally Grounded AI Vision: Calibrated for South Asian portion conventions
+    (katoris, rotis, tolas) and composite cooking methods.
+  • Strict Clinical Guardrails: 3-Step RAG pipeline that intercepts medical risks before
+    they reach the patient.
+  • Complete Family & Cultural Inclusivity: Single-device dependent switcher, offline-first
+    sync, and bilingual English + Urdu Nastaleeq typography with Urdu Voice TTS.
+
+--------------------------------------------------------------------------------
+SLIDE 4: CORE INNOVATION 1 — Multimodal Plate & Barcode Scanner
+--------------------------------------------------------------------------------
+[Slide Title]: Multimodal Plate Scanner & Dynamic Portion Modifiers
+[Visual Suggestion]: Side-by-side screenshots showing food photo scan, instant macro
+                    breakdown, and live portion adjuster.
+[Key Bullet Points on Slide]:
+  • Composite Dish Decomposition: Powered by Google Gemini Vision to estimate hidden
+    cooking oils, gravies, and ingredient ratios for South Asian meals.
+  • Live Non-Blocking Portion Correction: 1-tap UI modifiers (e.g., 1/2 Katori, 1 Roti)
+    that instantly recalculate calories, protein, carbs, and fats.
+  • Barcode & Allergen Scanner: Integrates with OpenFoodFacts with automated allergen
+    and medical contraindication flags.
+  • Natural Language Meal Logger: Log complex meals via conversational text with strict
+    prompt injection sanitization.
+
+--------------------------------------------------------------------------------
+SLIDE 5: CORE INNOVATION 2 — 3-Step Clinical RAG & Hypoglycemia Guard
+--------------------------------------------------------------------------------
+[Slide Title]: Clinical Safety Architecture: Beyond Just a Chatbot
+[Visual Suggestion]: Pipeline flowchart showing:
+  [Patient Profile + 7-Day History] -> [Contextual AI Coach] -> [Independent Risk Evaluator]
+[Key Bullet Points on Slide]:
+  • 3-Step Clinical Architecture: Context retrieval (RAG) -> Contextual Coaching ->
+    Independent Risk Evaluator verifying medical safety.
+  • Instant Hypoglycemia Interceptor: Fast regex/heuristic scanner immediately detects
+    critical blood sugar (<70 mg/dL) or acute distress, triggering an emergency modal.
+  • Non-Contradictory Safety Disclaimers: Automatically attaches clinical warnings and
+    eliminates conflicting advice.
+  • Integrated Care Locator: GPS emergency hospital locator with offline fallback to
+    Google Maps deep links.
+
+--------------------------------------------------------------------------------
+SLIDE 6: CORE INNOVATION 3 — Ramadan Fasting & Condition-Aware Workouts
+--------------------------------------------------------------------------------
+[Slide Title]: Ramadan Fasting Suite & Personalized Exercise Engine
+[Visual Suggestion]: Screenshots of the Ramadan timer screen and the Condition-Tailored
+                    Workout schedule.
+[Key Bullet Points on Slide]:
+  • 🌙 Ramadan Fasting Suite:
+    - Automatically remaps meal slots to Sehri, Iftar, Post-Iftar Dinner, and Taraweeh Snack.
+    - Live dual countdown timers for Sehri and Iftar (Asia/Karachi timezone).
+    - Split hydration pacing across non-fasting night windows.
+    - Pre-Sehri alarm reminders and suppressed daytime meal notifications.
+  • 🏋️ Personalized Clinical Workout Engine:
+    - Diabetic / High Blood Sugar: Focuses on post-meal glucose-blunting cardio & insulin sensitization.
+    - Hypertension / High BP: Excludes heavy Valsalva maneuvers; emphasizes Zone-2 aerobic training.
+    - Joint Pain / Arthritis: Replaces high-impact movements with zero-impact isometric & chair routines.
+    - Deterministic Offline Fallback: Clinically verified offline routines if network is unavailable.
+
+--------------------------------------------------------------------------------
+SLIDE 7: CORE INNOVATION 4 — Family Management & Bilingual Urdu Voice
+--------------------------------------------------------------------------------
+[Slide Title]: Single-Device Family Manager & Urdu Accessibility
+[Visual Suggestion]: Family avatar pill bar ([🧑 Me] [👧 Ayesha] [👴 Abu]) and Urdu audio coach waveform.
+[Key Bullet Points on Slide]:
+  • Multi-Dependent Dashboard: 1-tap switching to manage calories and macros for elderly
+    parents, growing children, and spouses on a single device.
+  • Native Urdu Nastaleeq Typography: Elegant Jameel Noori Nastaleeq font rendering.
+  • Neural Urdu Voice Coach: Spoken Urdu audio playback for illiterate or elderly users.
+  • Offline-First SQLite Sync: Local SQLite database with UUID v4 idempotency preventing
+    duplicate entries when reconnecting to the cloud.
+
+--------------------------------------------------------------------------------
+SLIDE 8: TECHNICAL ARCHITECTURE & AI RESILIENCE
+--------------------------------------------------------------------------------
+[Slide Title]: Production-Ready Stack & Multi-Model Resilience
+[Visual Suggestion]: System Architecture Diagram:
+  Flutter Client <---> FastAPI Backend <---> Gemini Multi-Key Pool + Supabase (PostgreSQL + RLS)
+[Key Bullet Points on Slide]:
+  • Resilient Multi-Key Gemini Pool: Auto-rotates across Gemini models (2.5-Flash, 3.7-Flash)
+    with cooldown tracking—guaranteeing 0% rate-limit failures during live demos.
+  • Doctor PDF Stream Generator: Zero-dependency pure Python binary PDF 1.4 engine
+    producing clinical reports directly for physicians.
+  • Broad Hardware Compatibility: Android APK supports Android 5.0 Lollipop (API 21)
+    through Android 15, plus iOS and Web.
+
+--------------------------------------------------------------------------------
+SLIDE 9: LIVE DEMO FLOW (60 - 90 Seconds)
+--------------------------------------------------------------------------------
+[Step 1]: Scan a Plate of Food (e.g. Biryani/Daal) -> Show instant breakdown & 1-tap portion adjustment.
+[Step 2]: Switch Family Profile -> Tap [👴 Abu] -> Show personalized diabetic macro targets.
+[Step 3]: Test Safety Interceptor -> Input a low blood sugar reading (<70 mg/dL) -> Show immediate clinical alert block.
+[Step 4]: Ramadan & Urdu Voice -> Show Ramadan countdown timer and play neural Urdu audio response.
+
+--------------------------------------------------------------------------------
+SLIDE 10: MARKET IMPACT, BUSINESS MODEL & ROADMAP
+--------------------------------------------------------------------------------
+[Slide Title]: Market Impact, Monetization & Roadmap
+[Visual Suggestion]: Market opportunity metrics and roadmap milestone badges.
+[Key Bullet Points on Slide]:
+  • Target Demographic: 300M+ South Asians globally affected by metabolic disorders.
+  • Monetization & Distribution:
+    - B2C Freemium: Core meal tracking free; Premium AI Coaching & Family Profiles subscription.
+    - B2B Clinic Integration: Doctors receive standardized NutriSense Clinical PDF reports.
+  • Future Roadmap:
+    - Continuous Glucose Monitor (CGM) Bluetooth sync via Health Connect.
+    - Direct Urdu voice-to-text plate logging.
+    - Blood lab test report OCR analysis.
+[Closing Statement]:
+  "NutriSense makes metabolic health culturally accurate, clinically safe, and
+  accessible to every household. Thank you!"
+
+================================================================================
+                        HACKATHON JUDGES Q&A PREPARATION
+================================================================================
+Q1: "How accurate is your food scanner on complex composite gravies?"
+A1: "We use Google Gemini Vision calibrated specifically for South Asian culinary
+     composition, combined with dynamic portion modifiers that allow users to
+     correct portions in 1 tap, plus OpenFoodFacts barcode scanning for packaged items."
+
+Q2: "What if the AI hallucinates dangerous medical or dietary advice?"
+A2: "We do not let the AI output directly to the user. All recommendations pass through
+     a 3-step RAG pipeline where an independent clinical risk evaluator and deterministic
+     heuristic scanners inspect the output, automatically attaching warning blocks or
+     blocking hazardous recommendations."
+
+Q3: "How does this work for low-income or less tech-savvy users?"
+A3: "We built NutriSense to be backward compatible down to Android 5.0 phones, engineered
+     offline SQLite sync for poor internet areas, and integrated Neural Urdu Voice TTS
+     with native Nastaleeq script for users who cannot read English."
+================================================================================
