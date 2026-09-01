@@ -212,6 +212,9 @@ class ClinicFinderScreen extends StatefulWidget {
   State<ClinicFinderScreen> createState() => _ClinicFinderScreenState();
 }
 
+// Reason classification so the popup only fires for the right situation
+enum _ClinicFailReason { gpsDisabled, permissionDenied, permissionPermanent, networkError, noFix }
+
 class _ClinicFinderScreenState extends State<ClinicFinderScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
@@ -273,26 +276,36 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _useFallback(_isUrdu
-              ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-              : "Location permission denied. Showing regional facilities.");
+          _useFallback(
+            _isUrdu
+                ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+                : "Location permission denied. Showing regional facilities.",
+            reason: _ClinicFailReason.permissionDenied,
+          );
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _useFallback(_isUrdu
-            ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-            : "Location permission permanently denied. Showing regional facilities.");
+        _useFallback(
+          _isUrdu
+              ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Location permission permanently denied. Showing regional facilities.",
+          reason: _ClinicFailReason.permissionPermanent,
+        );
         return;
       }
 
       // 2. Check if Location Services (GPS) are enabled
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isServiceEnabled) {
-        _useFallback(_isUrdu
-            ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-            : "Location services disabled. Showing regional facilities.");
+        // GPS is physically off — this is the only case we prompt the user
+        _useFallback(
+          _isUrdu
+              ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Location services disabled. Showing regional facilities.",
+          reason: _ClinicFailReason.gpsDisabled,
+        );
         return;
       }
 
@@ -312,9 +325,12 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       }
 
       if (position == null) {
-        _useFallback(_isUrdu
-            ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-            : "Could not obtain GPS fix. Showing regional facilities.");
+        _useFallback(
+          _isUrdu
+              ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Could not obtain GPS fix. Showing regional facilities.",
+          reason: _ClinicFailReason.noFix,
+        );
         return;
       }
 
@@ -334,9 +350,12 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       await _fetchOverpassClinics(position.latitude, position.longitude);
     } catch (e) {
       debugPrint("[ClinicFinder] Error in location init: $e");
-      _useFallback(_isUrdu
-          ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-          : "Could not load dynamic clinics. Showing regional facilities.");
+      _useFallback(
+        _isUrdu
+            ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "Could not load dynamic clinics. Showing regional facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
     }
   }
 
@@ -647,9 +666,12 @@ out center 30;
     }
 
     if (elements == null || elements.isEmpty) {
-      _useFallback(_isUrdu
-          ? "قریبی ہسپتال اوپن اسٹریٹ میپ پر نہیں ملے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-          : "No OSM clinics found in 7km. Showing nearest verified facilities.");
+      _useFallback(
+        _isUrdu
+            ? "قریبی ہسپتال اوپن اسٹریٹ میپ پر نہیں ملے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "No OSM clinics found in 7km. Showing nearest verified facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
       return;
     }
 
@@ -711,7 +733,14 @@ out center 30;
         cost = _isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised';
       }
 
-      final phone = tags['phone'] ?? tags['contact:phone'] ?? '';
+      // OSM uses many tag variants for phone numbers — check all common ones
+      final phone = tags['phone'] ??
+          tags['contact:phone'] ??
+          tags['contact:mobile'] ??
+          tags['phone_1'] ??
+          tags['contact:whatsapp'] ??
+          tags['mobile'] ??
+          '';
       final isHospital = tags['amenity'] == 'hospital';
       final specialty = _isUrdu
           ? (isHospital ? 'جنرل ہسپتال' : 'کلینک اور طبی نگہداشت')
@@ -732,9 +761,12 @@ out center 30;
     }
 
     if (fetched.isEmpty) {
-      _useFallback(_isUrdu
-          ? "درست لوکیشن نہیں مل سکی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-          : "No valid clinic coordinates. Showing nearest verified facilities.");
+      _useFallback(
+        _isUrdu
+            ? "درست لوکیشن نہیں مل سکی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "No valid clinic coordinates. Showing nearest verified facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
       return;
     }
 
@@ -749,19 +781,25 @@ out center 30;
     }
   }
 
-  void _useFallback(String msg) {
+  void _useFallback(String msg, {_ClinicFailReason reason = _ClinicFailReason.networkError}) {
     if (mounted) {
       setState(() {
         _usingDynamic = false;
         _isLoading = false;
         _locationError = true;
       });
-      if (!_hasShownLocationPrompt) {
+      // Only show the enable-location dialog when GPS is physically turned off.
+      // For permission denials, network errors, or GPS timeouts, we silently
+      // show the fallback directory — showing a dialog there would be confusing.
+      if (reason == _ClinicFailReason.gpsDisabled && !_hasShownLocationPrompt) {
         _hasShownLocationPrompt = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _locationError) {
-            _showEnableLocationDialog();
-          }
+          // 350ms delay so the fallback screen renders fully before the dialog appears
+          Future.delayed(const Duration(milliseconds: 350), () {
+            if (mounted && _locationError) {
+              _showEnableLocationDialog();
+            }
+          });
         });
       }
     }
