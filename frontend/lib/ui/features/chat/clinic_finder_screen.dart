@@ -212,8 +212,11 @@ class ClinicFinderScreen extends StatefulWidget {
   State<ClinicFinderScreen> createState() => _ClinicFinderScreenState();
 }
 
+// Reason classification so the popup only fires for the right situation
+enum _ClinicFailReason { gpsDisabled, permissionDenied, permissionPermanent, networkError, noFix }
+
 class _ClinicFinderScreenState extends State<ClinicFinderScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
 
   bool _isLoading = true;
@@ -223,6 +226,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   List<_Clinic> _regionalClinics = [];
   bool _usingDynamic = false;
   bool _locationError = false;
+  bool _hasShownLocationPrompt = false;
   double? _userLat;
   double? _userLng;
 
@@ -231,9 +235,30 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
     _regionalClinics = _createInitialClinics(_isUrdu);
     _initLocationAndFetch();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _locationError && !_isLoading) {
+      _checkAndAutoRefreshLocation();
+    }
+  }
+
+  Future<void> _checkAndAutoRefreshLocation() async {
+    try {
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      final permission = await Geolocator.checkPermission();
+      final hasPerm = permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+      if (isServiceEnabled && hasPerm) {
+        _hasShownLocationPrompt = false;
+        await _initLocationAndFetch();
+      }
+    } catch (_) {}
   }
 
   Future<void> _initLocationAndFetch() async {
@@ -241,7 +266,9 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       setState(() {
         _locationError = false;
         _isLoading = true;
-        _statusMessage = _isUrdu ? "جی پی ایس لوکیشن چیک کی جا رہی ہے..." : "Accessing GPS location...";
+        _statusMessage = _isUrdu
+            ? "جی پی ایس لوکیشن چیک کی جا رہی ہے..."
+            : "Accessing GPS location...";
       });
 
       // 1. Check & Request Location Permission natively
@@ -249,20 +276,36 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _useFallback(_isUrdu ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission denied. Showing regional facilities.");
+          _useFallback(
+            _isUrdu
+                ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+                : "Location permission denied. Showing regional facilities.",
+            reason: _ClinicFailReason.permissionDenied,
+          );
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _useFallback(_isUrdu ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission permanently denied. Showing regional facilities.");
+        _useFallback(
+          _isUrdu
+              ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Location permission permanently denied. Showing regional facilities.",
+          reason: _ClinicFailReason.permissionPermanent,
+        );
         return;
       }
 
       // 2. Check if Location Services (GPS) are enabled
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isServiceEnabled) {
-        _useFallback(_isUrdu ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location services disabled. Showing regional facilities.");
+        // GPS is physically off — this is the only case we prompt the user
+        _useFallback(
+          _isUrdu
+              ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Location services disabled. Showing regional facilities.",
+          reason: _ClinicFailReason.gpsDisabled,
+        );
         return;
       }
 
@@ -282,7 +325,12 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       }
 
       if (position == null) {
-        _useFallback(_isUrdu ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not obtain GPS fix. Showing regional facilities.");
+        _useFallback(
+          _isUrdu
+              ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Could not obtain GPS fix. Showing regional facilities.",
+          reason: _ClinicFailReason.noFix,
+        );
         return;
       }
 
@@ -294,14 +342,131 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
 
       // 4. Fetch dynamic Overpass OpenStreetMap clinics within 7km
       setState(() {
-        _statusMessage = _isUrdu ? "قریبی ہسپتال اور کلینک تلاش کیے جا رہے ہیں..." : "Discovering nearby clinics on OpenStreetMap...";
+        _statusMessage = _isUrdu
+            ? "قریبی ہسپتال اور کلینک تلاش کیے جا رہے ہیں..."
+            : "Discovering nearby clinics on OpenStreetMap...";
       });
 
       await _fetchOverpassClinics(position.latitude, position.longitude);
     } catch (e) {
       debugPrint("[ClinicFinder] Error in location init: $e");
-      _useFallback(_isUrdu ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not load dynamic clinics. Showing regional facilities.");
+      _useFallback(
+        _isUrdu
+            ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "Could not load dynamic clinics. Showing regional facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
     }
+  }
+
+  Future<void> _requestEnableLocation() async {
+    try {
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        // Direct user to device Location/GPS Settings
+        await Geolocator.openLocationSettings();
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // Direct user to App permission settings
+        await Geolocator.openAppSettings();
+        return;
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        _hasShownLocationPrompt = false;
+        await _initLocationAndFetch();
+      }
+    } catch (e) {
+      debugPrint("[ClinicFinder] Request enable location error: $e");
+      await _initLocationAndFetch();
+    }
+  }
+
+  void _showEnableLocationDialog() {
+    if (!mounted) return;
+    final dialogTitle =
+        _isUrdu ? 'لوکیشن سروس فعال کریں' : 'Enable Device Location';
+    final dialogBody = _isUrdu
+        ? 'اپنے قریب 7 کلومیٹر کے اندر تصدیق شدہ ہسپتال اور ایمرجنسی کلینکس خودکار طور پر تلاش کرنے کے لیے ڈیوائس کی لوکیشن آن کریں۔'
+        : 'Turn on device location to automatically discover verified clinics, hospitals, and emergency care centers within 7 km of your current position.';
+    final enableBtn = _isUrdu ? 'لوکیشن آن کریں' : 'Enable Location';
+    final dismissBtn = _isUrdu ? 'ڈائرکٹری دیکھیں' : 'Browse Directory';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+              color: const Color(0xFF00E676).withAlpha(80), width: 1.2),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E676).withAlpha(25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on_rounded,
+                  color: Color(0xFF00E676), size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                dialogTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          dialogBody,
+          style: const TextStyle(
+              color: Colors.white70, fontSize: 13, height: 1.45),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child:
+                Text(dismissBtn, style: const TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _requestEnableLocation();
+            },
+            icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+            label: Text(enableBtn,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00E676),
+              foregroundColor: const Color(0xFF0B101B),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _updateRegionalDistances(double userLat, double userLng) {
@@ -501,9 +666,12 @@ out center 30;
     }
 
     if (elements == null || elements.isEmpty) {
-      _useFallback(_isUrdu
-          ? "قریبی ہسپتال اوپن اسٹریٹ میپ پر نہیں ملے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-          : "No OSM clinics found in 7km. Showing nearest verified facilities.");
+      _useFallback(
+        _isUrdu
+            ? "قریبی ہسپتال اوپن اسٹریٹ میپ پر نہیں ملے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "No OSM clinics found in 7km. Showing nearest verified facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
       return;
     }
 
@@ -565,7 +733,14 @@ out center 30;
         cost = _isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised';
       }
 
-      final phone = tags['phone'] ?? tags['contact:phone'] ?? '';
+      // OSM uses many tag variants for phone numbers — check all common ones
+      final phone = tags['phone'] ??
+          tags['contact:phone'] ??
+          tags['contact:mobile'] ??
+          tags['phone_1'] ??
+          tags['contact:whatsapp'] ??
+          tags['mobile'] ??
+          '';
       final isHospital = tags['amenity'] == 'hospital';
       final specialty = _isUrdu
           ? (isHospital ? 'جنرل ہسپتال' : 'کلینک اور طبی نگہداشت')
@@ -586,9 +761,12 @@ out center 30;
     }
 
     if (fetched.isEmpty) {
-      _useFallback(_isUrdu
-          ? "درست لوکیشن نہیں مل سکی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
-          : "No valid clinic coordinates. Showing nearest verified facilities.");
+      _useFallback(
+        _isUrdu
+            ? "درست لوکیشن نہیں مل سکی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "No valid clinic coordinates. Showing nearest verified facilities.",
+        reason: _ClinicFailReason.networkError,
+      );
       return;
     }
 
@@ -603,18 +781,33 @@ out center 30;
     }
   }
 
-  void _useFallback(String msg) {
+  void _useFallback(String msg, {_ClinicFailReason reason = _ClinicFailReason.networkError}) {
     if (mounted) {
       setState(() {
         _usingDynamic = false;
         _isLoading = false;
         _locationError = true;
       });
+      // Only show the enable-location dialog when GPS is physically turned off.
+      // For permission denials, network errors, or GPS timeouts, we silently
+      // show the fallback directory — showing a dialog there would be confusing.
+      if (reason == _ClinicFailReason.gpsDisabled && !_hasShownLocationPrompt) {
+        _hasShownLocationPrompt = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // 350ms delay so the fallback screen renders fully before the dialog appears
+          Future.delayed(const Duration(milliseconds: 350), () {
+            if (mounted && _locationError) {
+              _showEnableLocationDialog();
+            }
+          });
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
   }
@@ -630,14 +823,7 @@ out center 30;
   }
 
   Future<void> _call(BuildContext ctx, String phone) async {
-    if (phone.trim().isEmpty) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(
-          content: Text(_isUrdu ? 'اس ہسپتال کا فون نمبر درج نہیں ہے' : 'Phone number not listed for this facility'),
-        ),
-      );
-      return;
-    }
+    // phone is guaranteed non-empty when this is called — card checks hasPhone first
     final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'\s+'), ''));
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -646,6 +832,22 @@ out center 30;
         ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
             content: Text(_isUrdu ? 'اس ڈیوائس پر ڈائلر نہیں کھل سکا' : 'Cannot open dialer on this device'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _searchOnline(BuildContext ctx, String clinicName) async {
+    final query = Uri.encodeComponent('$clinicName hospital Pakistan');
+    final uri = Uri.parse('https://www.google.com/search?q=$query');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text(_isUrdu ? 'براؤزر نہیں کھل سکا' : 'Cannot open browser'),
           ),
         );
       }
@@ -819,32 +1021,66 @@ out center 30;
                   style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 44,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00E676),
+                            side: BorderSide(
+                                color: const Color(0xFF00E676).withAlpha(140)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+                          label: Text(
+                            _isUrdu ? 'لوکیشن آن کریں' : 'Enable Location',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          onPressed: _requestEnableLocation,
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.map_rounded, size: 18),
-                    label: Text(mapsBtn,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      final lat = _userLat;
-                      final lng = _userLng;
-                      final Uri uri;
-                      if (lat != null && lng != null) {
-                        uri = Uri.parse('https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
-                      } else {
-                        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
-                      }
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00E676),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.map_rounded, size: 16),
+                          label: Text(
+                            mapsBtn,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          onPressed: () async {
+                            final lat = _userLat;
+                            final lng = _userLng;
+                            final Uri uri;
+                            if (lat != null && lng != null) {
+                              uri = Uri.parse(
+                                  'https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
+                            } else {
+                              uri = Uri.parse(
+                                  'https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
+                            }
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -865,7 +1101,9 @@ out center 30;
                   clinic: clinic,
                   theme: theme,
                   isUrdu: _isUrdu,
+                  hasPhone: clinic.phone.trim().isNotEmpty,
                   onCall: () => _call(context, clinic.phone),
+                  onSearch: () => _searchOnline(context, clinic.name),
                   onDirections: () => _directions(
                       context, clinic.lat, clinic.lng, clinic.name),
                 ),
@@ -882,7 +1120,9 @@ out center 30;
         clinic: clinics[i],
         theme: theme,
         isUrdu: _isUrdu,
+        hasPhone: clinics[i].phone.trim().isNotEmpty,
         onCall: () => _call(ctx, clinics[i].phone),
+        onSearch: () => _searchOnline(ctx, clinics[i].name),
         onDirections: () =>
             _directions(ctx, clinics[i].lat, clinics[i].lng, clinics[i].name),
       ),
@@ -897,14 +1137,18 @@ class _ClinicCard extends StatelessWidget {
   final _Clinic clinic;
   final ThemeData theme;
   final bool isUrdu;
+  final bool hasPhone;
   final VoidCallback onCall;
+  final VoidCallback onSearch;
   final VoidCallback onDirections;
 
   const _ClinicCard({
     required this.clinic,
     required this.theme,
     required this.isUrdu,
+    required this.hasPhone,
     required this.onCall,
+    required this.onSearch,
     required this.onDirections,
   });
 
@@ -917,8 +1161,6 @@ class _ClinicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final callText = isUrdu ? 'کال کریں' : 'Call Now';
-    final dirText = isUrdu ? 'راستہ دیکھیں' : 'Directions';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1005,26 +1247,51 @@ class _ClinicCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onCall,
-                  icon: const Icon(Icons.call, size: 15),
-                  label: Text(callText, style: const TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.green.shade400,
-                    side: BorderSide(
-                        color: Colors.green.shade400.withAlpha(120)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
+                child: hasPhone
+                    // ── Has phone: show green Call Now ────────────────
+                    ? OutlinedButton.icon(
+                        onPressed: onCall,
+                        icon: const Icon(Icons.call, size: 15),
+                        label: Text(
+                          isUrdu ? 'کال کریں' : 'Call Now',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.green.shade400,
+                          side: BorderSide(
+                              color: Colors.green.shade400.withAlpha(120)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      )
+                    // ── No phone: show blue Search Online ─────────────
+                    : OutlinedButton.icon(
+                        onPressed: onSearch,
+                        icon: const Icon(Icons.search_rounded, size: 15),
+                        label: Text(
+                          isUrdu ? 'آن لائن تلاش' : 'Search Online',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue.shade300,
+                          side: BorderSide(
+                              color: Colors.blue.shade300.withAlpha(120)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: onDirections,
                   icon: const Icon(Icons.directions, size: 15),
-                  label: Text(dirText, style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    isUrdu ? 'راستہ دیکھیں' : 'Directions',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         theme.colorScheme.primary.withAlpha(30),
