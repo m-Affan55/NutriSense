@@ -186,18 +186,46 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
   void _showScanResultDialog(Map<String, dynamic> data) {
     String selectedMealType = 'breakfast';
     String? selectedFamilyMemberId = FamilyViewModel.instance.activeMember?.id;
-    
+
+    final items = List<dynamic>.from(data['items'] ?? []);
+
+    // BUG-09 FIX: Ensure every item has a valid macros_per_100g baseline.
+    // For AI-estimated items where the backend returned ai_estimate source,
+    // macros_per_100g may be absent. We derive it here so the portion slider
+    // always has a non-zero baseline to calculate from.
+    for (final item in items) {
+      if (item['macros_per_100g'] == null) {
+        final double g = (item['estimated_weight_g'] as num?)?.toDouble() ?? 100.0;
+        final double safeG = g > 0 ? g : 100.0;
+        item['macros_per_100g'] = {
+          'calories': ((item['calories'] as num?)?.toDouble() ?? 0.0) / safeG * 100.0,
+          'protein_g': ((item['protein_g'] as num?)?.toDouble() ?? 0.0) / safeG * 100.0,
+          'carbs_g': ((item['carbs_g'] as num?)?.toDouble() ?? 0.0) / safeG * 100.0,
+          'fat_g': ((item['fat_g'] as num?)?.toDouble() ?? 0.0) / safeG * 100.0,
+        };
+      }
+    }
+
+    // BUG-04 FIX: Create controllers ONCE before showDialog, keyed by item index.
+    // Previously they were created inside itemBuilder, causing them to be
+    // recreated on every setDialogState() call — losing cursor position and leaking memory.
+    final Map<int, TextEditingController> gramControllers = {
+      for (int i = 0; i < items.length; i++)
+        i: TextEditingController(
+          text: (items[i]['estimated_weight_g'] as num).toInt().toString(),
+        )
+    };
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         final theme = Theme.of(dialogContext);
-        
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final warnings = List<String>.from(data['health_warnings'] ?? []);
             final suggestions = List<String>.from(data['suggestions'] ?? []);
-            final items = List<dynamic>.from(data['items'] ?? []);
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -239,7 +267,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                                 if (controller.text.isNotEmpty) {
                                   setDialogState(() {
                                     data['meal_name'] = controller.text;
-                                    data['recognition_confidence'] = 'high'; // Clear the warning if it exists
+                                    data['recognition_confidence'] = 'high';
                                   });
                                   Navigator.pop(context);
                                 }
@@ -279,7 +307,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                                 ),
                         ),
                       const SizedBox(height: 16),
-                      
+
                       // AI Disclaimer when confidence is low
                       if (data['recognition_confidence'] == 'low')
                         Container(
@@ -446,13 +474,14 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
-                          final displayName = _language == 'ur' && item['local_name'] != null 
-                              ? item['local_name'] 
+                          final displayName = _language == 'ur' && item['local_name'] != null
+                              ? item['local_name']
                               : item['name'] ?? 'Ingredient';
-                          
-                          // Convert grams to an integer for the text field
-                          final initialGrams = (item['estimated_weight_g'] as num).toInt();
-                          final controller = TextEditingController(text: initialGrams.toString());
+
+                          // BUG-04 FIX: Reuse the pre-created controller from the map.
+                          // This avoids recreating controllers on every rebuild,
+                          // preserving cursor position and preventing memory leaks.
+                          final controller = gramControllers[index]!;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -507,23 +536,22 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                                               ),
                                               onChanged: (val) {
                                                 final newGrams = double.tryParse(val);
-                                                if (newGrams != null) {
+                                                if (newGrams != null && newGrams > 0) {
                                                   setDialogState(() {
                                                     item['estimated_weight_g'] = newGrams;
-                                                    // Recalculate totals
+                                                    // BUG-09 FIX: macros_per_100g is now guaranteed
+                                                    // to be non-null (populated above before showDialog).
                                                     double tCal = 0, tPro = 0, tCarb = 0, tFat = 0;
                                                     for (var i in items) {
                                                       final double g = (i['estimated_weight_g'] as num).toDouble();
-                                                      final Map<String, dynamic> macros100g = i['macros_per_100g'] ?? {
-                                                        "calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0
-                                                      };
+                                                      final Map<String, dynamic> macros100g = i['macros_per_100g'] as Map<String, dynamic>;
                                                       final double r = g / 100.0;
-                                                      
-                                                      i['calories'] = (macros100g['calories'] * r).round();
-                                                      i['protein_g'] = double.parse((macros100g['protein_g'] * r).toStringAsFixed(1));
-                                                      i['carbs_g'] = double.parse((macros100g['carbs_g'] * r).toStringAsFixed(1));
-                                                      i['fat_g'] = double.parse((macros100g['fat_g'] * r).toStringAsFixed(1));
-                                                      
+
+                                                      i['calories'] = ((macros100g['calories'] as num).toDouble() * r).round();
+                                                      i['protein_g'] = double.parse(((macros100g['protein_g'] as num).toDouble() * r).toStringAsFixed(1));
+                                                      i['carbs_g'] = double.parse(((macros100g['carbs_g'] as num).toDouble() * r).toStringAsFixed(1));
+                                                      i['fat_g'] = double.parse(((macros100g['fat_g'] as num).toDouble() * r).toStringAsFixed(1));
+
                                                       tCal += i['calories'];
                                                       tPro += i['protein_g'];
                                                       tCarb += i['carbs_g'];
@@ -550,7 +578,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           );
                         },
                       ),
-                      
+
                       if (suggestions.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         const Text(
@@ -594,7 +622,13 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      // BUG-04 FIX: Dispose all gram controllers when dialog is dismissed,
+      // preventing memory leaks across multiple scan sessions.
+      for (final c in gramControllers.values) {
+        c.dispose();
+      }
+    });
   }
 
   Widget _buildMacroStat(String label, String value, String unit, Color color, ThemeData theme) {

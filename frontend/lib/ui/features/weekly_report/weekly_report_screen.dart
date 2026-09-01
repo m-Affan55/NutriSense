@@ -407,10 +407,47 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
-                    _buildReportHistoryItem(
-                      context, 
-                      _language == 'ur' ? 'پچھلا ہفتہ' : 'Previous Week', 
-                      _language == 'ur' ? 'سکور: 85٪' : 'Score: 85%',
+                    // BUG-07 FIX: Removed hardcoded fake "Score: 85%" that appeared for
+                    // every user. Replaced with an honest empty-state encouraging tracking.
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF161A22),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withAlpha(10)),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.history_toggle_off_rounded,
+                            size: 40,
+                            color: Colors.white.withAlpha(60),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _language == 'ur'
+                                ? 'سابقہ ہفتوں کی رپورٹیں ابھی دستیاب نہیں ہیں'
+                                : 'No previous week reports yet',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withAlpha(180),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _language == 'ur'
+                                ? 'روزانہ کھانا لاگ کریں — ہر ہفتے ایک تفصیلی رپورٹ خودبخود تیار ہو گی'
+                                : 'Keep logging meals daily — a full historical report will appear after your first complete week.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withAlpha(110),
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -419,19 +456,4 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 
-  Widget _buildReportHistoryItem(BuildContext context, String week, String score) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(Icons.calendar_today, color: theme.colorScheme.onSurface.withAlpha(150)),
-        title: Text(week, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(score),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          CustomToast.show(context, _language == 'ur' ? 'تاریخ کا ریکارڈ دستیاب نہیں ہے' : 'Archived logs unavailable', isError: false);
-        },
-      ),
-    );
-  }
 }

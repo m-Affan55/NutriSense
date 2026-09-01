@@ -63,10 +63,12 @@ class ReportService:
             if logged_at:
                 day_key = logged_at.split('T')[0]
                 if day_key in daily_stats:
+                    # Column names in meal_logs use the 'total_' prefix as saved by
+                    # scan_meal_screen, manual_log_screen, and barcode_scanner_screen.
                     cals = int(m.get('total_calories') or 0)
-                    prot = int(m.get('protein_g') or 0)
-                    carbs = int(m.get('carbs_g') or 0)
-                    fat = int(m.get('fat_g') or 0)
+                    prot = int(m.get('total_protein_g') or 0)
+                    carbs = int(m.get('total_carbs_g') or 0)
+                    fat = int(m.get('total_fat_g') or 0)
 
                     daily_stats[day_key]["calories"] += cals
                     daily_stats[day_key]["protein_g"] += prot
