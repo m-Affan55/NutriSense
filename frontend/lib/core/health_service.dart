@@ -96,10 +96,12 @@ class HealthService {
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.SLEEP_ASLEEP,
+    HealthDataType.SLEEP_SESSION,
     HealthDataType.HEART_RATE,
   ];
 
   static const _permissions = [
+    HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
@@ -139,6 +141,9 @@ class HealthService {
         _types,
         permissions: _permissions,
       );
+      if (granted) {
+        await getTodayActivity(); // Immediately fetch and cache
+      }
       return granted;
     } catch (e) {
       debugPrint('[HealthService] Permission request failed: $e');
@@ -196,7 +201,18 @@ class HealthService {
         if (hasNativePerm) {
           final now = DateTime.now();
           final startOfDay = DateTime(now.year, now.month, now.day);
-          final sleepStart = startOfDay.subtract(const Duration(hours: 12));
+          final sleepStart = startOfDay.subtract(const Duration(hours: 18));
+
+          // 1. Fetch aggregated steps from Health Connect / Apple Health
+          int steps = 0;
+          try {
+            final totalSteps = await health.getTotalStepsInInterval(startOfDay, now);
+            if (totalSteps != null && totalSteps >= 0) {
+              steps = totalSteps;
+            }
+          } catch (e) {
+            debugPrint('[HealthService] getTotalStepsInInterval: $e');
+          }
 
           final data = await health.getHealthDataFromTypes(
             startTime: startOfDay,
@@ -207,20 +223,19 @@ class HealthService {
           final sleepData = await health.getHealthDataFromTypes(
             startTime: sleepStart,
             endTime: now,
-            types: [HealthDataType.SLEEP_ASLEEP],
+            types: [HealthDataType.SLEEP_ASLEEP, HealthDataType.SLEEP_SESSION],
           );
 
           final deduped = health.removeDuplicates(data);
           final sleepDeduped = health.removeDuplicates(sleepData);
 
-          int steps = 0;
           double activeKcal = 0;
           double sleepMinutes = 0;
           final heartRates = <double>[];
 
           for (final point in deduped) {
             final val = point.value;
-            if (point.type == HealthDataType.STEPS && val is NumericHealthValue) {
+            if (point.type == HealthDataType.STEPS && val is NumericHealthValue && steps == 0) {
               steps += val.numericValue.toInt();
             } else if (point.type == HealthDataType.ACTIVE_ENERGY_BURNED && val is NumericHealthValue) {
               activeKcal += val.numericValue.toDouble();
@@ -230,9 +245,15 @@ class HealthService {
           }
 
           for (final point in sleepDeduped) {
-            final val = point.value;
-            if (val is NumericHealthValue) {
-              sleepMinutes += val.numericValue.toDouble();
+            // Calculate duration in minutes from time interval
+            final durationMins = point.dateTo.difference(point.dateFrom).inMinutes;
+            if (durationMins > 0) {
+              sleepMinutes += durationMins.toDouble();
+            } else {
+              final val = point.value;
+              if (val is NumericHealthValue) {
+                sleepMinutes += val.numericValue.toDouble();
+              }
             }
           }
 
@@ -240,17 +261,15 @@ class HealthService {
               ? (heartRates.reduce((a, b) => a + b) / heartRates.length).round()
               : 0;
 
-          if (steps > 0 || activeKcal > 0 || sleepMinutes > 0) {
-            final nativeActivity = ActivityData(
-              steps: steps,
-              activeKcal: activeKcal.round(),
-              sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
-              heartRateBpm: avgHr,
-              source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
-            );
-            await saveTodayActivity(nativeActivity);
-            return nativeActivity;
-          }
+          final nativeActivity = ActivityData(
+            steps: steps,
+            activeKcal: activeKcal.round(),
+            sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
+            heartRateBpm: avgHr,
+            source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
+          );
+          await saveTodayActivity(nativeActivity);
+          return nativeActivity;
         }
       } catch (e) {
         debugPrint('[HealthService] Native read fallback to local cache: $e');
@@ -267,13 +286,12 @@ class HealthService {
 
     // 3. Initial baseline demo/ready values for all platforms (Windows, Web, Android, iOS)
     final baseline = const ActivityData(
-      steps: 6420,
-      activeKcal: 380,
-      sleepHours: 7.2,
-      heartRateBpm: 72,
-      source: 'Universal Sync',
+      steps: 0,
+      activeKcal: 0,
+      sleepHours: 0.0,
+      heartRateBpm: 0,
+      source: 'Tap to Sync',
     );
-    await saveTodayActivity(baseline);
     return baseline;
   }
 

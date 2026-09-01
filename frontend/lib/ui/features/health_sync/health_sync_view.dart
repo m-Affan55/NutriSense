@@ -91,6 +91,9 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
         'sleepHint': 'Sleep Hours (e.g. 7.5 hrs)',
         'hrHint': 'Heart Rate (e.g. 72 bpm)',
         'logSuccess': 'Activity updated successfully!',
+        'syncNow': 'Sync Health Connect',
+        'syncSuccess': 'Health data synced successfully!',
+        'syncing': 'Connecting & syncing...',
       },
       'ur': {
         'title': 'ہیلتھ سنک',
@@ -119,9 +122,22 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
         'sleepHint': 'نیند کے گھنٹے (مثلاً 7.5)',
         'hrHint': 'دل کی دھڑکن (مثلاً 72)',
         'logSuccess': 'سرگرمی کامیابی سے محفوظ ہوگئی!',
+        'syncNow': 'گوگل ہیلتھ سنک کریں',
+        'syncSuccess': 'ہیلتھ ڈیٹا کامیابی سے سنک ہوگیا!',
+        'syncing': 'کنیکٹ اور سنک کیا جا رہا ہے...',
       },
     };
     return translations[_language]?[key] ?? key;
+  }
+
+  Future<void> _handleManualSync() async {
+    CustomToast.show(context, _t('syncing'));
+    final granted = await _vm.requestConnection();
+    if (mounted) {
+      if (granted) {
+        CustomToast.show(context, _t('syncSuccess'));
+      }
+    }
   }
 
   @override
@@ -204,36 +220,40 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: accent.withAlpha(30),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: accent.withAlpha(80)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _handleManualSync,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accent.withAlpha(30),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: accent.withAlpha(80)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: accent,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _vm.todayActivity.source.isNotEmpty
-                              ? _vm.todayActivity.source
-                              : _t('connected'),
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(width: 5),
+                          Text(
+                            _vm.todayActivity.source.isNotEmpty
+                                ? _vm.todayActivity.source
+                                : _t('connected'),
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -245,6 +265,11 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
               ),
             ],
           ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.sync_rounded, color: Colors.white70),
+          tooltip: _t('syncNow'),
+          onPressed: _handleManualSync,
         ),
         IconButton(
           icon: const Icon(Icons.tune_rounded, color: Colors.white70),
