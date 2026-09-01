@@ -823,14 +823,7 @@ out center 30;
   }
 
   Future<void> _call(BuildContext ctx, String phone) async {
-    if (phone.trim().isEmpty) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(
-          content: Text(_isUrdu ? 'اس ہسپتال کا فون نمبر درج نہیں ہے' : 'Phone number not listed for this facility'),
-        ),
-      );
-      return;
-    }
+    // phone is guaranteed non-empty when this is called — card checks hasPhone first
     final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'\s+'), ''));
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -839,6 +832,22 @@ out center 30;
         ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
             content: Text(_isUrdu ? 'اس ڈیوائس پر ڈائلر نہیں کھل سکا' : 'Cannot open dialer on this device'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _searchOnline(BuildContext ctx, String clinicName) async {
+    final query = Uri.encodeComponent('$clinicName hospital Pakistan');
+    final uri = Uri.parse('https://www.google.com/search?q=$query');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text(_isUrdu ? 'براؤزر نہیں کھل سکا' : 'Cannot open browser'),
           ),
         );
       }
@@ -1092,7 +1101,9 @@ out center 30;
                   clinic: clinic,
                   theme: theme,
                   isUrdu: _isUrdu,
+                  hasPhone: clinic.phone.trim().isNotEmpty,
                   onCall: () => _call(context, clinic.phone),
+                  onSearch: () => _searchOnline(context, clinic.name),
                   onDirections: () => _directions(
                       context, clinic.lat, clinic.lng, clinic.name),
                 ),
@@ -1109,7 +1120,9 @@ out center 30;
         clinic: clinics[i],
         theme: theme,
         isUrdu: _isUrdu,
+        hasPhone: clinics[i].phone.trim().isNotEmpty,
         onCall: () => _call(ctx, clinics[i].phone),
+        onSearch: () => _searchOnline(ctx, clinics[i].name),
         onDirections: () =>
             _directions(ctx, clinics[i].lat, clinics[i].lng, clinics[i].name),
       ),
@@ -1124,14 +1137,18 @@ class _ClinicCard extends StatelessWidget {
   final _Clinic clinic;
   final ThemeData theme;
   final bool isUrdu;
+  final bool hasPhone;
   final VoidCallback onCall;
+  final VoidCallback onSearch;
   final VoidCallback onDirections;
 
   const _ClinicCard({
     required this.clinic,
     required this.theme,
     required this.isUrdu,
+    required this.hasPhone,
     required this.onCall,
+    required this.onSearch,
     required this.onDirections,
   });
 
@@ -1144,8 +1161,6 @@ class _ClinicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final callText = isUrdu ? 'کال کریں' : 'Call Now';
-    final dirText = isUrdu ? 'راستہ دیکھیں' : 'Directions';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1232,26 +1247,51 @@ class _ClinicCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onCall,
-                  icon: const Icon(Icons.call, size: 15),
-                  label: Text(callText, style: const TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.green.shade400,
-                    side: BorderSide(
-                        color: Colors.green.shade400.withAlpha(120)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
+                child: hasPhone
+                    // ── Has phone: show green Call Now ────────────────
+                    ? OutlinedButton.icon(
+                        onPressed: onCall,
+                        icon: const Icon(Icons.call, size: 15),
+                        label: Text(
+                          isUrdu ? 'کال کریں' : 'Call Now',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.green.shade400,
+                          side: BorderSide(
+                              color: Colors.green.shade400.withAlpha(120)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      )
+                    // ── No phone: show blue Search Online ─────────────
+                    : OutlinedButton.icon(
+                        onPressed: onSearch,
+                        icon: const Icon(Icons.search_rounded, size: 15),
+                        label: Text(
+                          isUrdu ? 'آن لائن تلاش' : 'Search Online',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue.shade300,
+                          side: BorderSide(
+                              color: Colors.blue.shade300.withAlpha(120)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: onDirections,
                   icon: const Icon(Icons.directions, size: 15),
-                  label: Text(dirText, style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    isUrdu ? 'راستہ دیکھیں' : 'Directions',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         theme.colorScheme.primary.withAlpha(30),
