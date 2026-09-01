@@ -78,18 +78,21 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   ];
 
   Future<void> _nextPage() async {
-    // Validate body metrics on the metrics page (page 2) or before final submit
-    if (_age < 6 || _age > 120) {
-      CustomToast.show(context, 'Please enter a valid age (6 to 120 years)');
-      return;
-    }
-    if (_weightKg < 15 || _weightKg > 400) {
-      CustomToast.show(context, 'Please enter a valid weight (15 to 400 kg)');
-      return;
-    }
-    if (_heightCm < 50 || _heightCm > 280) {
-      CustomToast.show(context, 'Please enter a valid height (50 to 280 cm)');
-      return;
+    // BUG-01 FIX: Only validate body metrics when the user is ON the Body Metrics page (index 2).
+    // Previously this validation ran on every page tap, showing confusing toasts on Goal/Gender pages.
+    if (_currentPage == 2) {
+      if (_age < 6 || _age > 120) {
+        CustomToast.show(context, 'Please enter a valid age (6 to 120 years)');
+        return;
+      }
+      if (_weightKg < 15 || _weightKg > 400) {
+        CustomToast.show(context, 'Please enter a valid weight (15 to 400 kg)');
+        return;
+      }
+      if (_heightCm < 50 || _heightCm > 280) {
+        CustomToast.show(context, 'Please enter a valid height (50 to 280 cm)');
+        return;
+      }
     }
 
     if (_currentPage < _totalPages - 1) {
@@ -118,10 +121,14 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         };
 
         final url = Uri.parse('${ApiClient.getBaseUrl()}/profile/onboarding');
+        // BUG-11 FIX: Added 15s timeout so users are never stuck forever on a dead network.
         final response = await http.post(
           url,
           headers: ApiClient.getHeaders(),
           body: jsonEncode(payload),
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Connection timed out. Please check your internet and try again.'),
         );
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -142,9 +149,15 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   String _mapGoal(String? goal) {
+    // BUG-02 FIX: All 5 goal options now map to a meaningful backend value.
+    // Previously 'Manage diabetes' and 'General wellness' both silently fell
+    // to 'maintenance', causing the AI Coach and Report to give generic advice
+    // instead of diabetes-specific or wellness-focused guidance.
     if (goal == null) return 'fat_loss';
     if (goal.contains('Fat loss')) return 'fat_loss';
     if (goal.contains('muscle')) return 'muscle_gain';
+    if (goal.contains('diabetes') || goal.contains('blood sugar')) return 'manage_diabetes';
+    if (goal.contains('wellness') || goal.contains('Just eat better')) return 'general_wellness';
     return 'maintenance';
   }
 
