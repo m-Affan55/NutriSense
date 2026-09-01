@@ -49,7 +49,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Dirty-state tracking
   bool _hasUnsavedChanges = false;
-  Map<String, dynamic> _originalValues = {};
 
   bool _adaptiveReminders = true;
   bool _streakAlerts = true;

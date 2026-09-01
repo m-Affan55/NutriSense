@@ -213,7 +213,7 @@ class ClinicFinderScreen extends StatefulWidget {
 }
 
 class _ClinicFinderScreenState extends State<ClinicFinderScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
 
   bool _isLoading = true;
@@ -223,6 +223,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   List<_Clinic> _regionalClinics = [];
   bool _usingDynamic = false;
   bool _locationError = false;
+  bool _hasShownLocationPrompt = false;
   double? _userLat;
   double? _userLng;
 
@@ -231,9 +232,30 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
     _regionalClinics = _createInitialClinics(_isUrdu);
     _initLocationAndFetch();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _locationError && !_isLoading) {
+      _checkAndAutoRefreshLocation();
+    }
+  }
+
+  Future<void> _checkAndAutoRefreshLocation() async {
+    try {
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      final permission = await Geolocator.checkPermission();
+      final hasPerm = permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+      if (isServiceEnabled && hasPerm) {
+        _hasShownLocationPrompt = false;
+        await _initLocationAndFetch();
+      }
+    } catch (_) {}
   }
 
   Future<void> _initLocationAndFetch() async {
@@ -241,7 +263,9 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       setState(() {
         _locationError = false;
         _isLoading = true;
-        _statusMessage = _isUrdu ? "جی پی ایس لوکیشن چیک کی جا رہی ہے..." : "Accessing GPS location...";
+        _statusMessage = _isUrdu
+            ? "جی پی ایس لوکیشن چیک کی جا رہی ہے..."
+            : "Accessing GPS location...";
       });
 
       // 1. Check & Request Location Permission natively
@@ -249,20 +273,26 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _useFallback(_isUrdu ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission denied. Showing regional facilities.");
+          _useFallback(_isUrdu
+              ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+              : "Location permission denied. Showing regional facilities.");
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _useFallback(_isUrdu ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission permanently denied. Showing regional facilities.");
+        _useFallback(_isUrdu
+            ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "Location permission permanently denied. Showing regional facilities.");
         return;
       }
 
       // 2. Check if Location Services (GPS) are enabled
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isServiceEnabled) {
-        _useFallback(_isUrdu ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location services disabled. Showing regional facilities.");
+        _useFallback(_isUrdu
+            ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "Location services disabled. Showing regional facilities.");
         return;
       }
 
@@ -282,7 +312,9 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       }
 
       if (position == null) {
-        _useFallback(_isUrdu ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not obtain GPS fix. Showing regional facilities.");
+        _useFallback(_isUrdu
+            ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+            : "Could not obtain GPS fix. Showing regional facilities.");
         return;
       }
 
@@ -294,14 +326,128 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
 
       // 4. Fetch dynamic Overpass OpenStreetMap clinics within 7km
       setState(() {
-        _statusMessage = _isUrdu ? "قریبی ہسپتال اور کلینک تلاش کیے جا رہے ہیں..." : "Discovering nearby clinics on OpenStreetMap...";
+        _statusMessage = _isUrdu
+            ? "قریبی ہسپتال اور کلینک تلاش کیے جا رہے ہیں..."
+            : "Discovering nearby clinics on OpenStreetMap...";
       });
 
       await _fetchOverpassClinics(position.latitude, position.longitude);
     } catch (e) {
       debugPrint("[ClinicFinder] Error in location init: $e");
-      _useFallback(_isUrdu ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not load dynamic clinics. Showing regional facilities.");
+      _useFallback(_isUrdu
+          ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+          : "Could not load dynamic clinics. Showing regional facilities.");
     }
+  }
+
+  Future<void> _requestEnableLocation() async {
+    try {
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        // Direct user to device Location/GPS Settings
+        await Geolocator.openLocationSettings();
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // Direct user to App permission settings
+        await Geolocator.openAppSettings();
+        return;
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        _hasShownLocationPrompt = false;
+        await _initLocationAndFetch();
+      }
+    } catch (e) {
+      debugPrint("[ClinicFinder] Request enable location error: $e");
+      await _initLocationAndFetch();
+    }
+  }
+
+  void _showEnableLocationDialog() {
+    if (!mounted) return;
+    final dialogTitle =
+        _isUrdu ? 'لوکیشن سروس فعال کریں' : 'Enable Device Location';
+    final dialogBody = _isUrdu
+        ? 'اپنے قریب 7 کلومیٹر کے اندر تصدیق شدہ ہسپتال اور ایمرجنسی کلینکس خودکار طور پر تلاش کرنے کے لیے ڈیوائس کی لوکیشن آن کریں۔'
+        : 'Turn on device location to automatically discover verified clinics, hospitals, and emergency care centers within 7 km of your current position.';
+    final enableBtn = _isUrdu ? 'لوکیشن آن کریں' : 'Enable Location';
+    final dismissBtn = _isUrdu ? 'ڈائرکٹری دیکھیں' : 'Browse Directory';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E232E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+              color: const Color(0xFF00E676).withAlpha(80), width: 1.2),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E676).withAlpha(25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on_rounded,
+                  color: Color(0xFF00E676), size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                dialogTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          dialogBody,
+          style: const TextStyle(
+              color: Colors.white70, fontSize: 13, height: 1.45),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child:
+                Text(dismissBtn, style: const TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _requestEnableLocation();
+            },
+            icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+            label: Text(enableBtn,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00E676),
+              foregroundColor: const Color(0xFF0B101B),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _updateRegionalDistances(double userLat, double userLng) {
@@ -610,11 +756,20 @@ out center 30;
         _isLoading = false;
         _locationError = true;
       });
+      if (!_hasShownLocationPrompt) {
+        _hasShownLocationPrompt = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _locationError) {
+            _showEnableLocationDialog();
+          }
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
   }
@@ -819,32 +974,66 @@ out center 30;
                   style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 44,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00E676),
+                            side: BorderSide(
+                                color: const Color(0xFF00E676).withAlpha(140)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+                          label: Text(
+                            _isUrdu ? 'لوکیشن آن کریں' : 'Enable Location',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          onPressed: _requestEnableLocation,
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.map_rounded, size: 18),
-                    label: Text(mapsBtn,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      final lat = _userLat;
-                      final lng = _userLng;
-                      final Uri uri;
-                      if (lat != null && lng != null) {
-                        uri = Uri.parse('https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
-                      } else {
-                        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
-                      }
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00E676),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.map_rounded, size: 16),
+                          label: Text(
+                            mapsBtn,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          onPressed: () async {
+                            final lat = _userLat;
+                            final lng = _userLng;
+                            final Uri uri;
+                            if (lat != null && lng != null) {
+                              uri = Uri.parse(
+                                  'https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
+                            } else {
+                              uri = Uri.parse(
+                                  'https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
+                            }
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
