@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../core/language_controller.dart';
 
 // ─────────────────────────────────────────────────────────────────
 //  DATA MODEL
@@ -36,163 +37,163 @@ class _Clinic {
 // ─────────────────────────────────────────────────────────────────
 //  VERIFIED REGIONAL CLINICS DIRECTORY (Used as Instant Baseline)
 // ─────────────────────────────────────────────────────────────────
-List<_Clinic> _createInitialClinics() => [
+List<_Clinic> _createInitialClinics(bool isUrdu) => [
   // ── Government (Karachi) ──────────────────────────────────────
   _Clinic(
-    name: 'Jinnah Postgraduate Medical Centre (JPMC)',
-    address: 'Rafiqui H.J. Shaheed Rd, Karachi',
+    name: isUrdu ? 'جناح پوسٹ گریجویٹ میڈیکل سینٹر (JPMC)' : 'Jinnah Postgraduate Medical Centre (JPMC)',
+    address: isUrdu ? 'رفیقی ایچ جے شہید روڈ، کراچی' : 'Rafiqui H.J. Shaheed Rd, Karachi',
     phone: '+922199201050',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'General & Emergency',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'جنرل اور ایمرجنسی' : 'General & Emergency',
     lat: 24.8607,
     lng: 67.0105,
   ),
   _Clinic(
-    name: 'Civil Hospital Karachi',
-    address: 'Baba-e-Urdu Rd, Karachi',
+    name: isUrdu ? 'سول ہسپتال کراچی' : 'Civil Hospital Karachi',
+    address: isUrdu ? 'بابائے اردو روڈ، کراچی' : 'Baba-e-Urdu Rd, Karachi',
     phone: '+922199215740',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'Multi-specialty',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'ملٹی اسپیشلٹی' : 'Multi-specialty',
     lat: 24.8617,
     lng: 67.0082,
   ),
   _Clinic(
-    name: 'Liaquat National Hospital (LNH)',
-    address: 'Stadium Rd, Karachi',
+    name: isUrdu ? 'لیاقت نیشنل ہسپتال (LNH)' : 'Liaquat National Hospital (LNH)',
+    address: isUrdu ? 'اسٹیڈیم روڈ، کراچی' : 'Stadium Rd, Karachi',
     phone: '+922134412000',
     type: 'government',
-    cost: 'Low Cost',
-    specialty: 'Nutrition & Endocrinology',
+    cost: isUrdu ? 'کم لاگت' : 'Low Cost',
+    specialty: isUrdu ? 'نیوٹریشن اور اینڈو کرائنولوجی' : 'Nutrition & Endocrinology',
     lat: 24.8933,
     lng: 67.0756,
   ),
   _Clinic(
-    name: 'National Institute of Diabetes & Endocrinology (NIDE)',
-    address: 'JPMC Campus, Rafiqui Rd, Karachi',
+    name: isUrdu ? 'قومی ادارہ برائے ذیابیطس اور اینڈوکرائنولوجی' : 'National Institute of Diabetes & Endocrinology (NIDE)',
+    address: isUrdu ? 'جے پی ایم سی کیمپس، رفیقی روڈ، کراچی' : 'JPMC Campus, Rafiqui Rd, Karachi',
     phone: '+922199201111',
     type: 'government',
-    cost: 'Free',
-    specialty: 'Diabetes & Nutrition',
+    cost: isUrdu ? 'مفت' : 'Free',
+    specialty: isUrdu ? 'ذیابیطس اور غذائیت' : 'Diabetes & Nutrition',
     lat: 24.8605,
     lng: 67.0110,
   ),
 
   // ── Private (Karachi) ─────────────────────────────────────────
   _Clinic(
-    name: 'Aga Khan University Hospital (AKUH)',
-    address: 'Stadium Rd, Karachi',
+    name: isUrdu ? 'آغا خان یونیورسٹی ہسپتال (AKUH)' : 'Aga Khan University Hospital (AKUH)',
+    address: isUrdu ? 'اسٹیڈیم روڈ، کراچی' : 'Stadium Rd, Karachi',
     phone: '+922134864000',
     type: 'private',
-    cost: 'High Cost',
-    specialty: 'Dietetics & Cardiology',
+    cost: isUrdu ? 'اعلیٰ لاگت' : 'High Cost',
+    specialty: isUrdu ? 'ڈائیٹیٹکس اور کارڈیالوجی' : 'Dietetics & Cardiology',
     lat: 24.8980,
     lng: 67.0800,
   ),
   _Clinic(
-    name: 'South City Hospital',
-    address: 'Dr. Ziauddin Ahmed Rd, Karachi',
+    name: isUrdu ? 'ساؤتھ سٹی ہسپتال' : 'South City Hospital',
+    address: isUrdu ? 'ڈاکٹر ضیاء الدین احمد روڈ، کراچی' : 'Dr. Ziauddin Ahmed Rd, Karachi',
     phone: '+922135205001',
     type: 'private',
-    cost: 'Medium Cost',
-    specialty: 'Nutrition & Cardiology',
+    cost: isUrdu ? 'درمیانی لاگت' : 'Medium Cost',
+    specialty: isUrdu ? 'غذائیت اور امراض قلب' : 'Nutrition & Cardiology',
     lat: 24.8438,
     lng: 67.0269,
   ),
   _Clinic(
-    name: 'Indus Hospital',
-    address: 'Korangi Crossing, Karachi',
+    name: isUrdu ? 'انڈس ہسپتال' : 'Indus Hospital',
+    address: isUrdu ? 'کورنگی کراسنگ، کراچی' : 'Korangi Crossing, Karachi',
     phone: '+922135112709',
     type: 'private',
-    cost: 'Free (Charity)',
-    specialty: 'Multi-specialty (Free)',
+    cost: isUrdu ? 'مفت (خیراتی)' : 'Free (Charity)',
+    specialty: isUrdu ? 'ملٹی اسپیشلٹی (مفت)' : 'Multi-specialty (Free)',
     lat: 24.8330,
     lng: 67.1180,
   ),
   _Clinic(
-    name: 'Ziauddin Hospital (Clifton)',
-    address: 'Block 6, Clifton, Karachi',
+    name: isUrdu ? 'ضیاء الدین ہسپتال (کلفٹن)' : 'Ziauddin Hospital (Clifton)',
+    address: isUrdu ? 'بلاک 6، کلفٹن، کراچی' : 'Block 6, Clifton, Karachi',
     phone: '+922135862937',
     type: 'private',
-    cost: 'Medium Cost',
-    specialty: 'Nutrition & Hypertension',
+    cost: isUrdu ? 'درمیانی لاگت' : 'Medium Cost',
+    specialty: isUrdu ? 'غذائیت اور بلڈ پریشر' : 'Nutrition & Hypertension',
     lat: 24.8140,
     lng: 67.0300,
   ),
 
   // ── Government (Lahore) ───────────────────────────────────────
   _Clinic(
-    name: 'Mayo Hospital Lahore',
-    address: 'Hospital Rd, Anarkali Bazaar, Lahore',
+    name: isUrdu ? 'میو ہسپتال لاہور' : 'Mayo Hospital Lahore',
+    address: isUrdu ? 'ہسپتال روڈ، انارکلی بازار، لاہور' : 'Hospital Rd, Anarkali Bazaar, Lahore',
     phone: '+924299211120',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'General & Emergency',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'جنرل اور ایمرجنسی' : 'General & Emergency',
     lat: 31.5746,
     lng: 74.3130,
   ),
   _Clinic(
-    name: 'Services Hospital Lahore',
-    address: 'Jail Rd, Lahore',
+    name: isUrdu ? 'سروسز ہسپتال لاہور' : 'Services Hospital Lahore',
+    address: isUrdu ? 'جیل روڈ، لاہور' : 'Jail Rd, Lahore',
     phone: '+924299203402',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'Multi-specialty',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'ملٹی اسپیشلٹی' : 'Multi-specialty',
     lat: 31.5414,
     lng: 74.3313,
   ),
   _Clinic(
-    name: 'Jinnah Hospital Lahore',
-    address: 'Usmani Rd, Faisal Town, Lahore',
+    name: isUrdu ? 'جناح ہسپتال لاہور' : 'Jinnah Hospital Lahore',
+    address: isUrdu ? 'عثمانی روڈ، فیصل ٹاؤن، لاہور' : 'Usmani Rd, Faisal Town, Lahore',
     phone: '+924299231400',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'General & Emergency',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'جنرل اور ایمرجنسی' : 'General & Emergency',
     lat: 31.4939,
     lng: 74.3113,
   ),
 
   // ── Private (Lahore) ──────────────────────────────────────────
   _Clinic(
-    name: 'Shaukat Khanum Memorial Hospital',
-    address: 'Johar Town, Lahore',
+    name: isUrdu ? 'شوکت خانم میموریل ہسپتال' : 'Shaukat Khanum Memorial Hospital',
+    address: isUrdu ? 'جوہر ٹاؤن، لاہور' : 'Johar Town, Lahore',
     phone: '+924235905000',
     type: 'private',
-    cost: 'Charity / Subsidised',
-    specialty: 'Specialized Care & Nutrition',
+    cost: isUrdu ? 'خیراتی / رعایتی' : 'Charity / Subsidised',
+    specialty: isUrdu ? 'خصوصی نگہداشت اور غذائیت' : 'Specialized Care & Nutrition',
     lat: 31.4727,
     lng: 74.2693,
   ),
 
   // ── Islamabad / Rawalpindi ────────────────────────────────────
   _Clinic(
-    name: 'Pakistan Institute of Medical Sciences (PIMS)',
-    address: 'G-8/3, Islamabad',
+    name: isUrdu ? 'پمز ہسپتال اسلام آباد (PIMS)' : 'Pakistan Institute of Medical Sciences (PIMS)',
+    address: isUrdu ? 'جی-8/3، اسلام آباد' : 'G-8/3, Islamabad',
     phone: '+92519261170',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'Endocrinology & General',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'اینڈو کرائنولوجی اور جنرل' : 'Endocrinology & General',
     lat: 33.7088,
     lng: 73.0560,
   ),
   _Clinic(
-    name: 'Holy Family Hospital',
-    address: 'Satellite Town, Rawalpindi',
+    name: isUrdu ? 'ہولی فیملی ہسپتال راولپنڈی' : 'Holy Family Hospital',
+    address: isUrdu ? 'سیٹلائٹ ٹاؤن، راولپنڈی' : 'Satellite Town, Rawalpindi',
     phone: '+92519290321',
     type: 'government',
-    cost: 'Free / Subsidised',
-    specialty: 'General & Emergency',
+    cost: isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised',
+    specialty: isUrdu ? 'جنرل اور ایمرجنسی' : 'General & Emergency',
     lat: 33.6338,
     lng: 73.0722,
   ),
   _Clinic(
-    name: 'Shifa International Hospital',
-    address: 'Pitras Bukhari Rd, H-8/4, Islamabad',
+    name: isUrdu ? 'شفا انٹرنیشنل ہسپتال' : 'Shifa International Hospital',
+    address: isUrdu ? 'پطرس بخاری روڈ، ایچ-8/4، اسلام آباد' : 'Pitras Bukhari Rd, H-8/4, Islamabad',
     phone: '+92518464646',
     type: 'private',
-    cost: 'High Cost',
-    specialty: 'Dietetics & Endocrinology',
+    cost: isUrdu ? 'اعلیٰ لاگت' : 'High Cost',
+    specialty: isUrdu ? 'ڈائیٹیٹکس اور اینڈوکرائنولوجی' : 'Dietetics & Endocrinology',
     lat: 33.6765,
     lng: 73.0827,
   ),
@@ -225,11 +226,13 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
   double? _userLat;
   double? _userLng;
 
+  bool get _isUrdu => LanguageController.instance.isUrdu;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _regionalClinics = _createInitialClinics();
+    _regionalClinics = _createInitialClinics(_isUrdu);
     _initLocationAndFetch();
   }
 
@@ -238,7 +241,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       setState(() {
         _locationError = false;
         _isLoading = true;
-        _statusMessage = "Accessing GPS location...";
+        _statusMessage = _isUrdu ? "جی پی ایس لوکیشن چیک کی جا رہی ہے..." : "Accessing GPS location...";
       });
 
       // 1. Check & Request Location Permission natively
@@ -246,20 +249,20 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _useFallback("Location permission denied. Showing regional facilities.");
+          _useFallback(_isUrdu ? "لوکیشن کی اجازت نہیں ملی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission denied. Showing regional facilities.");
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _useFallback("Location permission permanently denied. Showing regional facilities.");
+        _useFallback(_isUrdu ? "لوکیشن مستقل طور پر بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location permission permanently denied. Showing regional facilities.");
         return;
       }
 
       // 2. Check if Location Services (GPS) are enabled
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isServiceEnabled) {
-        _useFallback("Location services disabled. Showing regional facilities.");
+        _useFallback(_isUrdu ? "لوکیشن سروس بند ہے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Location services disabled. Showing regional facilities.");
         return;
       }
 
@@ -279,7 +282,7 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
       }
 
       if (position == null) {
-        _useFallback("Could not obtain GPS fix. Showing regional facilities.");
+        _useFallback(_isUrdu ? "جی پی ایس سگنل نہیں ملا۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not obtain GPS fix. Showing regional facilities.");
         return;
       }
 
@@ -291,13 +294,13 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
 
       // 4. Fetch dynamic Overpass OpenStreetMap clinics within 7km
       setState(() {
-        _statusMessage = "Discovering nearby clinics on OpenStreetMap...";
+        _statusMessage = _isUrdu ? "قریبی ہسپتال اور کلینک تلاش کیے جا رہے ہیں..." : "Discovering nearby clinics on OpenStreetMap...";
       });
 
       await _fetchOverpassClinics(position.latitude, position.longitude);
     } catch (e) {
       debugPrint("[ClinicFinder] Error in location init: $e");
-      _useFallback("Could not load dynamic clinics. Showing regional facilities.");
+      _useFallback(_isUrdu ? "ہسپتال لوڈ کرنے میں خرابی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔" : "Could not load dynamic clinics. Showing regional facilities.");
     }
   }
 
@@ -310,9 +313,148 @@ class _ClinicFinderScreenState extends State<ClinicFinderScreen>
         clinic.lng,
       );
       clinic.distanceMeters = distanceM;
-      clinic.distance = '${(distanceM / 1000).toStringAsFixed(1)} km';
+      clinic.distance = _isUrdu
+          ? '${(distanceM / 1000).toStringAsFixed(1)} کلومیٹر'
+          : '${(distanceM / 1000).toStringAsFixed(1)} km';
     }
     _regionalClinics.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+  }
+
+  /// Sanitizes raw OpenStreetMap names so bilingual mixed text is cleanly separated
+  String _sanitizeName(Map<String, dynamic> tags, bool isUrdu) {
+    final nameEn = tags['name:en']?.toString().trim();
+    final nameUr = tags['name:ur']?.toString().trim();
+    final rawName = tags['name']?.toString().trim() ?? '';
+
+    if (isUrdu) {
+      if (nameUr != null && nameUr.isNotEmpty) return nameUr;
+
+      // If rawName contains Urdu script, extract the clean Urdu portion
+      if (RegExp(r'[\u0600-\u06FF]').hasMatch(rawName)) {
+        final urduClean = rawName
+            .replaceAll(RegExp(r'[a-zA-Z]'), '')
+            .replaceAll(RegExp(r'[\/\-—\|\,\.]+\s*$'), '')
+            .replaceAll(RegExp(r'^\s*[\/\-—\|\,\.]+'), '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        if (urduClean.isNotEmpty) return urduClean;
+      }
+
+      // If only English, translate common medical descriptors
+      if (rawName.isNotEmpty) {
+        String urduTranslated = rawName;
+        final dictionary = {
+          'Hospital': 'ہسپتال',
+          'Clinic': 'کلینک',
+          'Doctor': 'ڈاکٹر',
+          'Dr.': 'ڈاکٹر',
+          'Medical': 'میڈیکل',
+          'Center': 'سنٹر',
+          'Centre': 'سنٹر',
+          'Complex': 'کمپلیکس',
+          'Care': 'کیئر',
+          'Health': 'ہیلتھ',
+          'Pharmacy': 'فارمیسی',
+          'General': 'جنرل',
+        };
+        dictionary.forEach((en, ur) {
+          urduTranslated = urduTranslated.replaceAll(RegExp(r'\b' + en + r'\b', caseSensitive: false), ur);
+        });
+        return urduTranslated.trim();
+      }
+
+      final amenity = tags['amenity'] ?? tags['healthcare'] ?? 'hospital';
+      return amenity == 'hospital' ? 'قریبی ہسپتال' : 'قریبی کلینک';
+    } else {
+      // ── ENGLISH MODE ──────────────────────────────────────────
+      if (nameEn != null && nameEn.isNotEmpty) return nameEn;
+
+      // If rawName contains English characters, strip out the Urdu script cleanly
+      if (RegExp(r'[a-zA-Z]').hasMatch(rawName)) {
+        final latinPart = rawName
+            .replaceAll(RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]'), '')
+            .replaceAll(RegExp(r'[\/\-—\|\,\.]+\s*$'), '')
+            .replaceAll(RegExp(r'^\s*[\/\-—\|\,\.]+'), '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+
+        // Check if we have a valid name (more than 2 characters)
+        if (latinPart.length >= 3) {
+          return latinPart;
+        }
+      }
+
+      // If rawName is purely in Urdu (no English in OSM tags), translate common terms
+      if (rawName.isNotEmpty) {
+        String enTranslated = rawName;
+        final urduToEn = {
+          'ڈاکٹر': 'Dr.',
+          'ہسپتال': 'Hospital',
+          'کلینک': 'Clinic',
+          'میڈیکل': 'Medical',
+          'سنٹر': 'Center',
+          'سینٹر': 'Center',
+          'کمپلیکس': 'Complex',
+          'شفا': 'Shifa',
+          'رفیع': 'Rafi',
+          'فیملی': 'Family',
+          'ہیلتھ': 'Health',
+          'علی': 'Ali',
+          'خان': 'Khan',
+          'احمد': 'Ahmed',
+          'فاطمہ': 'Fatima',
+          'جناح': 'Jinnah',
+          'سول': 'Civil',
+          'خدمات': 'Services',
+          'میو': 'Mayo',
+        };
+        urduToEn.forEach((ur, en) {
+          enTranslated = enTranslated.replaceAll(ur, en);
+        });
+
+        // Strip single letter glitch prefixes like 's' or 'S'
+        enTranslated = enTranslated.replaceAll(RegExp(r'^[a-zA-Z]\s*(?=[A-Z])'), '');
+        enTranslated = enTranslated.replaceAll(RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]'), '');
+        enTranslated = enTranslated.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+        if (enTranslated.length >= 3) {
+          return enTranslated;
+        }
+      }
+
+      // Default clean fallback
+      final amenity = tags['amenity'] ?? tags['healthcare'] ?? 'Medical Center';
+      final amenityName = amenity == 'hospital' ? 'Hospital' : (amenity == 'clinic' ? 'Clinic' : 'Medical Center');
+      final street = tags['addr:street'] ?? tags['addr:city'] ?? '';
+      if (street.isNotEmpty) {
+        return '$street $amenityName';
+      }
+      return 'Local $amenityName';
+    }
+  }
+
+  /// Sanitizes raw address strings for language consistency
+  String _sanitizeAddress(Map<String, dynamic> tags, double clat, double clng, bool isUrdu) {
+    final street = tags['addr:street']?.toString() ?? '';
+    final city = tags['addr:city']?.toString() ?? '';
+
+    String address = [street, city].where((s) => s.isNotEmpty).join(', ');
+    if (address.isNotEmpty) {
+      if (isUrdu) {
+        return address;
+      } else {
+        // In English mode, strip Urdu characters from address
+        final cleanAddr = address
+            .replaceAll(RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]'), '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .replaceAll(RegExp(r'[\,\/\-—]+\s*$'), '')
+            .trim();
+        if (cleanAddr.length >= 3) return cleanAddr;
+      }
+    }
+    return isUrdu
+        ? 'مقام: ${clat.toStringAsFixed(3)}, ${clng.toStringAsFixed(3)}'
+        : 'Location: ${clat.toStringAsFixed(3)}, ${clng.toStringAsFixed(3)}';
   }
 
   Future<void> _fetchOverpassClinics(double lat, double lng) async {
@@ -359,7 +501,9 @@ out center 30;
     }
 
     if (elements == null || elements.isEmpty) {
-      _useFallback("No OSM clinics found in 7km. Showing nearest verified facilities.");
+      _useFallback(_isUrdu
+          ? "قریبی ہسپتال اوپن اسٹریٹ میپ پر نہیں ملے۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+          : "No OSM clinics found in 7km. Showing nearest verified facilities.");
       return;
     }
 
@@ -368,16 +512,6 @@ out center 30;
 
     for (final el in elements) {
       final tags = (el['tags'] as Map<String, dynamic>?) ?? {};
-      String name = tags['name'] ?? tags['name:en'] ?? tags['name:ur'] ?? '';
-
-      if (name.trim().isEmpty) {
-        final amenity = tags['amenity'] ?? tags['healthcare'] ?? 'Medical Center';
-        name = 'Local $amenity';
-      }
-
-      final cleanName = name.trim().toLowerCase();
-      if (seenNames.contains(cleanName)) continue;
-      seenNames.add(cleanName);
 
       // Extract coordinates: handles both Point Nodes and Way/Relation polygons
       double? clat;
@@ -393,13 +527,23 @@ out center 30;
 
       if (clat == null || clng == null) continue;
 
+      // Clean and language-appropriate name & address
+      final name = _sanitizeName(tags, _isUrdu);
+      final address = _sanitizeAddress(tags, clat, clng, _isUrdu);
+
+      final cleanKey = name.trim().toLowerCase();
+      if (seenNames.contains(cleanKey)) continue;
+      seenNames.add(cleanKey);
+
       final distanceM = Geolocator.distanceBetween(lat, lng, clat, clng);
-      final distStr = '${(distanceM / 1000).toStringAsFixed(1)} km';
+      final distStr = _isUrdu
+          ? '${(distanceM / 1000).toStringAsFixed(1)} کلومیٹر'
+          : '${(distanceM / 1000).toStringAsFixed(1)} km';
 
       // Clinical tier identification for Pakistani & International healthcare
       String type = 'private';
-      String cost = 'Medium Cost';
-      final lName = name.toLowerCase();
+      String cost = _isUrdu ? 'درمیانی لاگت' : 'Medium Cost';
+      final lName = (tags['name'] ?? '').toString().toLowerCase();
 
       final isGov = lName.contains('government') ||
           lName.contains('govt') ||
@@ -418,20 +562,14 @@ out center 30;
 
       if (isGov) {
         type = 'government';
-        cost = 'Free / Subsidised';
-      }
-
-      final street = tags['addr:street'] ?? '';
-      final city = tags['addr:city'] ?? '';
-      String address = [street, city].where((s) => s.isNotEmpty).join(', ');
-      if (address.isEmpty) {
-        address = 'Coordinates: ${clat.toStringAsFixed(3)}, ${clng.toStringAsFixed(3)}';
+        cost = _isUrdu ? 'مفت / رعایتی' : 'Free / Subsidised';
       }
 
       final phone = tags['phone'] ?? tags['contact:phone'] ?? '';
-      final specialty = tags['amenity'] == 'hospital'
-          ? 'General Hospital'
-          : 'Clinic & Medical Care';
+      final isHospital = tags['amenity'] == 'hospital';
+      final specialty = _isUrdu
+          ? (isHospital ? 'جنرل ہسپتال' : 'کلینک اور طبی نگہداشت')
+          : (isHospital ? 'General Hospital' : 'Clinic & Medical Care');
 
       fetched.add(_Clinic(
         name: name,
@@ -448,7 +586,9 @@ out center 30;
     }
 
     if (fetched.isEmpty) {
-      _useFallback("No valid clinic coordinates. Showing nearest verified facilities.");
+      _useFallback(_isUrdu
+          ? "درست لوکیشن نہیں مل سکی۔ تصدیق شدہ ہسپتال دکھائے جا رہے ہیں۔"
+          : "No valid clinic coordinates. Showing nearest verified facilities.");
       return;
     }
 
@@ -492,7 +632,9 @@ out center 30;
   Future<void> _call(BuildContext ctx, String phone) async {
     if (phone.trim().isEmpty) {
       ScaffoldMessenger.of(ctx).showSnackBar(
-        const SnackBar(content: Text('Phone number not listed for this facility')),
+        SnackBar(
+          content: Text(_isUrdu ? 'اس ہسپتال کا فون نمبر درج نہیں ہے' : 'Phone number not listed for this facility'),
+        ),
       );
       return;
     }
@@ -502,7 +644,9 @@ out center 30;
     } else {
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
-          const SnackBar(content: Text('Cannot open dialer on this device')),
+          SnackBar(
+            content: Text(_isUrdu ? 'اس ڈیوائس پر ڈائلر نہیں کھل سکا' : 'Cannot open dialer on this device'),
+          ),
         );
       }
     }
@@ -518,7 +662,9 @@ out center 30;
     } else {
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
-          const SnackBar(content: Text('Cannot open Maps on this device')),
+          SnackBar(
+            content: Text(_isUrdu ? 'اس ڈیوائس پر گوگل میپس نہیں کھل سکا' : 'Cannot open Maps on this device'),
+          ),
         );
       }
     }
@@ -534,15 +680,19 @@ out center 30;
         ? Colors.red.shade900.withAlpha(40)
         : Colors.amber.shade900.withAlpha(40);
 
+    final title = _isUrdu ? 'طبی مراکز اور ہسپتال' : 'Find Affordable Care';
+    final govTab = _isUrdu ? 'سرکاری (مفت)' : 'Government (Free)';
+    final privTab = _isUrdu ? 'پرائیویٹ' : 'Private';
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F14),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0F14),
         elevation: 0,
         leading: const BackButton(color: Colors.white),
-        title: const Text(
-          'Find Affordable Care',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         bottom: _isLoading
             ? null
@@ -551,9 +701,9 @@ out center 30;
                 indicatorColor: theme.colorScheme.primary,
                 labelColor: theme.colorScheme.primary,
                 unselectedLabelColor: Colors.grey.shade500,
-                tabs: const [
-                  Tab(icon: Icon(Icons.account_balance), text: 'Government (Free)'),
-                  Tab(icon: Icon(Icons.local_hospital), text: 'Private'),
+                tabs: [
+                  Tab(icon: const Icon(Icons.account_balance), text: govTab),
+                  Tab(icon: const Icon(Icons.local_hospital), text: privTab),
                 ],
               ),
       ),
@@ -594,8 +744,12 @@ out center 30;
                       Expanded(
                         child: Text(
                           isCritical
-                              ? 'A critical health pattern was detected. Please consult a physician as soon as possible.'
-                              : 'A health pattern was noticed that may conflict with your profile. Consider consulting a healthcare specialist.',
+                              ? (_isUrdu
+                                  ? 'صحت کے متعلق فوری علامات نوٹ کی گئی ہیں۔ براہ کرم جلد از جلد قریبی ڈاکٹر سے رجوع کریں۔'
+                                  : 'A critical health pattern was detected. Please consult a physician as soon as possible.')
+                              : (_isUrdu
+                                  ? 'آپ کے ہیلتھ پروفائل سے مطابقت کے لیے مشورہ دیا جاتا ہے کہ غذائی ماہر یا ڈاکٹر سے رجوع کریں۔'
+                                  : 'A health pattern was noticed that may conflict with your profile. Consider consulting a healthcare specialist.'),
                           style: TextStyle(
                               color: alertColor, fontSize: 12, height: 1.4),
                         ),
@@ -626,6 +780,15 @@ out center 30;
           .where((c) => isGovernmentTab ? c.type == 'government' : c.type == 'private')
           .toList();
 
+      final gpsTitle = _isUrdu ? 'براہ راست گوگل میپس سرچ' : 'Live GPS Search';
+      final gpsSub = _isUrdu
+          ? 'اپنی درست موجودہ لوکیشن پر تمام قریبی ہسپتال اور ایمرجنسی کلینکس دیکھنے کے لیے گوگل میپس کھولیں۔'
+          : 'Launch Google Maps to view all verified medical clinics and emergency hospitals near your exact current location.';
+      final mapsBtn = _isUrdu ? 'قریبی ہسپتال میپس پر کھولیں' : 'Open Google Maps Near Me';
+      final dirHeader = _isUrdu
+          ? 'تصدیق شدہ ہسپتالوں کی ڈائرکٹری (فاصلے کے مطابق):'
+          : 'Verified Healthcare Directory (Sorted by Proximity):';
+
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
@@ -639,21 +802,21 @@ out center 30;
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.near_me_rounded, color: Color(0xFF00E676), size: 20),
-                    SizedBox(width: 8),
+                    const Icon(Icons.near_me_rounded, color: Color(0xFF00E676), size: 20),
+                    const SizedBox(width: 8),
                     Text(
-                      'Live GPS Search',
-                      style: TextStyle(
+                      gpsTitle,
+                      style: const TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Launch Google Maps to view all verified medical clinics and emergency hospitals near your exact current location.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+                Text(
+                  gpsSub,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -666,8 +829,8 @@ out center 30;
                           borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.map_rounded, size: 18),
-                    label: const Text('Open Google Maps Near Me',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(mapsBtn,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () async {
                       final lat = _userLat;
                       final lng = _userLng;
@@ -687,11 +850,11 @@ out center 30;
             ),
           ),
           const SizedBox(height: 20),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              'Verified Healthcare Directory (Sorted by Proximity):',
-              style: TextStyle(
+              dirHeader,
+              style: const TextStyle(
                   color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
@@ -701,6 +864,7 @@ out center 30;
                 child: _ClinicCard(
                   clinic: clinic,
                   theme: theme,
+                  isUrdu: _isUrdu,
                   onCall: () => _call(context, clinic.phone),
                   onDirections: () => _directions(
                       context, clinic.lat, clinic.lng, clinic.name),
@@ -717,6 +881,7 @@ out center 30;
       itemBuilder: (ctx, i) => _ClinicCard(
         clinic: clinics[i],
         theme: theme,
+        isUrdu: _isUrdu,
         onCall: () => _call(ctx, clinics[i].phone),
         onDirections: () =>
             _directions(ctx, clinics[i].lat, clinics[i].lng, clinics[i].name),
@@ -731,25 +896,30 @@ out center 30;
 class _ClinicCard extends StatelessWidget {
   final _Clinic clinic;
   final ThemeData theme;
+  final bool isUrdu;
   final VoidCallback onCall;
   final VoidCallback onDirections;
 
   const _ClinicCard({
     required this.clinic,
     required this.theme,
+    required this.isUrdu,
     required this.onCall,
     required this.onDirections,
   });
 
   Color get _costColor {
-    if (clinic.cost.contains('Free')) return Colors.green.shade400;
-    if (clinic.cost.contains('Low')) return Colors.lightGreen.shade400;
-    if (clinic.cost.contains('Medium')) return Colors.amber.shade400;
+    if (clinic.cost.contains('Free') || clinic.cost.contains('مفت')) return Colors.green.shade400;
+    if (clinic.cost.contains('Low') || clinic.cost.contains('کم')) return Colors.lightGreen.shade400;
+    if (clinic.cost.contains('Medium') || clinic.cost.contains('درمیانی')) return Colors.amber.shade400;
     return Colors.red.shade300;
   }
 
   @override
   Widget build(BuildContext context) {
+    final callText = isUrdu ? 'کال کریں' : 'Call Now';
+    final dirText = isUrdu ? 'راستہ دیکھیں' : 'Directions';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -838,8 +1008,7 @@ class _ClinicCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onCall,
                   icon: const Icon(Icons.call, size: 15),
-                  label:
-                      const Text('Call Now', style: TextStyle(fontSize: 12)),
+                  label: Text(callText, style: const TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.green.shade400,
                     side: BorderSide(
@@ -855,8 +1024,7 @@ class _ClinicCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onDirections,
                   icon: const Icon(Icons.directions, size: 15),
-                  label: const Text('Directions',
-                      style: TextStyle(fontSize: 12)),
+                  label: Text(dirText, style: const TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         theme.colorScheme.primary.withAlpha(30),
