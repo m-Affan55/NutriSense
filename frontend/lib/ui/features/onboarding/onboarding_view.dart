@@ -107,15 +107,22 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         final user = Supabase.instance.client.auth.currentUser;
         if (user == null) throw Exception('User not logged in');
 
+        final effectiveConditions = List<String>.from(_healthConditions);
+        if (_goal != null && (_goal!.contains('diabetes') || _goal!.contains('blood sugar'))) {
+          if (!effectiveConditions.contains('Diabetes')) {
+            effectiveConditions.add('Diabetes');
+          }
+        }
+
         final payload = {
           "user_id": user.id,
           "age": _age.toInt(),
-          "gender": _gender ?? 'Male',
+          "gender": (_gender ?? 'Male').toLowerCase(),
           "weight_kg": _weightKg,
           "height_cm": _heightCm,
           "goal": _mapGoal(_goal),
           "activity_level": _mapActivity(_activityLevel),
-          "medical_conditions": _healthConditions,
+          "medical_conditions": effectiveConditions,
           "dietary_restrictions": _dietaryPreference == 'No restriction' || _dietaryPreference == null ? [] : [_dietaryPreference!],
           "daily_budget_pkr": _mapBudget(_budget),
         };
@@ -149,15 +156,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   String _mapGoal(String? goal) {
-    // BUG-02 FIX: All 5 goal options now map to a meaningful backend value.
-    // Previously 'Manage diabetes' and 'General wellness' both silently fell
-    // to 'maintenance', causing the AI Coach and Report to give generic advice
-    // instead of diabetes-specific or wellness-focused guidance.
-    if (goal == null) return 'fat_loss';
+    if (goal == null) return 'maintenance';
     if (goal.contains('Fat loss')) return 'fat_loss';
     if (goal.contains('muscle')) return 'muscle_gain';
-    if (goal.contains('diabetes') || goal.contains('blood sugar')) return 'manage_diabetes';
-    if (goal.contains('wellness') || goal.contains('Just eat better')) return 'general_wellness';
     return 'maintenance';
   }
 
