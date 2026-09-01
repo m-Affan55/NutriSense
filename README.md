@@ -1,4 +1,4 @@
-# NutriSense — AI-Powered Nutrition, Clinical Safety & Metabolic Health Suite
+# NutriSense — AI-Powered Nutrition App
 
 <div align="center">
 
