@@ -986,7 +986,7 @@ out center 30;
       final gpsSub = _isUrdu
           ? 'اپنی درست موجودہ لوکیشن پر تمام قریبی ہسپتال اور ایمرجنسی کلینکس دیکھنے کے لیے گوگل میپس کھولیں۔'
           : 'Launch Google Maps to view all verified medical clinics and emergency hospitals near your exact current location.';
-      final mapsBtn = _isUrdu ? 'قریبی ہسپتال میپس پر کھولیں' : 'Open Google Maps Near Me';
+      final mapsBtn = _isUrdu ? 'گوگل میپس' : 'Google Maps';
       final dirHeader = _isUrdu
           ? 'تصدیق شدہ ہسپتالوں کی ڈائرکٹری (فاصلے کے مطابق):'
           : 'Verified Healthcare Directory (Sorted by Proximity):';
@@ -1024,60 +1024,68 @@ out center 30;
                 Row(
                   children: [
                     Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF00E676),
-                            side: BorderSide(
-                                color: const Color(0xFF00E676).withAlpha(140)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.gps_fixed_rounded, size: 16),
-                          label: Text(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF00E676),
+                          side: BorderSide(
+                              color: const Color(0xFF00E676).withAlpha(140)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 12),
+                          minimumSize: const Size(0, 44),
+                        ),
+                        icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
                             _isUrdu ? 'لوکیشن آن کریں' : 'Enable Location',
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
                           ),
-                          onPressed: _requestEnableLocation,
                         ),
+                        onPressed: _requestEnableLocation,
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00E676),
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.map_rounded, size: 16),
-                          label: Text(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00E676),
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 12),
+                          minimumSize: const Size(0, 44),
+                        ),
+                        icon: const Icon(Icons.map_rounded, size: 16),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
                             mapsBtn,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
                           ),
-                          onPressed: () async {
-                            final lat = _userLat;
-                            final lng = _userLng;
-                            final Uri uri;
-                            if (lat != null && lng != null) {
-                              uri = Uri.parse(
-                                  'https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
-                            } else {
-                              uri = Uri.parse(
-                                  'https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
-                            }
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
-                            }
-                          },
                         ),
+                        onPressed: () async {
+                          final lat = _userLat;
+                          final lng = _userLng;
+                          final Uri uri;
+                          if (lat != null && lng != null) {
+                            uri = Uri.parse(
+                                'https://www.google.com/maps/search/hospital+clinic/@$lat,$lng,14z');
+                          } else {
+                            uri = Uri.parse(
+                                'https://www.google.com/maps/search/?api=1&query=hospital+clinic+near+me');
+                          }
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                     ),
                   ],
@@ -1252,15 +1260,21 @@ class _ClinicCard extends StatelessWidget {
                     ? OutlinedButton.icon(
                         onPressed: onCall,
                         icon: const Icon(Icons.call, size: 15),
-                        label: Text(
-                          isUrdu ? 'کال کریں' : 'Call Now',
-                          style: const TextStyle(fontSize: 12),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isUrdu ? 'کال کریں' : 'Call Now',
+                            style: const TextStyle(fontSize: 12),
+                            maxLines: 1,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.green.shade400,
                           side: BorderSide(
                               color: Colors.green.shade400.withAlpha(120)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 10),
+                          minimumSize: const Size(0, 40),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
@@ -1269,15 +1283,21 @@ class _ClinicCard extends StatelessWidget {
                     : OutlinedButton.icon(
                         onPressed: onSearch,
                         icon: const Icon(Icons.search_rounded, size: 15),
-                        label: Text(
-                          isUrdu ? 'آن لائن تلاش' : 'Search Online',
-                          style: const TextStyle(fontSize: 12),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isUrdu ? 'آن لائن تلاش' : 'Search Online',
+                            style: const TextStyle(fontSize: 12),
+                            maxLines: 1,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.blue.shade300,
                           side: BorderSide(
                               color: Colors.blue.shade300.withAlpha(120)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 10),
+                          minimumSize: const Size(0, 40),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
@@ -1288,16 +1308,22 @@ class _ClinicCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onDirections,
                   icon: const Icon(Icons.directions, size: 15),
-                  label: Text(
-                    isUrdu ? 'راستہ دیکھیں' : 'Directions',
-                    style: const TextStyle(fontSize: 12),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      isUrdu ? 'راستہ دیکھیں' : 'Directions',
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         theme.colorScheme.primary.withAlpha(30),
                     foregroundColor: theme.colorScheme.primary,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 10),
+                    minimumSize: const Size(0, 40),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),

@@ -224,182 +224,195 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: const Color(0xFF161A22),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withAlpha(30),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.cloud_off, color: Colors.amber, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _language == 'ur' ? 'اے آئی تخمینہ دستیاب نہیں' : 'AI Engine Unavailable',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                                ),
+                                Text(
+                                  _language == 'ur' ? 'براہ کرم دستی طور پر غذائی تفصیلات درج کریں:' : 'Please enter your meal macros manually to log accurately:',
+                                  style: const TextStyle(fontSize: 12, color: Colors.white60),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withAlpha(30),
+                          color: Colors.white.withAlpha(8),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.cloud_off, color: Colors.amber, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              _language == 'ur' ? 'اے آئی تخمینہ دستیاب نہیں' : 'AI Engine Unavailable',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                            ),
-                            Text(
-                              _language == 'ur' ? 'براہ کرم دستی طور پر غذائی تفصیلات درج کریں:' : 'Please enter your meal macros manually to log accurately:',
-                              style: const TextStyle(fontSize: 12, color: Colors.white60),
+                            const Icon(Icons.restaurant, color: Color(0xFF00E676), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                controller: nameController,
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'نام درکار ہے' : 'Name required') : null,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(8),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.restaurant, color: Color(0xFF00E676), size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: nameController,
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: calController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'کیلوریز (kcal) *' : 'Calories (kcal) *',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'لازمی ہے' : 'Required') : null,
                             ),
-                            validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'نام درکار ہے' : 'Name required') : null,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: calController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: _language == 'ur' ? 'کیلوریز (kcal) *' : 'Calories (kcal) *',
-                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            filled: true,
-                            fillColor: const Color(0xFF0D0F14),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: proController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                            ),
                           ),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? (_language == 'ur' ? 'لازمی ہے' : 'Required') : null,
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: proController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
-                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            filled: true,
-                            fillColor: const Color(0xFF0D0F14),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: carbController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: carbController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
-                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            filled: true,
-                            fillColor: const Color(0xFF0D0F14),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: fatController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: fatController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
-                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            filled: true,
-                            fillColor: const Color(0xFF0D0F14),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00E676),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E676),
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () {
-                        if (formKey.currentState!.validate()) {
-                          final cal = int.tryParse(calController.text.trim()) ?? 0;
-                          final pro = double.tryParse(proController.text.trim()) ?? 0.0;
-                          final carb = double.tryParse(carbController.text.trim()) ?? 0.0;
-                          final fat = double.tryParse(fatController.text.trim()) ?? 0.0;
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              final cal = int.tryParse(calController.text.trim()) ?? 0;
+                              final pro = double.tryParse(proController.text.trim()) ?? 0.0;
+                              final carb = double.tryParse(carbController.text.trim()) ?? 0.0;
+                              final fat = double.tryParse(fatController.text.trim()) ?? 0.0;
 
-                          Navigator.pop(ctx);
-                          _saveMealToStorage(
-                            mealName: nameController.text.trim(),
-                            calories: cal,
-                            proteinG: pro,
-                            carbsG: carb,
-                            fatG: fat,
-                          );
-                        }
-                      },
-                      child: Text(
-                        _language == 'ur' ? 'کھانا محفوظ کریں' : 'Save Meal',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              Navigator.pop(ctx);
+                              _saveMealToStorage(
+                                mealName: nameController.text.trim(),
+                                calories: cal,
+                                proteinG: pro,
+                                carbsG: carb,
+                                fatG: fat,
+                              );
+                            }
+                          },
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _language == 'ur' ? 'کھانا محفوظ کریں' : 'Save Meal',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -494,169 +507,187 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: const Color(0xFF1A1E27),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with AI badge
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00E676).withAlpha(30),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with AI badge
+                      Row(
                         children: [
-                          Text(
-                            _language == 'ur' ? 'AI نے میکروز کا اندازہ لگایا ✓' : 'AI Estimated Macros ✓',
-                            style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00E676).withAlpha(30),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 20),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _language == 'ur' ? 'ضرورت ہو تو ترمیم کریں، پھر محفوظ کریں' : 'Review & edit if needed, then save',
-                            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _language == 'ur' ? 'AI نے میکروز کا اندازہ لگایا ✓' : 'AI Estimated Macros ✓',
+                                  style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _language == 'ur' ? 'ضرورت ہو تو ترمیم کریں، پھر محفوظ کریں' : 'Review & edit if needed, then save',
+                                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Meal name field
-                TextFormField(
-                  controller: nameCtrl,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    labelText: _language == 'ur' ? 'کھانے کا نام' : 'Meal Name',
-                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: const Color(0xFF0D0F14),
-                    prefixIcon: const Icon(Icons.restaurant_menu, color: Colors.white38, size: 18),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                // Calories field
-                TextFormField(
-                  controller: calCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: _language == 'ur' ? 'کیلوریز (kcal)' : 'Calories (kcal)',
-                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: const Color(0xFF0D0F14),
-                    prefixIcon: const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
-                  ),
-                  validator: (v) => (v == null || int.tryParse(v.trim()) == null) ? 'Enter a valid number' : null,
-                ),
-                const SizedBox(height: 12),
-                // Macro row: Protein | Carbs
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: proCtrl,
+                      const SizedBox(height: 16),
+                      // Meal name field
+                      TextFormField(
+                        controller: nameCtrl,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          labelText: _language == 'ur' ? 'کھانے کا نام' : 'Meal Name',
+                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: const Color(0xFF0D0F14),
+                          prefixIcon: const Icon(Icons.restaurant_menu, color: Colors.white38, size: 18),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      // Calories field
+                      TextFormField(
+                        controller: calCtrl,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
+                          labelText: _language == 'ur' ? 'کیلوریز (kcal)' : 'Calories (kcal)',
+                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: const Color(0xFF0D0F14),
+                          prefixIcon: const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
+                        ),
+                        validator: (v) => (v == null || int.tryParse(v.trim()) == null) ? 'Enter a valid number' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      // Macro row: Protein | Carbs
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: proCtrl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'پروٹین (g)' : 'Protein (g)',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: carbCtrl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                filled: true,
+                                fillColor: const Color(0xFF0D0F14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Fat field
+                      TextFormField(
+                        controller: fatCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
                           labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           filled: true,
                           fillColor: const Color(0xFF0D0F14),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: carbCtrl,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _language == 'ur' ? 'کاربس (g)' : 'Carbs (g)',
-                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFF0D0F14),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // Fat field
-                TextFormField(
-                  controller: fatCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: _language == 'ur' ? 'چربی (g)' : 'Fat (g)',
-                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: const Color(0xFF0D0F14),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Save button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.check_circle_outline, size: 20),
-                    label: Text(
-                      _language == 'ur' ? 'کھانا محفوظ کریں' : 'Confirm & Save Meal',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00E676),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      if (formKey.currentState!.validate()) {
-                        final name = nameCtrl.text.trim();
-                        final cal = int.tryParse(calCtrl.text.trim()) ?? 0;
-                        final pro = double.tryParse(proCtrl.text.trim()) ?? 0.0;
-                        final carb = double.tryParse(carbCtrl.text.trim()) ?? 0.0;
-                        final fat = double.tryParse(fatCtrl.text.trim()) ?? 0.0;
+                      const SizedBox(height: 20),
+                      // Save button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_circle_outline, size: 20),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _language == 'ur' ? 'کھانا محفوظ کریں' : 'Confirm & Save Meal',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00E676),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              final name = nameCtrl.text.trim();
+                              final cal = int.tryParse(calCtrl.text.trim()) ?? 0;
+                              final pro = double.tryParse(proCtrl.text.trim()) ?? 0.0;
+                              final carb = double.tryParse(carbCtrl.text.trim()) ?? 0.0;
+                              final fat = double.tryParse(fatCtrl.text.trim()) ?? 0.0;
 
-                        Navigator.pop(ctx);
-                        _saveMealToStorage(
-                          mealName: name,
-                          calories: cal,
-                          proteinG: pro,
-                          carbsG: carb,
-                          fatG: fat,
-                        );
-                      }
-                    },
+                              Navigator.pop(ctx);
+                              _saveMealToStorage(
+                                mealName: name,
+                                calories: cal,
+                                proteinG: pro,
+                                carbsG: carb,
+                                fatG: fat,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
           ),
         );
       },
@@ -740,7 +771,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 30),
+            padding: EdgeInsets.only(left: 20, right: 20, top: 8, bottom: MediaQuery.of(context).viewPadding.bottom + 30),
             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
