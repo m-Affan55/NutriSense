@@ -42,27 +42,52 @@ class HealthSyncViewModel extends ChangeNotifier {
     return double.parse((total / _weeklyHistory.length).toStringAsFixed(1));
   }
 
-  /// Generates a contextual AI health insight.
+  /// Whether we have any real recorded activity (not just fallback demo data).
+  bool get hasRealActivity {
+    // Check if today has any steps OR if any day in this week has real steps
+    if (_todayActivity.steps > 0) return true;
+    if (_todayActivity.source == 'Health Connect' || _todayActivity.source == 'Apple Health' || _todayActivity.source == 'User Logged') return true;
+    // If source is 'Tap to Sync' or 'none', we are in fallback-only mode
+    return false;
+  }
+
+  /// Generates a contextual AI health insight based on real user activity.
   String getInsight(String language) {
+    // No real data at all — user hasn't synced or logged anything yet
+    if (!hasRealActivity) {
+      return language == 'ur'
+          ? '🔗 اپنے قدموں کی ٹریکنگ شروع کرنے کے لیے ہیلتھ کنیکٹ سنک کریں یا اپنی سرگرمی دستی طور پر درج کریں۔'
+          : '🔗 Connect Health Connect or log your activity manually to start tracking your daily steps and get personalized coaching!';
+    }
+
+    final todaySteps = _todayActivity.steps;
     final avgSteps = weeklyAverageSteps;
     final pct = _stepGoal > 0 ? ((avgSteps / _stepGoal) * 100).round() : 0;
+    final todayPct = _stepGoal > 0 ? ((todaySteps / _stepGoal) * 100).round() : 0;
+
+    // Today's steps are 0 but user has prior history
+    if (todaySteps == 0) {
+      return language == 'ur'
+          ? '🌅 آج ابھی تک کوئی قدم ریکارڈ نہیں ہوا۔ صبح کی مختصر سیر آپ کی توانائی بڑھا سکتی ہے!'
+          : '🌅 No steps recorded yet today. A short morning walk can boost your energy and metabolism for the day!';
+    }
 
     if (pct >= 100) {
       return language == 'ur'
           ? '🎉 زبردست کارکردگی! آپ نے اس ہفتے روزانہ اوسطاً $avgSteps قدم مکمل کیے ہیں جو آپ کے ہدف سے زیادہ ہے!'
           : '🎉 Outstanding performance! You exceeded your daily goal with an average of $avgSteps steps/day this week!';
-    } else if (pct >= 75) {
+    } else if (todayPct >= 75) {
       return language == 'ur'
-          ? '💪 بہت عمدہ رفتار! آپ روزانہ اوسطاً $avgSteps قدم ($pct% ہدف) مکمل کر رہے ہیں۔ مستقل مزاجی برقرار رکھیں!'
-          : '💪 Great momentum! You are hitting $avgSteps steps/day ($pct% of your goal). Keep this streak alive!';
+          ? '💪 بہت عمدہ! آج آپ $todaySteps قدم ($todayPct% ہدف) مکمل کر چکے ہیں۔ ہدف کے قریب پہنچ رہے ہیں!'
+          : '💪 Great effort! You have hit $todaySteps steps today ($todayPct% of your goal). You are close — finish strong!';
     } else if (pct >= 50) {
       return language == 'ur'
-          ? '🚶 اچھی پیشرفت — روزانہ $avgSteps قدم۔ ہدف حاصل کرنے کے لیے شام کی مختصر چہل قدمی شامل کریں۔'
-          : '🚶 Steady progress — averaging $avgSteps steps/day. Add a 15-min evening stroll to reach your target.';
+          ? '🚶 اچھی پیشرفت — روزانہ اوسطاً $avgSteps قدم۔ ہدف حاصل کرنے کے لیے شام کی مختصر چہل قدمی شامل کریں۔'
+          : '🚶 Steady progress — averaging $avgSteps steps/day. Add a 15-min evening stroll to reach your daily target.';
     } else {
       return language == 'ur'
-          ? '⚡ آپ کی اوسط $avgSteps قدم/دن ہے۔ روزانہ کی سرگرمی میں اضافہ میٹابولزم کو تیز کرنے میں مدد دے گا۔'
-          : '⚡ You are averaging $avgSteps steps/day. Boosting daily activity will elevate your metabolism and recovery.';
+          ? '⚡ آج $todaySteps قدم مکمل ہوئے۔ روزانہ کی سرگرمی میں اضافہ میٹابولزم کو تیز کرنے میں مدد دے گا۔'
+          : '⚡ You have taken $todaySteps steps today. Boosting daily activity will elevate your metabolism and speed up calorie burn.';
     }
   }
 

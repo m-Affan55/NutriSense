@@ -17,7 +17,7 @@ class HealthSyncView extends StatefulWidget {
   State<HealthSyncView> createState() => _HealthSyncViewState();
 }
 
-class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStateMixin {
+class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStateMixin, WidgetsBindingObserver {
   final HealthSyncViewModel _vm = HealthSyncViewModel();
   late AnimationController _ringController;
   late Animation<double> _ringAnimation;
@@ -26,6 +26,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ringController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -35,6 +36,13 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
     LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _vm.loadAll();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _vm.loadAll();
+    }
   }
 
   void _onVmChanged() {
@@ -57,6 +65,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     LanguageController.instance.removeListener(_loadLanguage);
     _vm.removeListener(_onVmChanged);
     _vm.dispose();

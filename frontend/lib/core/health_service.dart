@@ -125,7 +125,7 @@ class HealthService {
     return defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   }
 
-  /// Request native READ permissions on Android / iOS.
+  /// Request native READ permissions on Android / iOS or verify existing authorization.
   Future<bool> requestPermissions() async {
     if (!isNativeHealthSupported) {
       // On Windows / Web, enabling sync activates the universal cross-platform tracker
@@ -136,11 +136,25 @@ class HealthService {
     try {
       final health = Health();
       await health.configure();
+
+      // 1. If permissions are already granted in Health Connect / Apple Health, immediately succeed and refresh
+      final alreadyGranted = await health.hasPermissions(_types, permissions: _permissions) ?? false;
+      if (alreadyGranted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_syncModeKey, true);
+        await getTodayActivity(); // Immediately fetch and cache
+        return true;
+      }
+
+      // 2. Otherwise request authorization from OS
       final granted = await health.requestAuthorization(
         _types,
         permissions: _permissions,
       );
-      if (granted) {
+
+      final isNowGranted = (granted == true) || (await health.hasPermissions(_types, permissions: _permissions) ?? false);
+
+      if (isNowGranted) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_syncModeKey, true);
         await getTodayActivity(); // Immediately fetch and cache
@@ -263,9 +277,14 @@ class HealthService {
               ? (heartRates.reduce((a, b) => a + b) / heartRates.length).round()
               : 0;
 
+          int finalActiveKcal = activeKcal.round();
+          if (finalActiveKcal == 0 && steps > 0) {
+            finalActiveKcal = (steps * 0.045).round();
+          }
+
           final nativeActivity = ActivityData(
             steps: steps,
-            activeKcal: activeKcal.round(),
+            activeKcal: finalActiveKcal,
             sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
             heartRateBpm: avgHr,
             source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
@@ -359,34 +378,36 @@ class HealthService {
     if (cachedJson != null) {
       try {
         final List<dynamic> list = jsonDecode(cachedJson);
-        history = list.map((item) => DailyActivity.fromJson(item)).toList();
+        final parsed = list.map((item) => DailyActivity.fromJson(item)).toList();
+
+        // Bust stale fake-sample cache: if every entry has steps > 1000 but today
+        // has zero real activity, the cache is the old hardcoded demo data — discard it.
+        final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+        final todayJson = prefs.getString(todayKey);
+        final hasTodayRealData = todayJson != null;
+        final allHighSteps = parsed.isNotEmpty && parsed.every((d) => d.steps > 500);
+        if (allHighSteps && !hasTodayRealData) {
+          // Clear the stale fake cache
+          await prefs.remove(_weeklyHistoryKey);
+        } else {
+          history = parsed;
+        }
       } catch (_) {}
     }
 
-    // 3. Fallback: If history is empty or incomplete, populate realistic weekly baseline
+    // 3. Fallback: No real data yet — return honest flat-zero history (no fake bars)
     if (history.length < days) {
-      final sampleSteps = [5400, 7200, 8900, 6100, 9500, 10200, 6420];
-      final sampleKcal = [320, 410, 520, 360, 580, 610, 380];
-      final sampleSleep = [6.8, 7.5, 7.0, 6.5, 8.0, 7.8, 7.2];
-      final sampleHr = [0, 0, 0, 0, 0, 0, 0];
-
       history = List.generate(days, (i) {
         final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1 - i));
-        final idx = i % sampleSteps.length;
         return DailyActivity(
           date: date,
-          steps: sampleSteps[idx],
-          activeKcal: sampleKcal[idx],
-          sleepHours: sampleSleep[idx],
-          heartRateBpm: sampleHr[idx],
+          steps: 0,
+          activeKcal: 0,
+          sleepHours: 0.0,
+          heartRateBpm: 0,
         );
       });
-
-      // Save initial cache
-      await prefs.setString(
-        _weeklyHistoryKey,
-        jsonEncode(history.map((h) => h.toJson()).toList()),
-      );
+      // Do NOT cache these zeros — so real data can populate naturally on first sync/log
     }
 
     return history;

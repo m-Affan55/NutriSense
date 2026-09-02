@@ -25,7 +25,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
+class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _ringController;
   late Animation<double> _ringAnimation;
   late AnimationController _fabController;
@@ -61,6 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ringController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -84,7 +85,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadData();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FamilyViewModel.instance.removeListener(_loadData);
     MealSyncNotifier.instance.removeListener(_loadData);
     LanguageController.instance.removeListener(_loadData);
