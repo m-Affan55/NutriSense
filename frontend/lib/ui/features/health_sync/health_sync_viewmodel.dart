@@ -87,8 +87,8 @@ class HealthSyncViewModel extends ChangeNotifier {
   /// Request connection to native or universal health service.
   Future<bool> requestConnection() async {
     final granted = await HealthService.instance.requestPermissions();
-    _isConnected = true;
-    await HealthService.instance.setSyncEnabled(true);
+    _isConnected = granted;
+    await HealthService.instance.setSyncEnabled(granted);
     await loadAll();
     return granted;
   }

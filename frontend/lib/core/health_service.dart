@@ -127,11 +127,10 @@ class HealthService {
 
   /// Request native READ permissions on Android / iOS.
   Future<bool> requestPermissions() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_syncModeKey, true);
-
     if (!isNativeHealthSupported) {
       // On Windows / Web, enabling sync activates the universal cross-platform tracker
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_syncModeKey, true);
       return true;
     }
     try {
@@ -142,12 +141,15 @@ class HealthService {
         permissions: _permissions,
       );
       if (granted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_syncModeKey, true);
         await getTodayActivity(); // Immediately fetch and cache
+        return true;
       }
-      return granted;
+      return false;
     } catch (e) {
       debugPrint('[HealthService] Permission request failed: $e');
-      return true; // Fallback to universal mode
+      return false;
     }
   }
 
@@ -298,9 +300,60 @@ class HealthService {
   /// Fetch daily activity summaries for the last [days] days for the trend charts.
   Future<List<DailyActivity>> getWeeklyActivity({int days = 7}) async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedJson = prefs.getString(_weeklyHistoryKey);
     final now = DateTime.now();
 
+    // 1. Try querying real historical daily steps from Health Connect / Apple Health
+    if (isNativeHealthSupported) {
+      try {
+        final health = Health();
+        await health.configure();
+        final hasNativePerm = await health.hasPermissions(_types, permissions: _permissions) ?? false;
+
+        if (hasNativePerm) {
+          final List<DailyActivity> nativeWeekly = [];
+          bool hasAnyNativeData = false;
+
+          for (int i = days - 1; i >= 0; i--) {
+            final targetDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+            final dayStart = DateTime(targetDate.year, targetDate.month, targetDate.day, 0, 0, 0);
+            final dayEnd = (i == 0)
+                ? now
+                : DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59);
+
+            int daySteps = 0;
+            try {
+              final s = await health.getTotalStepsInInterval(dayStart, dayEnd);
+              if (s != null && s > 0) {
+                daySteps = s;
+                hasAnyNativeData = true;
+              }
+            } catch (_) {}
+
+            final activeKcal = (daySteps * 0.045).round();
+            nativeWeekly.add(DailyActivity(
+              date: dayStart,
+              steps: daySteps,
+              activeKcal: activeKcal,
+              sleepHours: 7.0,
+              heartRateBpm: 0,
+            ));
+          }
+
+          if (hasAnyNativeData) {
+            await prefs.setString(
+              _weeklyHistoryKey,
+              jsonEncode(nativeWeekly.map((h) => h.toJson()).toList()),
+            );
+            return nativeWeekly;
+          }
+        }
+      } catch (e) {
+        debugPrint('[HealthService] getWeeklyActivity native read: $e');
+      }
+    }
+
+    // 2. Load from local saved history cache
+    final cachedJson = prefs.getString(_weeklyHistoryKey);
     List<DailyActivity> history = [];
 
     if (cachedJson != null) {
@@ -310,12 +363,12 @@ class HealthService {
       } catch (_) {}
     }
 
-    // If history is empty or incomplete, populate realistic weekly baseline
+    // 3. Fallback: If history is empty or incomplete, populate realistic weekly baseline
     if (history.length < days) {
       final sampleSteps = [5400, 7200, 8900, 6100, 9500, 10200, 6420];
       final sampleKcal = [320, 410, 520, 360, 580, 610, 380];
       final sampleSleep = [6.8, 7.5, 7.0, 6.5, 8.0, 7.8, 7.2];
-      final sampleHr = [74, 71, 69, 73, 68, 70, 72];
+      final sampleHr = [0, 0, 0, 0, 0, 0, 0];
 
       history = List.generate(days, (i) {
         final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1 - i));
