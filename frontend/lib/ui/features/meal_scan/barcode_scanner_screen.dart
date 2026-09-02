@@ -9,6 +9,7 @@ import '../../../core/swap_service.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import 'manual_log_screen.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/reminder_manager.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -352,12 +353,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         'user_id': user.id,
                         'meal_type': selectedMealType,
                         'notes': product['product_name'] ?? 'Packaged Food',
-                        'total_calories': (product['calories'] as num?)?.toInt() ?? 0,
+                        'total_calories': (product['calories'] as num?)?.toDouble() ?? 0.0,
                         'total_protein_g': (product['protein_g'] as num?)?.toDouble() ?? 0.0,
                         'total_carbs_g': (product['carbs_g'] as num?)?.toDouble() ?? 0.0,
                         'total_fat_g': (product['fat_g'] as num?)?.toDouble() ?? 0.0,
-                        'logged_at': DateTime.now().toIso8601String(),
+                        'logged_at': DateTime.now().toUtc().toIso8601String(),
                       });
+
+                      // Track adaptive meal logging streaks
+                      await ReminderManager.recordMealLogged(selectedMealType, DateTime.now());
+                      await ReminderManager.updateAndCheckStreak();
                     }
                     
                     if (context.mounted) {
@@ -369,7 +374,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      CustomToast.show(context, 'Failed to log food');
+                      CustomToast.show(context, 'Failed to log food: ${e.toString()}');
                     }
                   }
                 },
