@@ -425,7 +425,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                 final success = await HealthService.instance.requestPermissions();
                 if (!mounted) return;
                 if (success) {
-                  CustomToast.show(context, 'Health Tracking Enabled!');
+                  CustomToast.show(context, 'Health Tracking Enabled!', isError: false);
                   _nextPage(); // auto advance on success
                 } else {
                   throw Exception('Permission denied or app missing');

@@ -96,10 +96,12 @@ class HealthService {
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.SLEEP_ASLEEP,
+    HealthDataType.SLEEP_SESSION,
     HealthDataType.HEART_RATE,
   ];
 
   static const _permissions = [
+    HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
@@ -123,26 +125,45 @@ class HealthService {
     return defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   }
 
-  /// Request native READ permissions on Android / iOS.
+  /// Request native READ permissions on Android / iOS or verify existing authorization.
   Future<bool> requestPermissions() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_syncModeKey, true);
-
     if (!isNativeHealthSupported) {
       // On Windows / Web, enabling sync activates the universal cross-platform tracker
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_syncModeKey, true);
       return true;
     }
     try {
       final health = Health();
       await health.configure();
+
+      // 1. If permissions are already granted in Health Connect / Apple Health, immediately succeed and refresh
+      final alreadyGranted = await health.hasPermissions(_types, permissions: _permissions) ?? false;
+      if (alreadyGranted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_syncModeKey, true);
+        await getTodayActivity(); // Immediately fetch and cache
+        return true;
+      }
+
+      // 2. Otherwise request authorization from OS
       final granted = await health.requestAuthorization(
         _types,
         permissions: _permissions,
       );
-      return granted;
+
+      final isNowGranted = (granted == true) || (await health.hasPermissions(_types, permissions: _permissions) ?? false);
+
+      if (isNowGranted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_syncModeKey, true);
+        await getTodayActivity(); // Immediately fetch and cache
+        return true;
+      }
+      return false;
     } catch (e) {
       debugPrint('[HealthService] Permission request failed: $e');
-      return true; // Fallback to universal mode
+      return false;
     }
   }
 
@@ -196,7 +217,18 @@ class HealthService {
         if (hasNativePerm) {
           final now = DateTime.now();
           final startOfDay = DateTime(now.year, now.month, now.day);
-          final sleepStart = startOfDay.subtract(const Duration(hours: 12));
+          final sleepStart = startOfDay.subtract(const Duration(hours: 18));
+
+          // 1. Fetch aggregated steps from Health Connect / Apple Health
+          int steps = 0;
+          try {
+            final totalSteps = await health.getTotalStepsInInterval(startOfDay, now);
+            if (totalSteps != null && totalSteps >= 0) {
+              steps = totalSteps;
+            }
+          } catch (e) {
+            debugPrint('[HealthService] getTotalStepsInInterval: $e');
+          }
 
           final data = await health.getHealthDataFromTypes(
             startTime: startOfDay,
@@ -207,20 +239,19 @@ class HealthService {
           final sleepData = await health.getHealthDataFromTypes(
             startTime: sleepStart,
             endTime: now,
-            types: [HealthDataType.SLEEP_ASLEEP],
+            types: [HealthDataType.SLEEP_ASLEEP, HealthDataType.SLEEP_SESSION],
           );
 
           final deduped = health.removeDuplicates(data);
           final sleepDeduped = health.removeDuplicates(sleepData);
 
-          int steps = 0;
           double activeKcal = 0;
           double sleepMinutes = 0;
           final heartRates = <double>[];
 
           for (final point in deduped) {
             final val = point.value;
-            if (point.type == HealthDataType.STEPS && val is NumericHealthValue) {
+            if (point.type == HealthDataType.STEPS && val is NumericHealthValue && steps == 0) {
               steps += val.numericValue.toInt();
             } else if (point.type == HealthDataType.ACTIVE_ENERGY_BURNED && val is NumericHealthValue) {
               activeKcal += val.numericValue.toDouble();
@@ -230,9 +261,15 @@ class HealthService {
           }
 
           for (final point in sleepDeduped) {
-            final val = point.value;
-            if (val is NumericHealthValue) {
-              sleepMinutes += val.numericValue.toDouble();
+            // Calculate duration in minutes from time interval
+            final durationMins = point.dateTo.difference(point.dateFrom).inMinutes;
+            if (durationMins > 0) {
+              sleepMinutes += durationMins.toDouble();
+            } else {
+              final val = point.value;
+              if (val is NumericHealthValue) {
+                sleepMinutes += val.numericValue.toDouble();
+              }
             }
           }
 
@@ -240,17 +277,20 @@ class HealthService {
               ? (heartRates.reduce((a, b) => a + b) / heartRates.length).round()
               : 0;
 
-          if (steps > 0 || activeKcal > 0 || sleepMinutes > 0) {
-            final nativeActivity = ActivityData(
-              steps: steps,
-              activeKcal: activeKcal.round(),
-              sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
-              heartRateBpm: avgHr,
-              source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
-            );
-            await saveTodayActivity(nativeActivity);
-            return nativeActivity;
+          int finalActiveKcal = activeKcal.round();
+          if (finalActiveKcal == 0 && steps > 0) {
+            finalActiveKcal = (steps * 0.045).round();
           }
+
+          final nativeActivity = ActivityData(
+            steps: steps,
+            activeKcal: finalActiveKcal,
+            sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
+            heartRateBpm: avgHr,
+            source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
+          );
+          await saveTodayActivity(nativeActivity);
+          return nativeActivity;
         }
       } catch (e) {
         debugPrint('[HealthService] Native read fallback to local cache: $e');
@@ -267,55 +307,98 @@ class HealthService {
 
     // 3. Initial baseline demo/ready values for all platforms (Windows, Web, Android, iOS)
     final baseline = const ActivityData(
-      steps: 6420,
-      activeKcal: 380,
-      sleepHours: 7.2,
-      heartRateBpm: 72,
-      source: 'Universal Sync',
+      steps: 0,
+      activeKcal: 0,
+      sleepHours: 0.0,
+      heartRateBpm: 0,
+      source: 'Tap to Sync',
     );
-    await saveTodayActivity(baseline);
     return baseline;
   }
 
   /// Fetch daily activity summaries for the last [days] days for the trend charts.
   Future<List<DailyActivity>> getWeeklyActivity({int days = 7}) async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedJson = prefs.getString(_weeklyHistoryKey);
     final now = DateTime.now();
 
+    // 1. Try querying real historical daily steps from Health Connect / Apple Health
+    if (isNativeHealthSupported) {
+      try {
+        final health = Health();
+        await health.configure();
+        final hasNativePerm = await health.hasPermissions(_types, permissions: _permissions) ?? false;
+
+        if (hasNativePerm) {
+          final List<DailyActivity> nativeWeekly = [];
+          bool hasAnyNativeData = false;
+
+          for (int i = days - 1; i >= 0; i--) {
+            final targetDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+            final dayStart = DateTime(targetDate.year, targetDate.month, targetDate.day, 0, 0, 0);
+            final dayEnd = (i == 0)
+                ? now
+                : DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59);
+
+            int daySteps = 0;
+            try {
+              final s = await health.getTotalStepsInInterval(dayStart, dayEnd);
+              if (s != null && s > 0) {
+                daySteps = s;
+                hasAnyNativeData = true;
+              }
+            } catch (_) {}
+
+            final activeKcal = (daySteps * 0.045).round();
+            nativeWeekly.add(DailyActivity(
+              date: dayStart,
+              steps: daySteps,
+              activeKcal: activeKcal,
+              sleepHours: 7.0,
+              heartRateBpm: 0,
+            ));
+          }
+
+          if (hasAnyNativeData) {
+            await prefs.setString(
+              _weeklyHistoryKey,
+              jsonEncode(nativeWeekly.map((h) => h.toJson()).toList()),
+            );
+            return nativeWeekly;
+          }
+        }
+      } catch (e) {
+        debugPrint('[HealthService] getWeeklyActivity native read: $e');
+      }
+    }
+
+    // 2. Load from local saved history cache only if the user has manually logged activity
+    final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+    final hasManualLogs = prefs.getString(todayKey) != null;
+    final cachedJson = prefs.getString(_weeklyHistoryKey);
     List<DailyActivity> history = [];
 
-    if (cachedJson != null) {
+    if (hasManualLogs && cachedJson != null) {
       try {
         final List<dynamic> list = jsonDecode(cachedJson);
         history = list.map((item) => DailyActivity.fromJson(item)).toList();
       } catch (_) {}
+    } else if (!hasManualLogs && cachedJson != null) {
+      // Clear old legacy demo cache so stale mock bars never show
+      await prefs.remove(_weeklyHistoryKey);
     }
 
-    // If history is empty or incomplete, populate realistic weekly baseline
+    // 3. Fallback: No real data yet — return honest flat-zero history (no fake bars)
     if (history.length < days) {
-      final sampleSteps = [5400, 7200, 8900, 6100, 9500, 10200, 6420];
-      final sampleKcal = [320, 410, 520, 360, 580, 610, 380];
-      final sampleSleep = [6.8, 7.5, 7.0, 6.5, 8.0, 7.8, 7.2];
-      final sampleHr = [74, 71, 69, 73, 68, 70, 72];
-
       history = List.generate(days, (i) {
         final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1 - i));
-        final idx = i % sampleSteps.length;
         return DailyActivity(
           date: date,
-          steps: sampleSteps[idx],
-          activeKcal: sampleKcal[idx],
-          sleepHours: sampleSleep[idx],
-          heartRateBpm: sampleHr[idx],
+          steps: 0,
+          activeKcal: 0,
+          sleepHours: 0.0,
+          heartRateBpm: 0,
         );
       });
-
-      // Save initial cache
-      await prefs.setString(
-        _weeklyHistoryKey,
-        jsonEncode(history.map((h) => h.toJson()).toList()),
-      );
     }
 
     return history;
