@@ -10,7 +10,23 @@ class HealthSyncViewModel extends ChangeNotifier {
   int _stepGoal = 10000;
 
   ActivityData get todayActivity => _todayActivity;
-  List<DailyActivity> get weeklyHistory => _weeklyHistory;
+  List<DailyActivity> get weeklyHistory {
+    if (!hasRealActivity) {
+      final now = DateTime.now();
+      return List.generate(7, (i) {
+        final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - i));
+        return DailyActivity(
+          date: date,
+          steps: 0,
+          activeKcal: 0,
+          sleepHours: 0.0,
+          heartRateBpm: 0,
+        );
+      });
+    }
+    return _weeklyHistory;
+  }
+
   bool get isConnected => _isConnected;
   bool get isLoading => _isLoading;
   int get stepGoal => _stepGoal;
@@ -24,30 +40,36 @@ class HealthSyncViewModel extends ChangeNotifier {
 
   /// Average steps over the weekly history.
   int get weeklyAverageSteps {
-    if (_weeklyHistory.isEmpty) return 0;
+    if (!hasRealActivity || _weeklyHistory.isEmpty) return 0;
     final total = _weeklyHistory.fold<int>(0, (sum, d) => sum + d.steps);
     return (total / _weeklyHistory.length).round();
   }
 
   /// Total calories burned this week.
   int get weeklyTotalBurned {
-    if (_weeklyHistory.isEmpty) return 0;
+    if (!hasRealActivity || _weeklyHistory.isEmpty) return 0;
     return _weeklyHistory.fold<int>(0, (sum, d) => sum + d.activeKcal);
   }
 
   /// Average sleep hours this week.
   double get weeklyAverageSleep {
-    if (_weeklyHistory.isEmpty) return 0.0;
+    if (!hasRealActivity || _weeklyHistory.isEmpty) return 0.0;
     final total = _weeklyHistory.fold<double>(0.0, (sum, d) => sum + d.sleepHours);
     return double.parse((total / _weeklyHistory.length).toStringAsFixed(1));
   }
 
   /// Whether we have any real recorded activity (not just fallback demo data).
   bool get hasRealActivity {
-    // Check if today has any steps OR if any day in this week has real steps
+    // 1. If today has positive steps
     if (_todayActivity.steps > 0) return true;
-    if (_todayActivity.source == 'Health Connect' || _todayActivity.source == 'Apple Health' || _todayActivity.source == 'User Logged') return true;
-    // If source is 'Tap to Sync' or 'none', we are in fallback-only mode
+    // 2. If user manually entered data
+    if (_todayActivity.source == 'User Logged') return true;
+    // 3. If connected to native health platform and any day has steps
+    if ((_todayActivity.source == 'Health Connect' || _todayActivity.source == 'Apple Health') &&
+        _weeklyHistory.any((d) => d.steps > 0)) {
+      return true;
+    }
+    // Otherwise in un-synced / flat-zero state
     return false;
   }
 

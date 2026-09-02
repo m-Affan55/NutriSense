@@ -371,28 +371,20 @@ class HealthService {
       }
     }
 
-    // 2. Load from local saved history cache
+    // 2. Load from local saved history cache only if the user has manually logged activity
+    final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+    final hasManualLogs = prefs.getString(todayKey) != null;
     final cachedJson = prefs.getString(_weeklyHistoryKey);
     List<DailyActivity> history = [];
 
-    if (cachedJson != null) {
+    if (hasManualLogs && cachedJson != null) {
       try {
         final List<dynamic> list = jsonDecode(cachedJson);
-        final parsed = list.map((item) => DailyActivity.fromJson(item)).toList();
-
-        // Bust stale fake-sample cache: if every entry has steps > 1000 but today
-        // has zero real activity, the cache is the old hardcoded demo data — discard it.
-        final todayKey = '${_manualActivityKey}_${_todayDateString()}';
-        final todayJson = prefs.getString(todayKey);
-        final hasTodayRealData = todayJson != null;
-        final allHighSteps = parsed.isNotEmpty && parsed.every((d) => d.steps > 500);
-        if (allHighSteps && !hasTodayRealData) {
-          // Clear the stale fake cache
-          await prefs.remove(_weeklyHistoryKey);
-        } else {
-          history = parsed;
-        }
+        history = list.map((item) => DailyActivity.fromJson(item)).toList();
       } catch (_) {}
+    } else if (!hasManualLogs && cachedJson != null) {
+      // Clear old legacy demo cache so stale mock bars never show
+      await prefs.remove(_weeklyHistoryKey);
     }
 
     // 3. Fallback: No real data yet — return honest flat-zero history (no fake bars)
@@ -407,7 +399,6 @@ class HealthService {
           heartRateBpm: 0,
         );
       });
-      // Do NOT cache these zeros — so real data can populate naturally on first sync/log
     }
 
     return history;
