@@ -82,11 +82,12 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       'text': greeting,
       'isUser': false,
       'time': _formatTime(DateTime.now()),
+      'lang': lang,
     };
 
     if (_messages.isEmpty) {
       _messages.add(newGreetingMap);
-    } else if (!_messages[0]['isUser']) {
+    } else if (_messages.length == 1 && !_messages[0]['isUser']) {
       _messages[0] = newGreetingMap;
     }
   }
@@ -476,11 +477,13 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     _controller.clear();
     int userMsgIndex = -1;
     setState(() {
+      final userMsgLang = RegExp(r'[\u0600-\u06FF]').hasMatch(text) ? 'ur' : _language;
       _messages.add({
         'sender': _language == 'ur' ? 'آپ' : 'You',
         'text': text,
         'isUser': true,
         'time': _formatTime(DateTime.now()),
+        'lang': userMsgLang,
       });
       userMsgIndex = _messages.length - 1;
       _isTyping = true;
@@ -588,12 +591,15 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
       if (mounted) {
         setState(() {
+          final isUrduReply = RegExp(r'[\u0600-\u06FF]').hasMatch(reply);
+          final replyLang = isUrduReply ? 'ur' : 'en';
           _messages.add({
             'sender': _language == 'ur' ? 'کوچ' : 'Coach',
             'text': reply,
             'isUser': false,
             'time': _formatTime(DateTime.now()),
             'escalationAlert': escalationAlert,
+            'lang': replyLang,
           });
           _isTyping = false;
         });
@@ -892,6 +898,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                           isUser: msg['isUser'],
                           theme: theme,
                           escalationAlert: msg['escalationAlert'],
+                          msgLang: msg['lang'],
                         );
                       },
                     ),
@@ -1103,7 +1110,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     required bool isUser,
     required ThemeData theme,
     Map<String, dynamic>? escalationAlert,
+    String? msgLang,
   }) {
+    final effectiveLang = msgLang ?? (RegExp(r'[\u0600-\u06FF]').hasMatch(message) ? 'ur' : 'en');
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -1165,7 +1174,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
               ],
             ),
             const SizedBox(height: 6),
-            _buildFormattedMessage(message, isUser, theme),
+            _buildFormattedMessage(message, isUser, theme, msgLang: effectiveLang),
             if (escalationAlert != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -1245,7 +1254,13 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildFormattedMessage(String message, bool isUser, ThemeData theme) {
+  Widget _buildFormattedMessage(
+    String message,
+    bool isUser,
+    ThemeData theme, {
+    String? msgLang,
+  }) {
+    final effectiveLang = msgLang ?? (RegExp(r'[\u0600-\u06FF]').hasMatch(message) ? 'ur' : 'en');
     final lines = message.split('\n');
     List<Widget> lineWidgets = [];
 
@@ -1256,8 +1271,10 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         continue;
       }
 
-      // Check for Markdown headers (e.g. #, ##, ###, ####)
-      final headerMatch = RegExp(r'^(#{1,6})\s*(.*)$').firstMatch(line.trimLeft());
+      String cleanLine = line.trimLeft();
+
+      // 1. Check for Markdown headers (e.g. #, ##, ###, ####)
+      final headerMatch = RegExp(r'^(#{1,6})\s*(.*)$').firstMatch(cleanLine);
       if (headerMatch != null) {
         final headerLevel = headerMatch.group(1)!.length;
         String headerText = headerMatch.group(2)!.trim();
@@ -1272,6 +1289,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                 theme,
                 fontSizeOverride: headerFontSize,
                 isHeader: true,
+                msgLang: effectiveLang,
               ),
             ),
           );
@@ -1279,17 +1297,41 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         }
       }
 
-      // Check for bullet point (* or -)
+      // 2. Check for bullet point prefix (* , - , • )
       bool isBullet = false;
-      if (line.trimLeft().startsWith('* ') || line.trimLeft().startsWith('- ') || line.trimLeft().startsWith('• ')) {
+      if (cleanLine.startsWith('* ') || cleanLine.startsWith('- ') || cleanLine.startsWith('• ')) {
         isBullet = true;
-        line = line.trimLeft();
-        line = line.substring(2).trimLeft();
-      } else if (RegExp(r'^\d+\.\s').hasMatch(line.trimLeft())) {
-        final trimmed = line.trimLeft();
-        final match = RegExp(r'^(\d+\.)\s').firstMatch(trimmed)!;
+        cleanLine = cleanLine.substring(2).trimLeft();
+      }
+
+      // 3. Check if cleanLine is a section heading/title (e.g. "**Dinner:**", "**Snacks...:**", "Dinner:")
+      // A heading ends with a colon (optionally inside/outside bold markers) or is a standalone title.
+      final trimmedContent = cleanLine.trim();
+      final isTitleHeading = RegExp(r':\s*(\*\*|\*)*$').hasMatch(trimmedContent) ||
+          RegExp(r'^\*\*[^*]+\*\*:?\s*$').hasMatch(trimmedContent);
+
+      if (isTitleHeading) {
+        lineWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: _buildInlineFormattedText(
+              cleanLine,
+              isUser,
+              theme,
+              fontSizeOverride: 15.0,
+              isHeader: true,
+              msgLang: effectiveLang,
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // 4. Handle numbered list items (e.g. 1. Item)
+      if (!isBullet && RegExp(r'^\d+\.\s').hasMatch(cleanLine)) {
+        final match = RegExp(r'^(\d+\.)\s').firstMatch(cleanLine)!;
         final prefix = match.group(1)!;
-        final content = trimmed.substring(match.end).trimLeft();
+        final content = cleanLine.substring(match.end).trimLeft();
         lineWidgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -1304,7 +1346,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                     fontSize: 13.5,
                   ),
                 ),
-                Expanded(child: _buildInlineFormattedText(content, isUser, theme)),
+                Expanded(child: _buildInlineFormattedText(content, isUser, theme, msgLang: effectiveLang)),
               ],
             ),
           ),
@@ -1312,6 +1354,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         continue;
       }
 
+      // 5. Handle standard bullet list items
       if (isBullet) {
         lineWidgets.add(
           Padding(
@@ -1327,16 +1370,17 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                     fontSize: 14,
                   ),
                 ),
-                Expanded(child: _buildInlineFormattedText(line, isUser, theme)),
+                Expanded(child: _buildInlineFormattedText(cleanLine, isUser, theme, msgLang: effectiveLang)),
               ],
             ),
           ),
         );
       } else {
+        // 6. Regular paragraph text
         lineWidgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 3),
-            child: _buildInlineFormattedText(line, isUser, theme),
+            child: _buildInlineFormattedText(cleanLine, isUser, theme, msgLang: effectiveLang),
           ),
         );
       }
@@ -1354,9 +1398,10 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     ThemeData theme, {
     double? fontSizeOverride,
     bool isHeader = false,
+    String? msgLang,
   }) {
-    final currentLang = LanguageController.instance.currentLanguage;
-    final isUrdu = currentLang == 'ur';
+    final effectiveLang = msgLang ?? (RegExp(r'[\u0600-\u06FF]').hasMatch(text) ? 'ur' : 'en');
+    final isUrdu = effectiveLang == 'ur';
     final fontFamily = isUrdu ? 'JameelNooriNastaleeq' : null;
     final scale = isUrdu ? 1.2 : 1.0;
 
