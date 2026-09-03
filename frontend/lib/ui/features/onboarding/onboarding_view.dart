@@ -359,6 +359,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   Widget _buildBodyMetricsPage() {
     return _buildPageWrapper(
       title: 'Basic Body Info',
+      subtitleWidget: _buildEditInfoBanner(),
       child: Column(
         children: [
           _buildNumberInputItem('Age', _age, 'years', (v) => setState(() => _age = v)),
@@ -366,6 +367,33 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           _buildNumberInputItem('Current Weight', _weightKg, 'kg', (v) => setState(() => _weightKg = v)),
           _buildNumberInputItem('Target Weight', _targetWeightKg, 'kg', (v) => setState(() => _targetWeightKg = v)),
           _buildTargetWeightHint(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.edit_note_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Please edit and adjust the values below to match your body measurements',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -601,7 +629,12 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   // --- Helpers ---
 
-  Widget _buildPageWrapper({required String title, String? subtitle, required Widget child}) {
+  Widget _buildPageWrapper({
+    required String title,
+    String? subtitle,
+    Widget? subtitleWidget,
+    required Widget child,
+  }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -613,7 +646,11 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             const SizedBox(height: 8),
             Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
           ],
-          const SizedBox(height: 32),
+          if (subtitleWidget != null) ...[
+            const SizedBox(height: 14),
+            subtitleWidget,
+          ],
+          SizedBox(height: subtitleWidget != null ? 24 : 32),
           child,
         ],
       ),
