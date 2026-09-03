@@ -1304,11 +1304,34 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         cleanLine = cleanLine.substring(2).trimLeft();
       }
 
-      // 3. Check if cleanLine is a section heading/title (e.g. "**Dinner:**", "**Snacks...:**", "Dinner:")
-      // A heading ends with a colon (optionally inside/outside bold markers) or is a standalone title.
+      // 3. Check if cleanLine is a section heading/title (e.g. "**Dinner:**", "**Snacks:**", "Dinner:")
+      // Full conversational or introductory sentences ending with a colon (e.g. "Here is a balanced...") are regular text.
       final trimmedContent = cleanLine.trim();
-      final isTitleHeading = RegExp(r':\s*(\*\*|\*)*$').hasMatch(trimmedContent) ||
-          RegExp(r'^\*\*[^*]+\*\*:?\s*$').hasMatch(trimmedContent);
+      bool isTitleHeading = false;
+      if (!isBullet) {
+        final words = trimmedContent.split(RegExp(r'\s+'));
+        final isShort = words.length <= 6 && trimmedContent.length <= 50;
+        final isEntirelyBold = RegExp(r'^\*\*[^*]{2,50}\*\*:?\s*$').hasMatch(trimmedContent);
+        
+        final lower = trimmedContent.toLowerCase();
+        final isSentenceStarter = lower.startsWith('here is') ||
+            lower.startsWith('here are') ||
+            lower.startsWith('below is') ||
+            lower.startsWith('below are') ||
+            lower.startsWith('this is') ||
+            lower.startsWith('these are') ||
+            lower.startsWith('note that') ||
+            lower.startsWith('please note') ||
+            lower.startsWith('for example') ||
+            lower.startsWith('remember') ||
+            lower.startsWith('make sure');
+
+        if (isEntirelyBold) {
+          isTitleHeading = true;
+        } else if (isShort && trimmedContent.endsWith(':') && !isSentenceStarter && !trimmedContent.contains(',')) {
+          isTitleHeading = true;
+        }
+      }
 
       if (isTitleHeading) {
         lineWidgets.add(
