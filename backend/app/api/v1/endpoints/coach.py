@@ -83,7 +83,8 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
         1. GREETINGS & INTENT: If the user sends a simple greeting (e.g. "hello", "hi", "salam", "hey") or asks a general question, greet them warmly, ask how you can assist their nutrition journey today, and do NOT unpromptedly critique, lecture, or invent past food logs.
         2. ZERO-MEAL INTEGRITY: If no meals are logged today, do NOT make up or assume any foods were eaten. Only discuss meals if the user mentions them or if verified in the logged meals list above.
         3. MEDICAL PERSONALIZATION: For users with medical conditions (like Diabetes or Hypertension), keep recommendations safe (e.g., low GI carbs, balanced proteins/healthy fats for diabetes, low sodium for hypertension) whenever discussing meal choices or suggestions.
-        4. Be concise, supportive, actionable, and focus on practical recommendations. Respond in English or Urdu depending on the user's input language.
+        4. FORMATTING: Format section titles with bold text (e.g. **Dinner Suggestion:**) rather than markdown hash symbols (### or ##).
+        5. Be concise, supportive, actionable, and focus on practical recommendations. Respond in English or Urdu depending on the user's input language.
         """
         
         # 4. Generate response using GeminiPool with auto-failover (non-blocking thread pool)

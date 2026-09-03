@@ -1256,6 +1256,29 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         continue;
       }
 
+      // Check for Markdown headers (e.g. #, ##, ###, ####)
+      final headerMatch = RegExp(r'^(#{1,6})\s*(.*)$').firstMatch(line.trimLeft());
+      if (headerMatch != null) {
+        final headerLevel = headerMatch.group(1)!.length;
+        String headerText = headerMatch.group(2)!.trim();
+        if (headerText.isNotEmpty) {
+          final double headerFontSize = headerLevel <= 2 ? 16.5 : 15.0;
+          lineWidgets.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: _buildInlineFormattedText(
+                headerText,
+                isUser,
+                theme,
+                fontSizeOverride: headerFontSize,
+                isHeader: true,
+              ),
+            ),
+          );
+          continue;
+        }
+      }
+
       // Check for bullet point (* or -)
       bool isBullet = false;
       if (line.trimLeft().startsWith('* ') || line.trimLeft().startsWith('- ') || line.trimLeft().startsWith('• ')) {
@@ -1325,14 +1348,24 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildInlineFormattedText(String text, bool isUser, ThemeData theme) {
+  Widget _buildInlineFormattedText(
+    String text,
+    bool isUser,
+    ThemeData theme, {
+    double? fontSizeOverride,
+    bool isHeader = false,
+  }) {
     final currentLang = LanguageController.instance.currentLanguage;
     final isUrdu = currentLang == 'ur';
     final fontFamily = isUrdu ? 'JameelNooriNastaleeq' : null;
     final scale = isUrdu ? 1.2 : 1.0;
 
-    final baseColor = isUser ? Colors.white : Colors.white.withValues(alpha: 0.92);
+    final baseFontSize = (fontSizeOverride ?? 13.5) * scale;
+    final baseColor = isUser
+        ? Colors.white
+        : (isHeader ? const Color(0xFFFFD166) : Colors.white.withValues(alpha: 0.92));
     final boldColor = isUser ? Colors.white : const Color(0xFFFFD166);
+    final baseFontWeight = isHeader ? FontWeight.bold : FontWeight.normal;
 
     List<InlineSpan> spans = [];
     final pattern = RegExp(r'\*\*(.*?)\*\*|\*(.*?)\*');
@@ -1343,8 +1376,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         spans.add(TextSpan(
           text: text.substring(lastMatchEnd, match.start),
           style: TextStyle(
-            color: baseColor, 
-            fontSize: 13.5 * scale, 
+            color: baseColor,
+            fontSize: baseFontSize,
+            fontWeight: baseFontWeight,
             height: 1.4,
             fontFamily: fontFamily,
           ),
@@ -1358,7 +1392,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           style: TextStyle(
             color: boldColor,
             fontWeight: FontWeight.w700,
-            fontSize: 13.5 * scale,
+            fontSize: baseFontSize,
             height: 1.4,
             fontFamily: fontFamily,
           ),
@@ -1370,7 +1404,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
           style: TextStyle(
             color: baseColor,
             fontStyle: FontStyle.italic,
-            fontSize: 13.5 * scale,
+            fontWeight: baseFontWeight,
+            fontSize: baseFontSize,
             height: 1.4,
             fontFamily: fontFamily,
           ),
@@ -1384,8 +1419,9 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       spans.add(TextSpan(
         text: text.substring(lastMatchEnd),
         style: TextStyle(
-          color: baseColor, 
-          fontSize: 13.5 * scale, 
+          color: baseColor,
+          fontSize: baseFontSize,
+          fontWeight: baseFontWeight,
           height: 1.4,
           fontFamily: fontFamily,
         ),
