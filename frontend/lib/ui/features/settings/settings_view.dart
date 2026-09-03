@@ -23,6 +23,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
+import '../../widgets/terms_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -632,6 +633,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'streakAlertsSub': 'Celebratory streak milestone alerts & evening reminders.',
         'riskAlerts': 'AI Clinical Safety Alerts',
         'riskAlertsSub': 'Urgent heads-up for allergen conflicts or health safety risks.',
+        'termsAndPrivacy': 'Terms & Privacy Policy',
+        'termsAndPrivacySub': 'Read our data privacy, terms, and clinical disclaimers.',
       },
       'ur': {
         'title': 'پروفائل کی ترتیبات',
@@ -681,6 +684,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'streakAlertsSub': 'اسٹریک سنگ میل اور رات کو اسٹریک بچانے کے الرٹس۔',
         'riskAlerts': 'اے آئی طبی و حفاظتی الرٹس',
         'riskAlertsSub': 'الرجی یا شوگر کے خطرے سے متعلق فوری انتباہات۔',
+        'termsAndPrivacy': 'شرائط، پرائیویسی اور پالیسی',
+        'termsAndPrivacySub': 'ڈیٹا کا تحفظ، سروس کی شرائط، اور طبی انتباہ پڑھیں۔',
       }
     };
     return translations[_language]?[key] ?? key;
@@ -1418,6 +1423,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: Text(_t('export')),
                       subtitle: Text(_t('exportSub')),
                       onTap: _isSaving ? null : _exportPdfReceipt,
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.verified_user_outlined, color: Colors.tealAccent),
+                      title: Text(_t('termsAndPrivacy')),
+                      subtitle: Text(_t('termsAndPrivacySub')),
+                      onTap: () => showTermsAndPrivacyDialog(context),
                     ),
                     ListTile(
                       leading: const Icon(Icons.delete_forever, color: Color(0xFFFFD700)),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../core/language_controller.dart';
+import 'auth_view.dart';
 
 class UpdatePasswordScreen extends StatefulWidget {
   const UpdatePasswordScreen({super.key});
@@ -58,7 +59,20 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           _t('successToast'),
           isError: false,
         );
-        Navigator.of(context).pop();
+
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          // If launched via email password recovery link (stack was cleared),
+          // sign out temporary recovery session and redirect cleanly back to Login!
+          await supabase.auth.signOut();
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const AuthScreen()),
+              (route) => false,
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
