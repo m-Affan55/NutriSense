@@ -19,9 +19,13 @@ class _FamilyViewState extends State<FamilyView> {
   @override
   void initState() {
     super.initState();
+    _language = LanguageController.instance.currentLanguage;
     LanguageController.instance.addListener(_loadLanguage);
-    _loadLanguage();
-    _viewModel.loadMembers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _viewModel.loadMembers();
+      }
+    });
   }
 
   @override

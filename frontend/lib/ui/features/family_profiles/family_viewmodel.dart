@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/family_member.dart';
@@ -7,6 +9,17 @@ class FamilyViewModel extends ChangeNotifier {
   static final FamilyViewModel _instance = FamilyViewModel._internal();
   static FamilyViewModel get instance => _instance;
   factory FamilyViewModel() => _instance;
+
+  @override
+  void notifyListeners() {
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        super.notifyListeners();
+      });
+    } else {
+      super.notifyListeners();
+    }
+  }
 
   FamilyViewModel._internal() {
     _loadFromLocalCache();
