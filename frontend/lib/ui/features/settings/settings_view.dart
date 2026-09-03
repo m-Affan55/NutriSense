@@ -23,6 +23,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -532,43 +533,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: options.map((opt) {
-                    final isSelected = tempSelected.contains(opt);
-                    return ListTile(
-                      title: Text(
-                        opt, 
-                        style: TextStyle(
-                          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white70,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 15,
-                        )
-                      ),
-                      onTap: () {
-                        setState(() {
-                          if (isMultiSelect) {
-                            if (isSelected) {
-                              tempSelected.remove(opt);
-                            } else {
-                              if (opt == 'None') {
-                                tempSelected = ['None'];
+              content: Directionality(
+                textDirection: TextDirection.ltr,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: options.map((opt) {
+                      final isSelected = tempSelected.contains(opt);
+                      return ListTile(
+                        title: Text(
+                          opt, 
+                          style: GoogleFonts.inter(
+                            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white70,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 15,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            if (isMultiSelect) {
+                              if (isSelected) {
+                                tempSelected.remove(opt);
                               } else {
-                                tempSelected.remove('None');
-                                tempSelected.add(opt);
+                                if (opt == 'None') {
+                                  tempSelected = ['None'];
+                                } else {
+                                  tempSelected.remove('None');
+                                  tempSelected.add(opt);
+                                }
                               }
+                              onChange(tempSelected);
+                            } else {
+                              tempSelected = [opt];
+                              onChange(tempSelected);
+                              Navigator.pop(ctx);
                             }
-                            onChange(tempSelected);
-                          } else {
-                            tempSelected = [opt];
-                            onChange(tempSelected);
-                            Navigator.pop(ctx);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             );
@@ -777,6 +781,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _nameController,
+                      textDirection: TextDirection.ltr,
+                      style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(labelText: _t('fullName'), border: const OutlineInputBorder()),
                       validator: (val) => val == null || val.isEmpty ? _t('required') : null,
                     ),
@@ -784,10 +790,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     DropdownButtonFormField<String>(
                       key: ValueKey(_language),
                       initialValue: _language,
+                      style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(labelText: _t('language'), border: const OutlineInputBorder()),
-                      items: const [
-                        DropdownMenuItem(value: 'en', child: Text('English 🇬🇧')),
-                        DropdownMenuItem(value: 'ur', child: Text('اردو (Urdu) 🇵🇰')),
+                      items: [
+                        DropdownMenuItem(value: 'en', child: Text('English 🇬🇧', style: GoogleFonts.inter())),
+                        DropdownMenuItem(value: 'ur', child: const Text('اردو (Urdu) 🇵🇰', style: TextStyle(fontFamily: 'JameelNooriNastaleeq'))),
                       ],
                       onChanged: (val) async {
                         if (val != null) {
@@ -810,6 +817,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _ageController,
                             keyboardType: TextInputType.number,
+                            textDirection: TextDirection.ltr,
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(3),
@@ -830,6 +839,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _weightController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textDirection: TextDirection.ltr,
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                               LengthLimitingTextInputFormatter(6),
@@ -854,6 +865,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _heightController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textDirection: TextDirection.ltr,
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                               LengthLimitingTextInputFormatter(6),
@@ -874,6 +887,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: TextFormField(
                             controller: _budgetController,
                             keyboardType: TextInputType.number,
+                            textDirection: TextDirection.ltr,
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(8),
@@ -913,6 +928,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: TextFormField(
                           key: ValueKey(_goal),
                           initialValue: _goal?.replaceAll('_', ' ').toUpperCase(),
+                          textDirection: TextDirection.ltr,
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('goal'),
                             border: const OutlineInputBorder(),
@@ -941,6 +958,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: TextFormField(
                           key: ValueKey(_activityLevel),
                           initialValue: _activityLevel?.replaceAll('_', ' ').toUpperCase(),
+                          textDirection: TextDirection.ltr,
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('activity'),
                             border: const OutlineInputBorder(),
@@ -967,6 +986,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: IgnorePointer(
                         child: TextFormField(
                           controller: _medicalConditionsController,
+                          textDirection: TextDirection.ltr,
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('medicalConditions'),
                             border: const OutlineInputBorder(),
@@ -993,6 +1014,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: IgnorePointer(
                         child: TextFormField(
                           controller: _dietaryRestrictionsController,
+                          textDirection: TextDirection.ltr,
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('dietaryRestrictions'),
                             border: const OutlineInputBorder(),

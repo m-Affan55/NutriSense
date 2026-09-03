@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/auth_view.dart';
 
@@ -50,11 +51,27 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               ),
               const SizedBox(height: 32),
               
-              // Title
+              // Title - English (GoogleFonts.outfit, never Nastaleeq)
               Text(
-                'Select Your Language\nاپنی زبان چنیں',
+                'Select Your Language',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.headlineMedium,
+                style: GoogleFonts.outfit(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Subtitle - Urdu (explicitly JameelNooriNastaleeq)
+              const Text(
+                'اپنی زبان چنیں',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'JameelNooriNastaleeq',
+                  fontSize: 26,
+                  color: Colors.white,
+                  height: 1.3,
+                ),
               ),
               const SizedBox(height: 48),
 
@@ -72,7 +89,29 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _LanguageCard(
-                      title: 'اردو / Urdu',
+                      titleWidget: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'اردو',
+                              style: TextStyle(
+                                fontFamily: 'JameelNooriNastaleeq',
+                                fontSize: 20,
+                                color: _selectedLanguage == 'ur' ? theme.colorScheme.primary : Colors.white,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' / Urdu',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: _selectedLanguage == 'ur' ? FontWeight.bold : FontWeight.w500,
+                                color: _selectedLanguage == 'ur' ? theme.colorScheme.primary : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       emoji: '🇵🇰',
                       isSelected: _selectedLanguage == 'ur',
                       onTap: () => setState(() => _selectedLanguage = 'ur'),
@@ -82,7 +121,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               ),
               const Spacer(),
               
-              // Continue Button
+              // Continue Button - English (GoogleFonts.inter, never Nastaleeq)
               AnimatedOpacity(
                 opacity: _selectedLanguage != null ? 1.0 : 0.5,
                 duration: const Duration(milliseconds: 200),
@@ -110,9 +149,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                       child: Center(
                         child: Text(
                           'Continue',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -131,13 +171,15 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 }
 
 class _LanguageCard extends StatelessWidget {
-  final String title;
+  final String? title;
+  final Widget? titleWidget;
   final String emoji;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _LanguageCard({
-    required this.title,
+    this.title,
+    this.titleWidget,
     required this.emoji,
     required this.isSelected,
     required this.onTap,
@@ -170,15 +212,24 @@ class _LanguageCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 48)),
-            const SizedBox(height: 16),
             Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: isSelected ? theme.colorScheme.primary : Colors.white,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              emoji,
+              style: GoogleFonts.inter(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
               ),
             ),
+            const SizedBox(height: 16),
+            titleWidget ??
+                Text(
+                  title ?? '',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: isSelected ? theme.colorScheme.primary : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
           ],
         ),
       ),

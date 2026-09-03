@@ -49,7 +49,7 @@ TextTheme _buildUrduTextTheme([Color? textColor, Color? secondaryColor]) {
 }
 
 ThemeData buildLightTheme(bool isUrdu) {
-  const fallbackFonts = ['JameelNooriNastaleeq'];
+  final fallbackFonts = isUrdu ? const ['JameelNooriNastaleeq'] : const <String>[];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -76,7 +76,7 @@ ThemeData buildLightTheme(bool isUrdu) {
 }
 
 ThemeData buildDarkTheme(bool isUrdu) {
-  const fallbackFonts = ['JameelNooriNastaleeq'];
+  final fallbackFonts = isUrdu ? const ['JameelNooriNastaleeq'] : const <String>[];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -124,7 +124,7 @@ ThemeData buildDarkTheme(bool isUrdu) {
 
 /// Specialized Ramadan Midnight Blue Theme
 ThemeData buildRamadanTheme(bool isUrdu) {
-  const fallbackFonts = ['JameelNooriNastaleeq'];
+  final fallbackFonts = isUrdu ? const ['JameelNooriNastaleeq'] : const <String>[];
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,

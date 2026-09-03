@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../language/language_selection_screen.dart';
 
+import '../../core/theme.dart';
+import '../../../core/ramadan_controller.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -55,11 +58,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final theme = isRamadan ? buildRamadanTheme(false) : buildDarkTheme(false);
+
     return Scaffold(
       backgroundColor: const Color(0xFF090B0F),
-      body: Stack(
-        children: [
+      body: Theme(
+        data: theme,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Stack(
+          children: [
           // 1. Food Background Image with calibrated opacity
           Positioned.fill(
             child: Opacity(
@@ -196,6 +205,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

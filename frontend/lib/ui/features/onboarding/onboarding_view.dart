@@ -10,6 +10,9 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/health_service.dart';
 
+import '../../core/theme.dart';
+import '../../../core/ramadan_controller.dart';
+
 class OnboardingWizardScreen extends StatefulWidget {
   const OnboardingWizardScreen({super.key});
 
@@ -180,33 +183,42 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final englishTheme = isRamadan ? buildRamadanTheme(false) : buildDarkTheme(false);
+
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildProgressBar(),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Disable manual swipe
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
-                children: [
-                  _buildGoalPage(),
-                  _buildGenderPage(),
-                  _buildBodyMetricsPage(),
-                  _buildActivityPage(),
-                  _buildHealthAndDietPage(),
-                  _buildBudgetPage(),
-                  _buildHealthSyncPage(),
-                ],
-              ),
+      body: Theme(
+        data: englishTheme,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildProgressBar(),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(), // Disable manual swipe
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                    },
+                    children: [
+                      _buildGoalPage(),
+                      _buildGenderPage(),
+                      _buildBodyMetricsPage(),
+                      _buildActivityPage(),
+                      _buildHealthAndDietPage(),
+                      _buildBudgetPage(),
+                      _buildHealthSyncPage(),
+                    ],
+                  ),
+                ),
+                _buildBottomNav(),
+              ],
             ),
-            _buildBottomNav(),
-          ],
+          ),
         ),
       ),
     );

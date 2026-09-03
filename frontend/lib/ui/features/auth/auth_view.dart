@@ -6,7 +6,12 @@ import '../onboarding/onboarding_view.dart';
 import '../navigation/main_navigation_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/widgets/custom_toast.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme.dart';
+import '../../../core/ramadan_controller.dart';
+import '../../../core/language_controller.dart';
 import 'forgot_password_view.dart';
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -34,7 +39,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _loadTagline() async {
     final prefs = await SharedPreferences.getInstance();
-    final lang = prefs.getString('app_language');
+    final lang = prefs.getString('app_language') ?? prefs.getString('language');
     if (lang == 'ur') {
       setState(() {
         _tagline = "مصنوعی ذہانت سے لیس آپ کا غذائی ماہر";
@@ -179,31 +184,50 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showTermsDialog() {
+    final isUrdu = LanguageController.instance.isUrdu;
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF161A22),
           title: Text(
-            'Terms & Policies',
-            style: TextStyle(color: Theme.of(context).colorScheme.primary),
+            isUrdu ? 'شرائط و ضوابط' : 'Terms & Policies',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+            ),
           ),
           content: SingleChildScrollView(
             child: Text(
-              'Welcome to NutriSense!\n\n'
-              'NutriSense is designed to help you track your fitness, meals, and general well-being.\n\n'
-              'IMPORTANT MEDICAL DISCLAIMER:\n'
-              'NutriSense aims to provide health education and tracking tools. '
-              'We are NOT doctors, and this app does NOT provide medical advice, diagnosis, or treatment. '
-              'Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.\n\n'
-              'By using this app, you acknowledge that the information provided is for educational purposes only.',
-              style: const TextStyle(color: Colors.white, height: 1.5),
+              isUrdu
+                  ? 'نیوٹریسنس (NutriSense) میں خوش آمدید!\n\n'
+                    'نیوٹریسنس آپ کی صحت، نیوٹریشن اور جسمانی سرگرمیوں کو ٹریک کرنے میں مدد کے لیے بنایا گیا ہے۔\n\n'
+                    'اہم طبی دستبرداری (Disclaimer):\n'
+                    'نیوٹریسنس کا مقصد صحت سے متعلق معلومات اور ٹریکنگ کے آلات فراہم کرنا ہے۔ ہم ڈاکٹر نہیں ہیں اور یہ ایپ طبی مشورہ، تشخیص یا علاج فراہم نہیں کرتی۔ طبی حالت کے سلسلے میں ہمیشہ اپنے معالج سے مشورہ لیں۔\n\n'
+                    'اس ایپ کو استعمال کر کے آپ تسلیم کرتے ہیں کہ فراہم کردہ معلومات صرف تعلیمی اور آگاہی کے مقاصد کے لیے ہیں۔'
+                  : 'Welcome to NutriSense!\n\n'
+                    'NutriSense is designed to help you track your fitness, meals, and general well-being.\n\n'
+                    'IMPORTANT MEDICAL DISCLAIMER:\n'
+                    'NutriSense aims to provide health education and tracking tools. '
+                    'We are NOT doctors, and this app does NOT provide medical advice, diagnosis, or treatment. '
+                    'Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.\n\n'
+                    'By using this app, you acknowledge that the information provided is for educational purposes only.',
+              textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+              style: TextStyle(
+                color: Colors.white,
+                height: 1.5,
+                fontSize: isUrdu ? 16 : 14,
+                fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+              ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('I Understand'),
+              child: Text(
+                isUrdu ? 'میں سمجھ گیا / گئی' : 'I Understand',
+                style: TextStyle(fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null),
+              ),
             ),
           ],
         );
@@ -213,46 +237,64 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final theme = isRamadan ? buildRamadanTheme(false) : buildDarkTheme(false);
+    final isUrdu = LanguageController.instance.isUrdu;
     
     return Scaffold(
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: Container(
-          decoration: BoxDecoration(
-          color: const Color(0xFF0D0F14),
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.8),
-            radius: 1.2,
-            colors: [
-              theme.colorScheme.primary.withAlpha(20),
-              const Color(0xFF0D0F14),
-            ],
+      body: Theme(
+        data: theme,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Container(
+            decoration: BoxDecoration(
+            color: const Color(0xFF0D0F14),
+            gradient: RadialGradient(
+              center: const Alignment(0, -0.8),
+              radius: 1.2,
+              colors: [
+                theme.colorScheme.primary.withAlpha(20),
+                const Color(0xFF0D0F14),
+              ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header
-                  const SizedBox(height: 20),
-                  Text(
-                    'NutriSense',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      color: theme.colorScheme.primary,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header
+                    const SizedBox(height: 20),
+                    Text(
+                      'NutriSense',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 38,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _tagline,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _tagline,
+                      textAlign: TextAlign.center,
+                      style: isUrdu
+                          ? const TextStyle(
+                              fontFamily: 'JameelNooriNastaleeq',
+                              fontSize: 18,
+                              color: Colors.white70,
+                            )
+                          : GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                    ),
                   const SizedBox(height: 48),
 
                   // Tab Switcher
@@ -276,6 +318,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             decoration: BoxDecoration(
                               color: theme.colorScheme.primary.withAlpha(40),
                               borderRadius: BorderRadius.circular(25),
+                              border: Border.all(color: theme.colorScheme.primary.withAlpha(80)),
                             ),
                           ),
                         ),
@@ -288,9 +331,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                 child: Center(
                                   child: Text(
                                     'Login',
-                                    style: TextStyle(
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
                                       color: isLogin ? theme.colorScheme.primary : theme.colorScheme.onSurface.withAlpha(150),
-                                      fontWeight: isLogin ? FontWeight.bold : FontWeight.normal,
+                                      fontWeight: isLogin ? FontWeight.bold : FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -303,9 +347,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                 child: Center(
                                   child: Text(
                                     'Sign Up',
-                                    style: TextStyle(
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
                                       color: !isLogin ? theme.colorScheme.primary : theme.colorScheme.onSurface.withAlpha(150),
-                                      fontWeight: !isLogin ? FontWeight.bold : FontWeight.normal,
+                                      fontWeight: !isLogin ? FontWeight.bold : FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -381,8 +426,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                               child: Text(
                                 'I agree to Terms & Privacy Policy', 
-                                style: theme.textTheme.bodySmall?.copyWith(
+                                style: GoogleFonts.inter(
                                   color: theme.colorScheme.primary,
+                                  fontSize: 13,
                                 ),
                               ),
                             ),
@@ -401,7 +447,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                           );
                         },
-                        child: Text('Forgot Password?', style: TextStyle(color: theme.colorScheme.primary)),
+                        child: Text(
+                          'Forgot Password?',
+                          style: GoogleFonts.inter(
+                            color: theme.colorScheme.primary,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   
@@ -427,7 +479,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         ? const CircularProgressIndicator(color: Colors.white)
                         : Text(
                             isLogin ? 'Login' : 'Create Account',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                     ),
                   ),
@@ -439,7 +495,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         Expanded(child: Divider(color: Colors.white.withAlpha(30))),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text('or', style: theme.textTheme.bodySmall),
+                          child: Text(
+                            'or',
+                            style: GoogleFonts.inter(
+                              color: Colors.white54,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                         Expanded(child: Divider(color: Colors.white.withAlpha(30))),
                       ],
@@ -453,7 +515,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       icon: const Icon(Icons.g_mobiledata, size: 28, color: Colors.white),
-                      label: const Text('Continue with Google', style: TextStyle(color: Colors.white)),
+                      label: Text(
+                        'Continue with Google',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                   ],
 
@@ -462,6 +530,8 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+      ),
+      ),
       ),
       ),
     );
@@ -481,10 +551,11 @@ class _AuthScreenState extends State<AuthScreen> {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.white),
+      textDirection: TextDirection.ltr,
+      style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade500),
+        labelStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
         prefixIcon: Icon(icon, color: Colors.grey.shade500),
         suffixIcon: suffixIcon,
         filled: true,
