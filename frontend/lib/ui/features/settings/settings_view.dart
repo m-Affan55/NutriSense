@@ -1047,13 +1047,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // Ramadan Mode Section
                       Text(_t('ramadanSection'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isRamadan
-                            ? const Color(0xFF132448).withAlpha(150)
-                            : const Color(0xFF161A22),
+                    Material(
+                      color: isRamadan
+                          ? const Color(0xFF132448).withAlpha(150)
+                          : const Color(0xFF161A22),
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+                        side: BorderSide(
                           color: isRamadan
                               ? const Color(0xFF00D2FF).withAlpha(80)
                               : Colors.white.withAlpha(15),
@@ -1188,11 +1189,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
 
                     // Smart Notifications Section
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF161A22),
+                    Material(
+                      color: const Color(0xFF161A22),
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+                        side: BorderSide(
                           color: isRamadan
                               ? const Color(0xFFFFD166).withAlpha(40)
                               : const Color(0xFF00E676).withAlpha(40),
