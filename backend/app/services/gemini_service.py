@@ -17,13 +17,36 @@ class GeminiService:
 
     @staticmethod
     def scan_meal(image_bytes: bytes, mime_type: str, profile: dict = None) -> dict:
-        system_instruction = """
-        You are a precise food and meal image recognition system.
+        profile_context = ""
+        if profile:
+            conditions = profile.get('medical_conditions', [])
+            restrictions = profile.get('dietary_restrictions', [])
+            allergies = profile.get('allergies', [])
+            goal = profile.get('goal', '')
+            profile_context = f"""
+            User's Health Profile & Clinical Constraints:
+            - Goal: {goal or 'General Health'}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
+            - Known Allergies: {', '.join(allergies) if allergies else 'None'}
+
+            CLINICAL & GOAL SAFETY EVALUATION RULES:
+            1. Diabetes / High Blood Sugar: If meal contains high carbs (> 45g) or refined/added sugars/sweetened desserts, add a specific warning in 'health_warnings' and suggest a lower-GI alternative in 'suggestions'.
+            2. Hypertension / High Blood Pressure: If meal appears high in sodium (pickles, papad, instant noodles, cured meats, heavily salted/MSG dishes), add a warning in 'health_warnings'.
+            3. IBS / Digestive Issues: If meal is high in fat (> 15g-20g, deep fried dishes, heavy creams/ghee), contains artificial polyol sweeteners, excessive hot chili spice, or heavy lactose, add a warning in 'health_warnings' and suggest a gut-friendly alternative in 'suggestions'.
+            4. Fat Loss / Weight Loss Goal: If meal is very calorie-dense (> 750 kcal) or loaded with saturated fats/oils, mention a portion/cooking swap in 'suggestions'.
+            5. Muscle Gain / Bulk Goal: If meal is low in protein (< 15g), suggest adding a lean protein source in 'suggestions'.
+            6. Allergies / Restrictions: Immediately flag any conflict with known allergies or dietary restrictions in 'health_warnings'.
+            """
+
+        system_instruction = f"""
+        You are a precise food, meal image recognition, and clinical nutrition system.
         Look directly at the visual elements in the photograph and identify the authentic name of the dish shown.
         Base your recognition strictly on the actual food visible in the image.
         If the image does not contain food, or you cannot identify any food item with reasonable confidence, set is_food to false and leave nutrition fields empty/0.
-        Otherwise, set is_food to true and provide an initial estimate of portion sizes in grams.
+        Otherwise, set is_food to true and provide an accurate estimate of portion sizes in grams and macronutrients.
         Set recognition_confidence to 'high' if the image is clear and identifiable, or 'low' if blurry or unclear.
+        {profile_context}
         """
 
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
@@ -358,32 +381,92 @@ Return ONLY a valid JSON object with exact keys:
                     return "Keep logging your meals! Consistency is key to improving your habit score."
 
     @staticmethod
-    def generate_food_swaps(recent_meals: list[str], profile: dict = None, language: str = "en") -> list[dict]:
+    def generate_food_swaps(recent_meals: list[str], profile: dict = None, language: str = "en") -> dict:
         profile_context = ""
         if profile:
+            conditions = profile.get('medical_conditions', [])
+            restrictions = profile.get('dietary_restrictions', [])
+            goal = profile.get('goal', 'General Health')
             profile_context = f"""
             The user's health profile:
-            - Goal: {profile.get('goal', 'N/A')}
-            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            - Goal: {goal}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
             """
             
         prompt = f"""
-        You are an expert nutritionist. The user recently ate these items:
+        You are an expert clinical nutritionist and culinary dietitian. 
+        The user has logged the following meal item(s) today:
         {json.dumps(recent_meals)}
         
         {profile_context}
         
-        Identify up to 3 items from their recent meals that could be swapped for a healthier alternative. 
-        The healthier alternative should align with their health goals and medical conditions. 
-        It does NOT need to be a Pakistani food; any healthier, realistic alternative is great.
-        
-        Return ONLY a JSON array of objects with exact keys:
-        - "original_food": string (what they ate)
-        - "healthy_swap": string (what they should eat instead)
-        - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
+        MANDATORY CLINICAL & CULINARY RULES:
+        1. HEALTHY MEAL GATEKEEPER & INHERENTLY HEALTHY WHOLE FOODS:
+           - First, evaluate if the logged food item(s) are inherently nutritious whole foods or balanced meals (e.g. Avocado, eggs, lentils/daal, chicken breast, fish/salmon, oats, unsweetened yogurt, vegetables, salads, quinoa, nuts, seeds, fresh fruit like berries/apples/guava).
+           - INHERENTLY HEALTHY FOODS MUST NEVER BE SWAPPED AWAY:
+             If an item is fundamentally healthy and nutrient-dense (such as avocados, boiled eggs, almonds, Greek yogurt, or grilled chicken):
+             DO NOT swap it for another food!
+           - PORTION & QUANTITY HANDLING (CRITICAL):
+             If the user logged a healthy food in a larger quantity (e.g. "2 avocados", "handful of almonds", "3 eggs", "large bowl of oats") or did not specify an exact quantity:
+             * DO NOT swap the meal! Set "is_healthy": true and "swaps": [].
+             * Instead, use the "message" field to praise their choice and provide a helpful, practical portion guidance tip (e.g. "Great choice! Avocados provide heart-healthy fats and fiber that stabilize blood sugar. Pro tip: Since they are calorie-dense, 1/2 to 1 avocado per day is the optimal serving size for your goals.").
+           - If ALL the logged meal(s) are healthy, balanced, or inherently nutritious, set "is_healthy": true and "swaps": []. DO NOT force or invent a swap!
+
+        2. UNHEALTHY MEALS & SWAP GENERATION (RESERVED FOR TRULY UNHEALTHY / HIGH-RISK FOODS):
+           - Only trigger swaps for items that are genuinely unhealthy, processed, high-glycemic, or deeply fried:
+             * Deep-fried items (e.g. samosa, pakora, french fries, crispy fried chicken, paratha).
+             * Refined sugars & syrups (e.g. gulab jamun, jalebi, soda/cola, donuts, pastries, ice cream, sweetened energy drinks).
+             * Refined high-GI carbs (e.g. white flour naan, halwa puri, white bread with sugary jam).
+             * Heavy saturated fat / oil floating dishes (e.g. oily beef nihari, deep oily restaurant karahi).
+             * High-sodium processed meats / snacks (e.g. cured sausages, salty chips, instant noodles).
+           - In these genuinely unhealthy cases:
+             - Set "is_healthy": false.
+             - Generate a practical, cuisine-matched healthier swap for EVERY unique unhealthy meal in the list.
+             - If there are multiple unhealthy meals (e.g. 4 meals logged today), provide a swap for EACH ONE in the "swaps" list. Do NOT cap at 3. Do NOT omit or combine items.
+
+        3. CUISINE-MATCHING MANDATE (CRITICAL):
+           - The recommended swap MUST strictly match the cuisine, culture, and culinary style of the original food:
+             * PAKISTANI / SOUTH ASIAN DISHES (e.g. Biryani, Nihari, Halwa Puri, Paratha, Samosa, Pakora, Karahi, Haleem, Kheer, Mithai, Jalebi):
+               Swap ONLY for a healthy, authentic Pakistani alternative.
+               Examples:
+               - Oily/Fried Paratha -> Whole-wheat phulka roti with boiled egg or daal.
+               - Deep-fried Samosa / Pakora -> Roasted spiced chana (chickpeas) or baked spiced vegetable cutlet.
+               - Oily Beef Nihari / Heavy Karahi -> Murgh Yakhni (lean spiced chicken broth) or grilled chicken tikka with mint raita.
+               - White Rice Biryani -> High-protein chicken brown basmati pulao with cucumber raita or Daal Chawal (high daal ratio) with salad.
+               - Gulab Jamun / Jalebi -> Fresh guava/papaya slices with chaat masala or low-fat spiced kheer with stevia.
+             * WESTERN DISHES (e.g. Cheeseburger, Pepperoni Pizza, French Fries, Donut, Soda, Fried Chicken):
+               Swap ONLY for a healthy Western alternative.
+               Examples:
+               - Double Cheeseburger / Fast food burger -> Whole-wheat grilled chicken wrap or turkey breast on lettuce bun with sweet potato wedges.
+               - Pepperoni Pizza -> Thin-crust whole-wheat pita pizza with roasted vegetables and lean protein.
+               - French Fries -> Air-fried zucchini or sweet potato wedges.
+               - Sugary Donut / Pastry -> Greek yogurt with mixed berries and a touch of honey.
+               - Sugary Soda -> Sparkling lemon water or iced berry infusion.
+
+        4. MEDICAL CONDITIONS GUARDRAILS:
+           - Diabetes / High Blood Sugar: Prevent glycemic spikes (replace refined carbs/sugar with low-GI, high-fiber, lean protein).
+           - Hypertension / High Blood Pressure: Slash sodium (replace processed/cured meats, salty pickles/chips with herb-seasoned, potassium-rich foods).
+           - IBS / Digestion: Avoid deep-fried, heavy cream, extremely spicy, or high-FODMAP triggers.
+           - Fat Loss: Substantially reduce caloric density and oil while preserving satiety (save 150-300 kcal).
+           - Muscle Gain: Boost lean protein and quality complex carbs.
+
+        if an item is good for the user and user hasn't explicitely tell about the quantity of that health product don't recommend swap instead we aim to show a message of the optimal quantity of the product to use.
+        Return ONLY a JSON object with this exact schema:
+        {{
+          "is_healthy": boolean,
+          "message": string,
+          "swaps": [
+            {{
+              "original_food": string,
+              "healthy_swap": string,
+              "reason": string
+            }}
+          ]
+        }}
         """
         if language == "ur":
-            prompt += "\nMANDATORY: Write the values for 'original_food', 'healthy_swap', and 'reason' in Urdu language (using Urdu Arabic script)."
+            prompt += "\nMANDATORY: Write the values for 'message', 'original_food', 'healthy_swap', and 'reason' in Urdu language (using Urdu Arabic script)."
 
         try:
             response = gemini_pool.generate_content(
@@ -393,9 +476,27 @@ Return ONLY a valid JSON object with exact keys:
                     response_mime_type="application/json",
                 ),
             )
-            return json.loads(response.text)
-        except Exception:
-            return []
+            parsed = GeminiService._parse_gemini_json(response.text)
+            if isinstance(parsed, dict):
+                swaps_list = parsed.get("swaps", [])
+                if not isinstance(swaps_list, list):
+                    swaps_list = []
+                is_healthy = parsed.get("is_healthy", len(swaps_list) == 0)
+                return {
+                    "is_healthy": bool(is_healthy),
+                    "message": str(parsed.get("message", "")),
+                    "swaps": swaps_list
+                }
+            elif isinstance(parsed, list):
+                return {
+                    "is_healthy": len(parsed) == 0,
+                    "message": "",
+                    "swaps": parsed
+                }
+            return {"is_healthy": True, "message": "Meal logged successfully.", "swaps": []}
+        except Exception as e:
+            logger.error(f"Error in generate_food_swaps: {e}")
+            return {"is_healthy": True, "message": "Meal logged successfully.", "swaps": []}
 
     @staticmethod
     def generate_grocery_list(recent_meals: list[str], profile: dict = None) -> list[dict]:

@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
@@ -100,6 +101,44 @@ async def scan_meal(
         scan_result["total_protein_g"] = round(total_protein, 1)
         scan_result["total_carbs_g"] = round(total_carbs, 1)
         scan_result["total_fat_g"] = round(total_fat, 1)
+
+        # 5. Programmatic clinical & goal guardrails based on user profile
+        if profile:
+            conditions = [str(c).lower() for c in (profile.get('medical_conditions') or [])]
+            goal = str(profile.get('goal') or '').lower()
+            existing_warnings = list(scan_result.get("health_warnings") or [])
+            existing_suggestions = list(scan_result.get("suggestions") or [])
+
+            # Diabetes guardrail
+            if any("diabet" in c or "blood sugar" in c for c in conditions):
+                if scan_result["total_carbs_g"] > 45 and not any("carbohydrate" in w.lower() or "glucose" in w.lower() or "sugar" in w.lower() for w in existing_warnings):
+                    existing_warnings.append(
+                        f"WARNING: High in carbohydrates ({scan_result['total_carbs_g']}g) — portion control is recommended for managing Diabetes."
+                    )
+            
+            # IBS / Digestive guardrail
+            if any("ibs" in c or "digest" in c for c in conditions):
+                if scan_result["total_fat_g"] > 20 and not any("fat" in w.lower() or "digest" in w.lower() for w in existing_warnings):
+                    existing_warnings.append(
+                        f"WARNING: High fat content ({scan_result['total_fat_g']}g) — high-fat meals can trigger IBS and digestive discomfort."
+                    )
+
+            # Fat loss note
+            if "fat" in goal or "loss" in goal or "lose" in goal:
+                if scan_result["total_calories"] > 800 and not any("calorie" in s.lower() for s in existing_suggestions):
+                    existing_suggestions.append(
+                        f"Calorie Notice: This meal is {scan_result['total_calories']} kcal. Consider smaller portions or baking/grilling to stay within your fat loss deficit."
+                    )
+
+            # Muscle gain note
+            if "muscle" in goal or "gain" in goal or "bulk" in goal:
+                if scan_result["total_protein_g"] < 15 and not any("protein" in s.lower() for s in existing_suggestions):
+                    existing_suggestions.append(
+                        f"Protein Target: Contains {scan_result['total_protein_g']}g protein. Consider adding eggs, Greek yogurt, or lean protein to hit muscle-building targets."
+                    )
+
+            scan_result["health_warnings"] = existing_warnings
+            scan_result["suggestions"] = existing_suggestions
         
         return scan_result
     except RateLimitExceeded:
@@ -115,6 +154,7 @@ class BarcodeRequest(BaseModel):
 
 class SearchFoodRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300, description="Search query limited to 300 characters")
+    family_member_id: Optional[str] = None
 
 @router.post("/scan-barcode")
 async def scan_barcode(req: BarcodeRequest, authenticated_user_id: str = Depends(get_current_user_id)):
@@ -339,6 +379,46 @@ async def get_weekly_report(user_id: str, language: str = "en", authenticated_us
 async def search_food(req: SearchFoodRequest, authenticated_user_id: str = Depends(get_current_user_id)):
     try:
         macros = await run_in_threadpool(GeminiService.estimate_food_macros, req.query)
+        if not macros.get("is_food", True):
+            return macros
+
+        # Fetch profile for health warnings (supporting family members)
+        supabase = get_supabase_admin_client()
+        profile = None
+        if req.family_member_id:
+            fam_res = await run_in_threadpool(
+                lambda: supabase.table('family_members').select('*').eq('id', req.family_member_id).maybe_single().execute()
+            )
+            fam_data = fam_res.data if hasattr(fam_res, 'data') else fam_res
+            if fam_data:
+                profile = {
+                    'goal': 'General Family Health',
+                    'medical_conditions': fam_data.get('medical_conditions', []),
+                    'dietary_restrictions': fam_data.get('dietary_restrictions', []),
+                }
+
+        if not profile:
+            profile_res = await run_in_threadpool(
+                lambda: supabase.table('health_profiles').select('*').eq('user_id', authenticated_user_id).maybe_single().execute()
+            )
+            profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+
+        warnings = []
+        if profile:
+            conditions = [str(c).lower() for c in (profile.get('medical_conditions') or [])]
+            goal = str(profile.get('goal') or '').lower()
+            carbs = float(macros.get("carbs_g", 0))
+            fat = float(macros.get("fat_g", 0))
+            calories = int(macros.get("calories", 0))
+
+            if any("diabet" in c or "blood sugar" in c for c in conditions) and carbs > 45:
+                warnings.append(f"WARNING: High in carbohydrates ({carbs}g) — may spike blood sugar for Diabetes.")
+            if any("ibs" in c or "digest" in c for c in conditions) and fat > 20:
+                warnings.append(f"WARNING: High in fat ({fat}g) — high-fat meals can trigger IBS and digestive discomfort.")
+            if ("fat" in goal or "loss" in goal or "lose" in goal) and calories > 750:
+                warnings.append(f"Notice: High calorie density ({calories} kcal) for your Fat Loss deficit.")
+
+        macros["health_warnings"] = warnings
         return macros
     except RateLimitExceeded:
         raise HTTPException(status_code=429, detail="RATE_LIMITED")
