@@ -163,7 +163,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ? 'غذا محفوظ ہو گئی! ($calories کیلوریز | ${proteinG.round()}g پروٹین)'
             : 'Meal Logged! ($calories kcal • ${proteinG.round()}g P • ${carbsG.round()}g C • ${fatG.round()}g F)';
         CustomToast.show(context, successMsg, isError: false);
-        SwapService.checkMealForSwaps(mealName);
+        SwapService.checkMealForSwaps(mealName, familyMemberId: _selectedFamilyMemberId);
         MealSyncNotifier.instance.notifyMealChanged();
 
         if (Navigator.canPop(context)) {
@@ -434,10 +434,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     // 1. Calculate macros using Gemini AI / USDA backend engine
     try {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/meals/search-food');
+      final searchPayload = <String, dynamic>{'query': query};
+      if (_selectedFamilyMemberId != null && _selectedFamilyMemberId!.isNotEmpty) {
+        searchPayload['family_member_id'] = _selectedFamilyMemberId;
+      }
       final response = await http.post(
         url,
         headers: ApiClient.getHeaders(),
-        body: jsonEncode({'query': query}),
+        body: jsonEncode(searchPayload),
       ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
@@ -463,6 +467,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         final double proteinG = (data['protein_g'] as num?)?.toDouble() ?? 0.0;
         final double carbsG = (data['carbs_g'] as num?)?.toDouble() ?? 0.0;
         final double fatG = (data['fat_g'] as num?)?.toDouble() ?? 0.0;
+        final List<String> warnings = List<String>.from(data['health_warnings'] ?? []);
         final String finalMealName = (data['name'] != null && data['name'].toString().isNotEmpty)
             ? data['name'].toString()
             : query;
@@ -475,6 +480,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             proteinG: proteinG,
             carbsG: carbsG,
             fatG: fatG,
+            healthWarnings: warnings,
           );
         }
       } else {
@@ -496,6 +502,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     required double proteinG,
     required double carbsG,
     required double fatG,
+    List<String> healthWarnings = const [],
   }) {
     final nameCtrl = TextEditingController(text: mealName);
     final calCtrl = TextEditingController(text: calories.toString());
@@ -565,6 +572,37 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      if (healthWarnings.isNotEmpty) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withAlpha(25),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.red.withAlpha(80)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _language == 'ur' ? 'طبی انتباہ' : 'Health Safety Alert',
+                                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ...healthWarnings.map((w) => Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Text('• $w', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              )),
+                            ],
+                          ),
+                        ),
+                      ],
                       // Meal name field
                       TextFormField(
                         controller: nameCtrl,

@@ -27,6 +27,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   List<dynamic> _foodSwaps = [];
   String _language = 'en';
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _highlightedCardKey = GlobalKey();
 
   @override
   void initState() {
@@ -39,13 +40,48 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     
     MealSyncNotifier.instance.addListener(loadCoachingData);
     LanguageController.instance.addListener(loadCoachingData);
+    SwapService.highlightNotifier.addListener(_handleHighlightChange);
     loadCoachingData();
+  }
+
+  void _handleHighlightChange() {
+    if (SwapService.highlightNotifier.value && mounted) {
+      final user = Supabase.instance.client.auth.currentUser;
+      final todaySwaps = SwapService.getSwapsForToday(userId: user?.id);
+      if (todaySwaps != null && todaySwaps.isNotEmpty) {
+        setState(() {
+          _foodSwaps = List<dynamic>.from(todaySwaps);
+        });
+      }
+      _scrollToHighlightedCard();
+    }
+  }
+
+  void _scrollToHighlightedCard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cardCtx = _highlightedCardKey.currentContext;
+      if (cardCtx != null && cardCtx.mounted) {
+        Scrollable.ensureVisible(
+          cardCtx,
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeOutCubic,
+          alignment: 0.25, // Centers the card 25% from top of screen
+        );
+      } else if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent * 0.65,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
     MealSyncNotifier.instance.removeListener(loadCoachingData);
     LanguageController.instance.removeListener(loadCoachingData);
+    SwapService.highlightNotifier.removeListener(_handleHighlightChange);
     _ringController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -87,63 +123,87 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
       }
 
       // 2. Fetch Today's Meals for Food Swaps
+      await SwapService.initFromStorage(userId: user.id);
+
+      final todaySwaps = SwapService.getSwapsForToday(userId: user.id);
+      if (todaySwaps != null && todaySwaps.isNotEmpty) {
+        _foodSwaps = List<dynamic>.from(todaySwaps);
+      } else {
+        _foodSwaps = [];
+      }
+
       try {
         final now = DateTime.now();
-        final startOfToday = DateTime(now.year, now.month, now.day).toIso8601String();
+        // Convert local start-of-day and end-of-day to UTC boundary for Postgres timestamptz comparison
+        final localStartOfToday = DateTime(now.year, now.month, now.day);
+        final localEndOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+        final startOfTodayUtc = localStartOfToday.toUtc().toIso8601String();
+        final endOfTodayUtc = localEndOfToday.toUtc().toIso8601String();
         
         final mealsRes = await Supabase.instance.client
             .from('meal_logs')
             .select('notes')
             .eq('user_id', user.id)
-            .gte('logged_at', startOfToday)
+            .gte('logged_at', startOfTodayUtc)
+            .lte('logged_at', endOfTodayUtc)
             .order('logged_at', ascending: false)
-            .limit(10);
+            .limit(25);
             
         final todaysMealNotes = (mealsRes as List)
             .map((m) => m['notes']?.toString() ?? '')
             .where((n) => n.trim().isNotEmpty && n != 'null')
+            .toSet() // Keep unique meals logged today
             .toList();
         
-        if (todaysMealNotes.isNotEmpty) {
-          final swapRes = await http.post(
-            Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
-            headers: ApiClient.getHeaders(),
-            body: jsonEncode({
-              'user_id': user.id,
-              'recent_meals': todaysMealNotes,
-              'language': _language,
-            }),
-          ).timeout(const Duration(seconds: 20));
-          
-          if (swapRes.statusCode == 200) {
-            final data = jsonDecode(swapRes.body);
-            _foodSwaps = data['swaps'] ?? [];
-          } else {
-            _foodSwaps = [];
-          }
-        } else {
+        if (todaysMealNotes.isEmpty) {
+          // If no meals logged today, ensure swaps are empty (fresh day!)
           _foodSwaps = [];
+          SwapService.clearIfNewDay(userId: user.id);
+        } else {
+          // Check if any logged meals today haven't been evaluated yet
+          final existingFoods = _foodSwaps
+              .map((s) => (s is Map ? s['original_food'] : '').toString().toLowerCase().trim())
+              .toSet();
+          
+          final unanalyzedMeals = todaysMealNotes.where((meal) {
+            final mealLower = meal.toLowerCase().trim();
+            return !existingFoods.any((f) => f == mealLower || mealLower.contains(f) || f.contains(mealLower));
+          }).toList();
+
+          // Only query backend if there are unanalyzed meals or if _foodSwaps is currently empty
+          if (_foodSwaps.isEmpty || unanalyzedMeals.isNotEmpty) {
+            final mealsToAnalyze = _foodSwaps.isEmpty ? todaysMealNotes : unanalyzedMeals;
+            final swapRes = await http.post(
+              Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
+              headers: ApiClient.getHeaders(),
+              body: jsonEncode({
+                'user_id': user.id,
+                'recent_meals': mealsToAnalyze,
+                'language': _language,
+              }),
+            ).timeout(const Duration(seconds: 20));
+            
+            if (swapRes.statusCode == 200) {
+              final data = jsonDecode(swapRes.body);
+              final List<dynamic> serverSwaps = data['swaps'] is List ? data['swaps'] : [];
+              if (serverSwaps.isNotEmpty) {
+                SwapService.addSwapsForToday(serverSwaps, userId: user.id);
+                _foodSwaps = List<dynamic>.from(SwapService.getSwapsForToday(userId: user.id) ?? serverSwaps);
+              }
+            }
+          }
         }
       } catch (swapErr) {
         debugPrint('Food swaps fetch error: $swapErr');
-        _foodSwaps = [];
       }
 
       if (mounted) {
         setState(() => _isLoading = false);
         _ringController.forward();
         
-        // Auto-scroll if navigated from Swap alert
+        // Auto-scroll to highlighted card if navigated from Swap alert
         if (SwapService.highlightNotifier.value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_scrollController.hasClients) {
-              _scrollController.animateTo(
-                _scrollController.position.maxScrollExtent,
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeOutCubic,
-              );
-            }
-          });
+          _scrollToHighlightedCard();
         }
       }
     } catch (e) {
@@ -318,12 +378,16 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                     Text(_t('swaps'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     if (_foodSwaps.isNotEmpty) ...[
-                      ValueListenableBuilder<bool>(
-                        valueListenable: SwapService.highlightNotifier,
-                        builder: (context, isHighlighted, _) {
+                      AnimatedBuilder(
+                        animation: Listenable.merge([SwapService.highlightNotifier, SwapService.highlightedFoodNotifier]),
+                        builder: (context, _) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _foodSwaps.map((swap) => _buildSwapCard(swap, theme, isHighlighted)).toList(),
+                            children: _foodSwaps.map((swap) {
+                              final mapSwap = swap is Map<String, dynamic> ? swap : Map<String, dynamic>.from(swap as Map);
+                              final isCardHighlighted = SwapService.isFoodHighlighted(mapSwap);
+                              return _buildSwapCard(mapSwap, theme, isCardHighlighted);
+                            }).toList(),
                           );
                         }
                       ),
@@ -376,6 +440,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
 
   Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme, bool isHighlighted) {
     return AnimatedContainer(
+      key: isHighlighted ? _highlightedCardKey : null,
       duration: const Duration(milliseconds: 400),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
