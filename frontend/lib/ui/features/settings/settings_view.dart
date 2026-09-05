@@ -1302,6 +1302,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               setState(() => _riskAlerts = val);
                             },
                           ),
+                          const Divider(color: Colors.white12, height: 1),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: (isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676)).withAlpha(30),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.alarm_on_rounded,
+                                    color: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _language == 'ur' ? 'ٹیسٹ کھانے کا الارم (5 سیکنڈ)' : 'Test Meal Reminder (5s)',
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _language == 'ur'
+                                            ? '5 سیکنڈ بعد پس منظر کا شیڈول الارم چیک کریں'
+                                            : 'Schedules exact background alarm to verify system delivery',
+                                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isRamadan ? const Color(0xFFFFD166) : const Color(0xFF00E676),
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onPressed: () async {
+                                    await ReminderManager.scheduleTestNotification(seconds: 5);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(Icons.check_circle, color: Color(0xFF00E676), size: 18),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  _language == 'ur'
+                                                      ? '5 سیکنڈ کا ٹیسٹ شیڈول ہو گیا! ایپ بند یا لاک کر کے چیک کریں۔'
+                                                      : 'Test alarm scheduled for 5s! Minimize or lock phone to test.',
+                                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(0xFF1F2937),
+                                          behavior: SnackBarBehavior.floating,
+                                          duration: const Duration(seconds: 4),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Text(
+                                    _language == 'ur' ? 'ٹیسٹ کریں' : 'Send Test',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),

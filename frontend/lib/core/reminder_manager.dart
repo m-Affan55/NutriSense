@@ -42,12 +42,77 @@ class ReminderManager {
       
       try {
         tz.initializeTimeZones();
-        tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
+        try {
+          tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
+        } catch (_) {}
       } catch (_) {}
       
       await _notifications.initialize(
         settings: initSettings,
       );
+
+      final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_adaptive_meals',
+            'NutriSense Meal Reminders',
+            description: 'Personalized meal schedule reminders',
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_steps',
+            'NutriSense Movement Reminders',
+            description: 'Daily movement and step goals reminders',
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_hydration',
+            'NutriSense Hydration',
+            description: 'Daily water intake reminders',
+            importance: Importance.defaultImportance,
+            playSound: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_streaks',
+            'NutriSense Streak Milestones',
+            description: 'Streak reminder alerts',
+            importance: Importance.high,
+            playSound: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_risk_alerts',
+            'NutriSense Clinical Risk Alerts',
+            description: 'High-priority clinical health & dietary safety warnings',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'nutrisense_ramadan',
+            'NutriSense Ramadan Alarms',
+            description: 'Sehri, Iftar and fasting reminders',
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+      }
     }
 
     _isInitialized = true;
@@ -161,7 +226,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -183,7 +248,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -205,7 +270,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -234,7 +299,7 @@ class ReminderManager {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     }
@@ -257,7 +322,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -293,7 +358,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -315,7 +380,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -337,7 +402,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -359,7 +424,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
@@ -381,7 +446,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -445,7 +510,7 @@ class ReminderManager {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -481,7 +546,43 @@ class ReminderManager {
     }
   }
 
-  /// 6. Auto-learn meal timing from recent meal log entry:
+  /// 6. Test Scheduled Meal Reminder (5s Delay):
+  /// Schedules an exact background alarm `seconds` in the future to verify
+  /// that Android OS AlarmManager, ScheduledNotificationReceiver, and the
+  /// high-importance notification channel wake up the phone properly.
+  static Future<void> scheduleTestNotification({int seconds = 5}) async {
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
+    final isUrdu = language == 'ur';
+
+    final tz.TZDateTime scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
+
+    await _notifications.zonedSchedule(
+      id: 999, // Dedicated test notification ID
+      title: isUrdu ? '🥗 ٹیسٹ کھانے کا الرٹ (5s الارم)' : '🥗 Test Meal Reminder (5s Alarm)',
+      body: isUrdu
+          ? 'شاباش! پس منظر کے شیڈول الارم اور نوٹیفکیشن چینلز آپ کے فون پر بالکل درست کام کر رہے ہیں۔ 🚀'
+          : 'Awesome! Background scheduled alarms and notification channels are working properly on your phone! 🚀',
+      scheduledDate: scheduledDate,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_adaptive_meals',
+          'NutriSense Adaptive Reminders',
+          channelDescription: 'Personalized meal schedule reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+  }
+
+  /// 7. Auto-learn meal timing from recent meal log entry:
   static Future<void> recordMealLogged(String mealType, DateTime time) async {
     final prefs = await SharedPreferences.getInstance();
     final type = mealType.toLowerCase();
@@ -623,7 +724,7 @@ class ReminderManager {
             ),
             iOS: DarwinNotificationDetails(),
           ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         );
       }

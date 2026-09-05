@@ -19,6 +19,7 @@ import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/reminder_manager.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -82,6 +83,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     FamilyViewModel.instance.loadMembers();
     MealSyncNotifier.instance.addListener(_loadData);
     LanguageController.instance.addListener(_loadData);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ReminderManager.requestPermissions();
+    });
 
     _loadData();
   }
