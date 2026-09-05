@@ -22,6 +22,7 @@ class HealthSyncViewModel extends ChangeNotifier {
   String? _conditionDetected;
   bool _isAiLoading = false;
   int _lastAnalyzedSteps = -1;
+  DateTime? _lastManualAiCallTime;
 
   ActivityData get todayActivity => _todayActivity;
   List<DailyActivity> get weeklyHistory {
@@ -323,12 +324,13 @@ class HealthSyncViewModel extends ChangeNotifier {
     }
   }
 
-  /// Update today's manual activity stats.
+  /// Update today's manual activity stats and automatically refresh AI coaching.
   Future<void> updateTodayActivity({
     int? steps,
     int? activeKcal,
     double? sleepHours,
     int? heartRateBpm,
+    String language = 'en',
   }) async {
     final updated = ActivityData(
       steps: steps ?? _todayActivity.steps,
@@ -343,9 +345,12 @@ class HealthSyncViewModel extends ChangeNotifier {
     _weeklyHistory = await HealthService.instance.getWeeklyActivity();
     notifyListeners();
 
-    // If new step count changed by >= 2500 steps, refresh AI coaching in background
-    if ((_todayActivity.steps - _lastAnalyzedSteps).abs() >= 2500) {
-      fetchOrLoadAiInsight(force: true);
+    // User intentionally logged activity -> automatically refresh AI coaching!
+    // Protected by a 90-second cooldown so rapid double-saves don't spam the API
+    final now = DateTime.now();
+    if (_lastManualAiCallTime == null || now.difference(_lastManualAiCallTime!).inSeconds >= 90) {
+      _lastManualAiCallTime = now;
+      fetchOrLoadAiInsight(force: true, language: language);
     }
   }
 

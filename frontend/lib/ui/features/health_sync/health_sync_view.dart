@@ -681,15 +681,6 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                           strokeWidth: 2,
                           color: accent,
                         ),
-                      )
-                    else
-                      InkWell(
-                        onTap: () => _vm.fetchOrLoadAiInsight(force: true, language: _language),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(Icons.refresh, color: Colors.white54, size: 16),
-                        ),
                       ),
                   ],
                 ),
@@ -904,6 +895,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                               activeKcal: kcal,
                               sleepHours: sleep,
                               heartRateBpm: hr,
+                              language: _language,
                             );
 
                             if (!mounted || !sheetCtx.mounted) return;
