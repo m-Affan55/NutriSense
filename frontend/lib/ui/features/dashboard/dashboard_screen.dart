@@ -13,6 +13,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../health_sync/health_sync_view.dart';
+import '../health_sync/health_sync_viewmodel.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
@@ -120,6 +121,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     try {
       if (user == null) return;
+
+      // Silent background prefetch of Health Sync AI metabolic insight (0ms latency for Health Sync screen)
+      HealthSyncViewModel.prefetchDailyInsight(user.id, language: _language);
 
       // 1. Get name metadata or active dependent name
       final activeMember = FamilyViewModel.instance.activeMember;

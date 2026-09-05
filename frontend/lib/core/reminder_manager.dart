@@ -238,6 +238,28 @@ class ReminderManager {
         matchDateTimeComponents: DateTimeComponents.time,
       );
     }
+
+    // 5. Evening Step Walk & Inactivity Reminder (5:30 PM)
+    await _notifications.zonedSchedule(
+      id: 30,
+      title: isUrdu ? '🚶 شام کی سیر اور قدموں کا ہدف' : '🚶 Evening Step Walk Reminder',
+      body: isUrdu
+          ? 'شام کی 15 منٹ کی سیر آپ کے شوگر لیول کو مستحکم رکھنے اور ہدف حاصل کرنے میں مدد دے گی!'
+          : 'A quick 15-minute evening walk will keep your blood sugar steady and help you hit your daily step goal!',
+      scheduledDate: _nextInstanceOfTime(17, 30),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_steps',
+          'NutriSense Movement Reminders',
+          channelDescription: 'Daily movement and step goals reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 
   /// 2. Ramadan-specific schedule: Sehri countdown, Iftar alert, and post-fasting hydration
@@ -334,6 +356,28 @@ class ReminderManager {
           channelDescription: 'Sehri, Iftar and fasting reminders',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 5. Post-Iftar Light Walk & Steps Check (9:30 PM)
+    await _notifications.zonedSchedule(
+      id: 105,
+      title: isUrdu ? '🌙 افطار کے بعد کی ہلکی سیر' : '🌙 Post-Iftar Light Walk',
+      body: isUrdu
+          ? 'افطار کے بعد 15 منٹ کی ہلکی چہل قدمی نظامِ ہاضمہ اور بلڈ شوگر کے لیے انتہائی مفید ہے۔'
+          : 'A gentle 15-minute walk after Iftar aids digestive motility and keeps blood sugar stable!',
+      scheduledDate: _nextInstanceOfTime(21, 30),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'nutrisense_steps',
+          'NutriSense Movement Reminders',
+          channelDescription: 'Daily movement and step goals reminders',
+          importance: Importance.high,
+          priority: Priority.high,
         ),
         iOS: DarwinNotificationDetails(),
       ),

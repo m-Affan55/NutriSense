@@ -1,10 +1,13 @@
 import base64
 import json
+import logging
 import re
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
 from app.services.gemini_pool import gemini_pool
+
+logger = logging.getLogger("gemini_service")
 
 class GeminiService:
     @staticmethod
@@ -551,3 +554,186 @@ Return ONLY a valid JSON object with exact keys:
                     ]
                 }
             ]
+
+    @staticmethod
+    def generate_health_sync_insight(
+        activity_data: dict,
+        profile: dict = None,
+        language: str = "en"
+    ) -> dict:
+        steps = int(activity_data.get("steps", 0))
+        step_goal = int(activity_data.get("step_goal", 10000))
+        active_kcal = int(activity_data.get("active_kcal", 0))
+        sleep_hours = float(activity_data.get("sleep_hours", 0.0))
+        heart_rate = int(activity_data.get("heart_rate", 0))
+        source = str(activity_data.get("source", "Health Connect"))
+
+        conditions = []
+        user_goal = "General Health"
+        profile_context = ""
+        if profile:
+            conditions = profile.get("medical_conditions", []) or []
+            user_goal = profile.get("goal", "General Health") or "General Health"
+            restrictions = profile.get("dietary_restrictions", []) or []
+            profile_context = f"""
+            User Profile:
+            - Goal: {user_goal}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
+            - Age: {profile.get('age', 'N/A')}, Gender: {profile.get('gender', 'N/A')}, Weight: {profile.get('weight_kg', 'N/A')} kg
+            """
+
+        prompt = f"""
+        You are an elite Clinical Metabolic & Sports Medicine Specialist for the NutriSense platform.
+        Analyze the user's daily physical movement, step goal, and health profile, then determine their optimal daily step goal and deliver a personalized clinical coaching insight.
+
+        {profile_context}
+
+        Today's Physical Activity Data:
+        - Current Steps Taken: {steps}
+        - Current Step Goal Selected by User: {step_goal}
+        - Active Calories: {active_kcal} kcal
+        - Sleep Recorded: {sleep_hours} hours
+        - Heart Rate Recorded: {heart_rate} bpm
+        - Tracking Source: {source}
+
+        ===============================================================
+        RULE 1: CLINICAL STEP GOAL & OPTIMAL TARGET RULES (BY CONDITION)
+        ===============================================================
+        Assess the user's health profile and assign the clinically optimal daily step target:
+        1. Diabetes / Pre-diabetes / High Blood Sugar:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 7,000 - 8,500 steps.
+           - Clinical science: Skeletal muscle contraction induces GLUT-4 translocation to cell surfaces independent of insulin, directly clearing postprandial glucose from the bloodstream.
+           - If user's goal is < 6,000 (e.g. 500, 1,500, 3,000): is_goal_adequate MUST BE false. In goal_feedback, clearly explain that their goal is too low to stimulate GLUT-4 glucose uptake and regulate blood sugar spikes, recommending the optimal goal (e.g. 7,000 steps).
+
+        2. Hypertension / High Blood Pressure:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 7,500 - 9,000 steps.
+           - Clinical science: Aerobic walking creates laminar blood flow shear stress, stimulating endothelial nitric oxide synthase (eNOS) to produce nitric oxide, dilating arteries and lowering peripheral resistance.
+           - If user's goal is < 6,000: is_goal_adequate MUST BE false.
+
+        3. Fat Loss / Weight Loss:
+           - Minimum clinical threshold: 7,000 steps.
+           - Optimal range: 8,500 - 10,000 steps.
+           - Clinical science: Non-Exercise Activity Thermogenesis (NEAT) accounts for up to 15-20% of daily caloric expenditure and prevents metabolic adaptation.
+           - If user's goal is < 7,000: is_goal_adequate MUST BE false.
+
+        4. IBS / Digestive Health / Gut Motility:
+           - Minimum clinical threshold: 4,500 steps.
+           - Optimal range: 5,000 - 7,000 steps.
+           - Clinical science: Gentle low-intensity walking activates the Migrating Motor Complex (MMC) and enhances colonic transit without the sympathetic stress or gut ischemia caused by high-impact exercise.
+           - If user's goal is < 4,500: is_goal_adequate MUST BE false.
+
+        5. Muscle Gain / Hypertrophy:
+           - Minimum clinical threshold: 4,000 steps.
+           - Optimal range: 5,000 - 6,500 steps.
+           - Clinical science: Provides necessary cardiovascular conditioning and insulin sensitivity to partition nutrients into muscle without burning excess calories that threaten the hypercaloric surplus required for muscle growth.
+           - If user's goal is < 4,000: is_goal_adequate MUST BE false.
+
+        6. General Health & Longevity:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 8,000 - 10,000 steps.
+           - If user's goal is < 6,000: is_goal_adequate MUST BE false.
+
+        If user's step_goal >= minimum threshold: is_goal_adequate MUST BE true, and goal_feedback should validate that their goal aligns with their profile.
+
+        ===============================================================
+        RULE 2: STRICT HARDWARE SHIELD (MANDATORY)
+        ===============================================================
+        Check sleep_hours and heart_rate:
+        - If sleep_hours == 0.0 or heart_rate == 0:
+          THE USER DOES NOT HAVE A SMARTWATCH. THEY ARE USING A SMARTPHONE IN THEIR POCKET.
+          STRICTLY FORBIDDEN: Do NOT mention sleep, do NOT mention heart rate, do NOT say "0 hours of sleep recorded", and do NOT mention missing wearables.
+          Focus 100% on their step count, walking cadence, and metabolic activation.
+        - If sleep_hours > 0 and heart_rate > 0:
+          The user has a wearable device, so you may briefly touch upon recovery if clinically relevant.
+
+        ===============================================================
+        RULE 3: METABOLIC COACHING INSIGHT
+        ===============================================================
+        Provide an encouraging, 2-3 sentence clinical insight about their current step count ({steps} steps) and how it impacts their condition today.
+        - If steps < 1,000: Provide morning/early kickoff motivation (e.g. "You've taken {steps} steps so far today. A 15-minute post-meal walk will jumpstart your GLUT-4 glucose clearance today.").
+        - If steps between 1,000 and goal: Highlight steady progress and suggest an evening or post-dinner walk.
+        - If steps >= goal: Celebrate the achievement and reinforce the metabolic benefits achieved today.
+
+        ===============================================================
+        RULE 4: RESPONSE FORMAT (JSON ONLY)
+        ===============================================================
+        Return ONLY a JSON object with this exact schema:
+        {{
+          "optimal_step_goal": integer,
+          "is_goal_adequate": boolean,
+          "goal_feedback": string,
+          "insight": string,
+          "condition_detected": string
+        }}
+        """
+        if language == "ur":
+            prompt += "\nMANDATORY: Write the values for 'insight' and 'goal_feedback' in natural Urdu language (using Urdu Arabic script)."
+
+        try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            parsed = GeminiService._parse_gemini_json(response.text)
+            if isinstance(parsed, dict):
+                return {
+                    "optimal_step_goal": int(parsed.get("optimal_step_goal", 8000)),
+                    "is_goal_adequate": bool(parsed.get("is_goal_adequate", True)),
+                    "goal_feedback": str(parsed.get("goal_feedback", "")),
+                    "insight": str(parsed.get("insight", "")),
+                    "condition_detected": str(parsed.get("condition_detected", "General Health"))
+                }
+        except Exception as e:
+            logger.error(f"Error in generate_health_sync_insight: {e}")
+
+        # Deterministic clinical fallback if AI is unavailable or offline
+        cond_str = " ".join(conditions).lower()
+        goal_str = user_goal.lower()
+
+        optimal = 8000
+        min_goal = 6000
+        detected = "General Health"
+
+        if "diabet" in cond_str or "sugar" in cond_str:
+            optimal = 7000
+            min_goal = 6000
+            detected = "Diabetes"
+        elif "hyperten" in cond_str or "blood pressure" in cond_str or "bp" in cond_str:
+            optimal = 7500
+            min_goal = 6000
+            detected = "Hypertension"
+        elif "ibs" in cond_str or "gut" in cond_str or "digest" in cond_str:
+            optimal = 6000
+            min_goal = 4500
+            detected = "IBS"
+        elif "fat" in goal_str or "weight" in goal_str:
+            optimal = 8500
+            min_goal = 7000
+            detected = "Fat Loss"
+        elif "muscle" in goal_str or "bulk" in goal_str:
+            optimal = 5000
+            min_goal = 4000
+            detected = "Muscle Gain"
+
+        adequate = step_goal >= min_goal
+        if language == "ur":
+            fb = f"آپ کا ہدف ({step_goal} قدم) آپ کے لیے مناسب ہے۔" if adequate else f"آپ کے پروفائل کے لیے روزانہ کم از کم {min_goal} قدم تجویز کیے جاتے ہیں۔"
+            ins = f"آج آپ نے {steps} قدم اٹھائے ہیں۔ متحرک رہنے سے آپ کی مجموعی صحت اور توانائی بہتر رہے گی۔"
+        else:
+            fb = f"Your goal of {step_goal} steps aligns with your profile." if adequate else f"{step_goal} steps is below the recommended minimum of {min_goal} steps for your health profile."
+            ins = f"You have logged {steps} steps today. Consistent daily movement supports your metabolism and overall wellness."
+
+        return {
+            "optimal_step_goal": optimal,
+            "is_goal_adequate": adequate,
+            "goal_feedback": fb,
+            "insight": ins,
+            "condition_detected": detected
+        }
+

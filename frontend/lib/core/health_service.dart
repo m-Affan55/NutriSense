@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -282,12 +283,34 @@ class HealthService {
             finalActiveKcal = (steps * 0.045).round();
           }
 
+          // Intelligent Reconciliation: Check if user manually logged steps today (e.g. phone left behind)
+          final cached = prefs.getString(todayKey);
+          int effectiveSteps = steps;
+          int effectiveKcal = finalActiveKcal;
+          double effectiveSleep = double.parse((sleepMinutes / 60).toStringAsFixed(1));
+          int effectiveHr = avgHr;
+          String effectiveSource = (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health';
+
+          if (cached != null) {
+            try {
+              final previous = ActivityData.fromJson(jsonDecode(cached));
+              // If user manually logged steps, never overwrite with a lower step count
+              if (previous.source == 'User Logged' && previous.steps > steps) {
+                effectiveSteps = previous.steps;
+                effectiveKcal = math.max(finalActiveKcal, previous.activeKcal);
+                effectiveSleep = math.max(effectiveSleep, previous.sleepHours);
+                effectiveHr = effectiveHr > 0 ? effectiveHr : previous.heartRateBpm;
+                effectiveSource = 'User Logged';
+              }
+            } catch (_) {}
+          }
+
           final nativeActivity = ActivityData(
-            steps: steps,
-            activeKcal: finalActiveKcal,
-            sleepHours: double.parse((sleepMinutes / 60).toStringAsFixed(1)),
-            heartRateBpm: avgHr,
-            source: (defaultTargetPlatform == TargetPlatform.android) ? 'Health Connect' : 'Apple Health',
+            steps: effectiveSteps,
+            activeKcal: effectiveKcal,
+            sleepHours: effectiveSleep,
+            heartRateBpm: effectiveHr,
+            source: effectiveSource,
           );
           await saveTodayActivity(nativeActivity);
           return nativeActivity;
