@@ -35,13 +35,13 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
     _vm.addListener(_onVmChanged);
     LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
-    _vm.loadAll();
+    _vm.loadAll(language: _language);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      _vm.loadAll();
+      _vm.loadAll(language: _language);
     }
   }
 
@@ -408,18 +408,44 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                   style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${_t('goal')}: ${_vm.stepGoal}',
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onTap: _showStepGoalDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _vm.isGoalAdequate
+                          ? Colors.white.withAlpha(15)
+                          : Colors.amber.withAlpha(25),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _vm.isGoalAdequate
+                            ? Colors.transparent
+                            : Colors.amber.withAlpha(140),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!_vm.isGoalAdequate) ...[
+                          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 12),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          '${_t('goal')}: ${_vm.stepGoal}${!_vm.isGoalAdequate && _vm.aiOptimalGoal != null ? ' (AI: ${_vm.aiOptimalGoal})' : ''}',
+                          style: TextStyle(
+                            color: _vm.isGoalAdequate ? accent : Colors.amber,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.edit,
+                          size: 10,
+                          color: _vm.isGoalAdequate ? accent.withAlpha(160) : Colors.amber,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -613,6 +639,11 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
 
   // ────────────────────── INSIGHT CARD ────────────────────────────
   Widget _buildInsightCard(ThemeData theme, Color accent) {
+    final isUrdu = _language == 'ur';
+    final coachTitle = _vm.conditionDetected != null
+        ? '${_vm.conditionDetected} ${isUrdu ? "کوچ" : "AI Coach"}'
+        : (isUrdu ? 'میٹابولک اے آئی کوچ' : 'Metabolic AI Coach');
+
     return _glassmorphicCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,12 +662,27 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _t('insight'),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        coachTitle,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (_vm.isAiLoading)
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: accent,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -646,6 +692,47 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                     height: 1.5,
                   ),
                 ),
+                if (!_vm.isGoalAdequate && _vm.aiOptimalGoal != null) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _showStepGoalDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withAlpha(20),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.withAlpha(80)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              isUrdu
+                                  ? 'ہدف تجویز کردہ سے کم ہے (${_vm.aiOptimalGoal} قدم)'
+                                  : 'Goal below recommended target (${_vm.aiOptimalGoal} steps)',
+                              style: const TextStyle(
+                                color: Colors.amber,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            isUrdu ? 'تبدیل کریں' : 'Adjust',
+                            style: const TextStyle(
+                              color: Colors.amber,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -808,6 +895,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
                               activeKcal: kcal,
                               sleepHours: sleep,
                               heartRateBpm: hr,
+                              language: _language,
                             );
 
                             if (!mounted || !sheetCtx.mounted) return;
@@ -842,21 +930,136 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
   void _showStepGoalDialog() {
     final controller = TextEditingController(text: '${_vm.stepGoal}');
     final isRamadan = RamadanController.instance.isRamadanMode;
+    final optimal = _vm.aiOptimalGoal;
+    final isUrdu = _language == 'ur';
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E2230),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(_t('stepGoal'), style: const TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: '10000',
-            hintStyle: const TextStyle(color: Colors.white30),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _t('stepGoal'),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+            if (optimal != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF00E676).withAlpha(80)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 12),
+                    const SizedBox(width: 4),
+                    Text(
+                      'AI: $optimal',
+                      style: const TextStyle(
+                        color: Color(0xFF00E676),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (optimal != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161A22),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _vm.isGoalAdequate
+                        ? const Color(0xFF00E676).withAlpha(60)
+                        : Colors.amber.withAlpha(120),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _vm.isGoalAdequate ? Icons.check_circle_outline : Icons.lightbulb_outline,
+                          color: _vm.isGoalAdequate ? const Color(0xFF00E676) : Colors.amber,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            isUrdu
+                                ? 'تجویز کردہ ہدف: $optimal قدم'
+                                : 'Optimal Target: $optimal steps/day',
+                            style: TextStyle(
+                              color: _vm.isGoalAdequate ? const Color(0xFF00E676) : Colors.amber,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            controller.text = '$optimal';
+                          },
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00E676).withAlpha(30),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isUrdu ? 'لاگو کریں' : 'Apply AI Goal',
+                              style: const TextStyle(
+                                color: Color(0xFF00E676),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_vm.goalFeedback != null && _vm.goalFeedback!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _vm.goalFeedback!,
+                        style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.3),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: '10000',
+                hintStyle: const TextStyle(color: Colors.white30),
+                labelText: isUrdu ? 'اپنا ہدف درج کریں' : 'Enter target steps',
+                labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
+                prefixIcon: const Icon(Icons.directions_walk, color: Color(0xFF00E676)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -864,11 +1067,37 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
             child: Text(_t('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final val = int.tryParse(controller.text);
               if (val != null && val > 0) {
-                _vm.updateStepGoal(val);
                 Navigator.pop(ctx);
+                await _vm.updateStepGoal(val);
+
+                if (!mounted) return;
+
+                if (!_vm.isGoalAdequate) {
+                  // Interactive amber clinical warning with tap-to-reopen
+                  CustomToast.show(
+                    context,
+                    _vm.goalFeedback ??
+                        (isUrdu
+                            ? '⚠️ $val قدم آپ کے پروفائل کے لیے کم ہیں۔ دوبارہ تبدیل کرنے کے لیے ٹیپ کریں۔'
+                            : '⚠️ $val steps is below the recommended goal for your profile. Tap here to adjust.'),
+                    borderColor: Colors.amber,
+                    icon: Icons.warning_amber_rounded,
+                    iconColor: Colors.amber,
+                    duration: const Duration(seconds: 6),
+                    onTap: () => _showStepGoalDialog(),
+                  );
+                } else {
+                  CustomToast.show(
+                    context,
+                    isUrdu
+                        ? 'روزانہ قدموں کا ہدف $val قدم مقرر کر دیا گیا!'
+                        : 'Daily step goal set to $val steps!',
+                    isError: false,
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
