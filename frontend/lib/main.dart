@@ -4,6 +4,9 @@ import 'core/platform_setup.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/splash/splash_screen.dart';
 import 'ui/features/auth/update_password_screen.dart';
+import 'ui/features/onboarding/onboarding_view.dart';
+import 'ui/features/navigation/main_navigation_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -115,7 +118,40 @@ class NutriSenseAppState extends State<NutriSenseApp> {
       final session = data.session;
 
       if (event == AuthChangeEvent.signedIn && session != null) {
-        // Handled primarily by auth screen navigation or deep links
+        // Arrived via Magic Link deep link callback or OAuth redirect
+        final user = session.user;
+        final prefs = await SharedPreferences.getInstance();
+        final localDone = prefs.getBool('onboarding_completed_${user.id}') ?? false;
+
+        if (localDone) {
+          globalNavigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+            (route) => false,
+          );
+        } else {
+          try {
+            final profile = await Supabase.instance.client
+                .from('health_profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (profile != null) {
+              await prefs.setBool('onboarding_completed_${user.id}', true);
+              globalNavigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                (route) => false,
+              );
+              return;
+            }
+          } catch (_) {}
+
+          // Strictly route to OnboardingWizardScreen if onboarding not completed
+          globalNavigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+            (route) => false,
+          );
+        }
       } else if (event == AuthChangeEvent.passwordRecovery) {
         globalNavigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),

@@ -12,6 +12,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../core/language_controller.dart';
 import '../../widgets/terms_dialog.dart';
 import 'forgot_password_view.dart';
+import 'email_verification_view.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -30,12 +31,23 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadTagline();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTagline() async {
@@ -61,23 +73,57 @@ class _AuthScreenState extends State<AuthScreen> {
         final supabase = Supabase.instance.client;
         
         if (isLogin) {
-          await supabase.auth.signInWithPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+          try {
+            await supabase.auth.signInWithPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+          } on AuthException catch (ae) {
+            final msg = ae.message.toLowerCase();
+            if (msg.contains('email not confirmed') || msg.contains('unconfirmed')) {
+              if (!mounted) return;
+              final isUrdu = LanguageController.instance.isUrdu;
+              CustomToast.show(
+                context,
+                isUrdu
+                    ? 'برائے مہربانی لاگ ان کرنے سے پہلے اپنے ای میل کی تصدیق کریں'
+                    : 'Please verify your email before logging in.',
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EmailVerificationScreen(
+                    email: _emailController.text.trim(),
+                  ),
+                ),
+              );
+              return;
+            }
+            rethrow;
+          }
           
           if (!mounted) return;
           
-          // Check if they have a profile
+          // Check if they have a completed profile or completed onboarding
           final user = supabase.auth.currentUser;
           if (user != null) {
+            final prefs = await SharedPreferences.getInstance();
+            final localDone = prefs.getBool('onboarding_completed_${user.id}') ?? false;
+            if (localDone) {
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+              );
+              return;
+            }
+
             final profileResponse = await supabase
                 .from('health_profiles')
-                .select()
+                .select('id')
                 .eq('user_id', user.id)
                 .maybeSingle();
                 
             if (profileResponse != null) {
+              await prefs.setBool('onboarding_completed_${user.id}', true);
               if (!mounted) return;
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
@@ -92,16 +138,29 @@ class _AuthScreenState extends State<AuthScreen> {
           );
           
         } else {
-          await supabase.auth.signUp(
+          final res = await supabase.auth.signUp(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             data: {'full_name': _nameController.text.trim()},
+            emailRedirectTo: 'io.supabase.nutrisense://login-callback/',
           );
           
           if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
-          );
+
+          // If session is unconfirmed, route directly to EmailVerificationScreen
+          if (res.session == null || res.user?.emailConfirmedAt == null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => EmailVerificationScreen(
+                  email: _emailController.text.trim(),
+                ),
+              ),
+            );
+          } else {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+            );
+          }
         }
       } catch (e) {
         if (!mounted) return;
@@ -331,7 +390,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     label: 'Email',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) => !v!.contains('@') ? 'Please enter a valid email' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                      if (!emailRegex.hasMatch(v.trim())) return 'Please enter a valid email address';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   
@@ -344,12 +408,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    validator: (v) => v!.length < 8 ? 'Password must be at least 8 characters' : null,
+                    validator: (v) => (v == null || v.length < 8) ? 'Password must be at least 8 characters' : null,
                   ),
                   
                   if (!isLogin) ...[
                     const SizedBox(height: 16),
                     _buildTextField(
+                      controller: _confirmPasswordController,
                       label: 'Confirm Password',
                       icon: Icons.lock_outline,
                       obscureText: _obscureConfirmPassword,
@@ -357,7 +422,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
                         onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),
-                      validator: (v) => v!.length < 8 ? 'Please confirm your password' : null, // Simplified validation for demo
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Please confirm your password';
+                        if (v != _passwordController.text) return 'Passwords do not match';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -499,6 +568,9 @@ class _AuthScreenState extends State<AuthScreen> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final activeColor = isRamadan ? RamadanColors.primaryCyan : const Color(0xFF00E676);
+
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -523,7 +595,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00E676)),
+          borderSide: BorderSide(color: activeColor, width: 1.5),
         ),
       ),
     );

@@ -53,23 +53,31 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
       if (session != null && user != null) {
         // User already has a valid persisted session
-        try {
-          final profile = await supabase
-              .from('health_profiles')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle()
-              .timeout(const Duration(seconds: 4));
+        final prefs = await SharedPreferences.getInstance();
+        final localOnboardingDone = prefs.getBool('onboarding_completed_${user.id}') ?? false;
 
-          if (profile != null) {
-            nextScreen = const MainNavigationScreen();
-          } else {
+        if (localOnboardingDone) {
+          nextScreen = const MainNavigationScreen();
+        } else {
+          try {
+            final profile = await supabase
+                .from('health_profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+                .timeout(const Duration(seconds: 4));
+
+            if (profile != null) {
+              await prefs.setBool('onboarding_completed_${user.id}', true);
+              nextScreen = const MainNavigationScreen();
+            } else {
+              nextScreen = const OnboardingWizardScreen();
+            }
+          } catch (e) {
+            debugPrint('[SplashScreen] Health profile check error or timeout: $e');
+            // Gated: If onboarding was not marked complete, always route back to Onboarding
             nextScreen = const OnboardingWizardScreen();
           }
-        } catch (e) {
-          debugPrint('[SplashScreen] Health profile check error or timeout: $e');
-          // If offline or network times out, let authenticated user enter dashboard
-          nextScreen = const MainNavigationScreen();
         }
       } else {
         // User is not logged in

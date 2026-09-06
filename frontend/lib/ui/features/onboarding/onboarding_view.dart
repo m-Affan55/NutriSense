@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../../shared/widgets/custom_toast.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/health_service.dart';
 
 import '../../core/theme.dart';
@@ -174,6 +175,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         );
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('onboarding_completed_${user.id}', true);
+
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const MainNavigationScreen()),

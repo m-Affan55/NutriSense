@@ -85,13 +85,16 @@ class SyncService {
       final pendingWater = await _cache.getPendingWater();
       for (final water in pendingWater) {
         if (water['user_id'] != userId) continue;
+        final fId = water['family_member_id']?.toString();
+        final Map<String, dynamic> payload = {
+          'user_id': water['user_id'],
+          'amount_ml': water['amount_ml'],
+          'logged_at': water['logged_at'],
+          'sync_id': water['sync_id'],
+          if (fId != null && fId.isNotEmpty) 'family_member_id': fId,
+        };
         try {
-          await supabase.from('water_logs').insert({
-            'user_id': water['user_id'],
-            'amount_ml': water['amount_ml'],
-            'logged_at': water['logged_at'],
-            'sync_id': water['sync_id'],
-          });
+          await supabase.from('water_logs').insert(payload);
           await _cache.markWaterSynced(water['local_id'] as int);
           syncedRowsCount++;
           debugPrint('[SyncService] Water synced: local_id=${water['local_id']}');
@@ -100,6 +103,15 @@ class SyncService {
             await _cache.markWaterSynced(water['local_id'] as int);
             syncedRowsCount++;
             debugPrint('[SyncService] Water already synced in past (unique violation): local_id=${water['local_id']}');
+          } else if (payload.containsKey('family_member_id')) {
+            try {
+              final fallback = Map<String, dynamic>.from(payload)..remove('family_member_id');
+              await supabase.from('water_logs').insert(fallback);
+              await _cache.markWaterSynced(water['local_id'] as int);
+              syncedRowsCount++;
+            } catch (inner) {
+              debugPrint('[SyncService] Water sync retry failed: $inner');
+            }
           } else {
             debugPrint('[SyncService] Water sync failed (local_id=${water['local_id']}): $e');
           }

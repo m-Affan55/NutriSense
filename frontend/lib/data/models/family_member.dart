@@ -89,6 +89,15 @@ class FamilyMember {
     }
   }
 
+  /// Tailored daily water intake target in ml based on age and gender
+  int get recommendedWaterTargetMl {
+    if (age <= 5) return 1200;
+    if (age <= 12) return 1600;
+    if (age <= 18) return gender.toLowerCase() == 'male' ? 2200 : 1900;
+    if (age >= 60) return 2000;
+    return gender.toLowerCase() == 'male' ? 2600 : 2200;
+  }
+
   /// Calculates tailored recommended daily macros based on age, gender, goal & conditions
   static Map<String, int> calculateRecommendedTargets({
     required int age,

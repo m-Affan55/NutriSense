@@ -56,11 +56,12 @@ COMMENT ON TABLE public.meal_logs IS 'Records every meal the user eats along wit
 CREATE TABLE public.water_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    family_member_id UUID REFERENCES public.family_members(id) ON DELETE CASCADE,
     logged_at TIMESTAMPTZ DEFAULT now(),
     amount_ml INT,
     sync_id UUID UNIQUE
 );
-COMMENT ON TABLE public.water_logs IS 'Daily hydration tracking records';
+COMMENT ON TABLE public.water_logs IS 'Daily hydration tracking records per user or family member';
 
 -- 5. Chat History Table
 CREATE TABLE public.chat_history (

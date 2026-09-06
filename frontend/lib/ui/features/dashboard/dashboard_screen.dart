@@ -16,6 +16,7 @@ import '../health_sync/health_sync_view.dart';
 import '../health_sync/health_sync_viewmodel.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
+import '../../../data/models/family_member.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
 import '../../../core/profile_sync_notifier.dart';
@@ -48,7 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   int _consumedFat = 0;
 
   int _waterLogged = 0;
-  final int _waterGoal = 2500;
+  int _waterGoal = 2500;
 
   List<Map<String, dynamic>> _todayMeals = [];
   final Set<int> _expandedMealIndices = {};
@@ -144,7 +145,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         _targetProtein = activeMember.dailyProteinG;
         _targetCarbs = activeMember.dailyCarbsG;
         _targetFat = activeMember.dailyFatG;
+        _waterGoal = activeMember.recommendedWaterTargetMl;
       } else {
+        _waterGoal = 2500;
         final profileRes = await supabase
             .from('health_profiles')
             .select()
@@ -200,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         });
       }
 
-      // 4. Fetch today's water
+      // 4. Fetch today's water (filtered per active profile)
       final waterRes = await supabase
           .from('water_logs')
           .select()
@@ -210,6 +213,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
       int waterSum = 0;
       for (var log in waterRes) {
+        final fId = log['family_member_id']?.toString();
+        if (activeMember != null) {
+          if (fId != activeMember.id) continue;
+        } else {
+          if (fId != null && fId.isNotEmpty) continue;
+        }
         waterSum += (log['amount_ml'] as num?)?.toInt() ?? 0;
       }
 
@@ -242,7 +251,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       try {
         final activeMember = FamilyViewModel.instance.activeMember;
         final pendingMeals = kIsWeb ? <Map<String, dynamic>>[] : await OfflineCache.instance.getTodayPendingMeals(user.id);
-        final pendingWaterMl = kIsWeb ? 0 : await OfflineCache.instance.getTodayPendingWaterMl(user.id);
+        final pendingWaterMl = kIsWeb
+            ? 0
+            : await OfflineCache.instance.getTodayPendingWaterMl(
+                user.id,
+                familyMemberId: activeMember?.id,
+              );
         final pendingCount = kIsWeb ? 0 : await OfflineCache.instance.getTotalPendingCount(user.id);
         
         if (mounted) {
@@ -285,22 +299,33 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       }
     }
   }
-
-  Future<void> _logWater(int ml) async {
+  Future<void> _logWater(int ml, {String? familyMemberId}) async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
     if (user == null) return;
+    final targetFId = familyMemberId ?? FamilyViewModel.instance.activeMember?.id;
     try {
+      final Map<String, dynamic> payload = {
+        'user_id': user.id,
+        'amount_ml': ml,
+        if (targetFId != null && targetFId.isNotEmpty) 'family_member_id': targetFId,
+      };
+
       if (kIsWeb) {
-        await supabase.from('water_logs').insert({
-          'user_id': user.id,
-          'amount_ml': ml,
-        });
+        try {
+          await supabase.from('water_logs').insert(payload);
+        } catch (_) {
+          await supabase.from('water_logs').insert({
+            'user_id': user.id,
+            'amount_ml': ml,
+          });
+        }
       } else {
-        // 1. Write to local cache immediately (offline-first)
+        // 1. Write to local cache immediately (offline-first with family_member_id)
         await OfflineCache.instance.insertPendingWater(
           userId: user.id,
           amountMl: ml,
+          familyMemberId: targetFId,
         );
         // 2. Sync to Supabase in background
         SyncService.instance.syncPending(user.id);
@@ -314,6 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   void _showHydrationSelector() {
     final theme = Theme.of(context);
     final customController = TextEditingController();
+    String? selectedFamilyMemberId = FamilyViewModel.instance.activeMember?.id;
     
     showModalBottomSheet(
       context: context,
@@ -332,6 +358,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final activeTarget = selectedFamilyMemberId != null
+                ? FamilyViewModel.instance.members.cast<FamilyMember?>().firstWhere(
+                    (m) => m?.id == selectedFamilyMemberId,
+                    orElse: () => null,
+                  )
+                : null;
+            final targetDisplayName = activeTarget != null
+                ? '${activeTarget.relationshipEmoji} ${activeTarget.name}'
+                : (_language == 'ur' ? '🧑 میں (ذاتی اکاؤنٹ)' : '🧑 Me (Primary Account)');
+
             return SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -345,14 +381,77 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00BCD4).withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              targetDisplayName,
+                              style: const TextStyle(
+                                color: Color(0xFF00BCD4),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+
+                      // Family Member Selector Dropdown
+                      if (FamilyViewModel.instance.members.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(8),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withAlpha(20)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String?>(
+                              isExpanded: true,
+                              dropdownColor: const Color(0xFF1E232E),
+                              value: selectedFamilyMemberId,
+                              icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text(
+                                    _language == 'ur' ? '🧑 میں (ذاتی اکاؤنٹ)' : '🧑 Me (Primary Account)',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                ...FamilyViewModel.instance.members.map((m) => DropdownMenuItem<String?>(
+                                      value: m.id,
+                                      child: Text(
+                                        '${m.relationshipEmoji} ${m.name} (${m.getLocalizedRelationship(_language)})',
+                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                    )),
+                              ],
+                              onChanged: (val) {
+                                setModalState(() {
+                                  selectedFamilyMemberId = val;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+
                       if (RamadanController.instance.isRamadanMode) ...[
                         Container(
                           padding: const EdgeInsets.all(10),
@@ -370,7 +469,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                 child: Text(
                                   _language == 'ur'
                                       ? 'رمضان ہائیڈریشن ہدف: افطار اور سحری کے درمیان 2.5 لیٹر پانی پیئں۔'
-                                  : 'Ramadan Hydration Target: Aim for 2.5L split between Iftar and Sehri.',
+                                      : 'Ramadan Hydration Target: Aim for 2.5L split between Iftar and Sehri.',
                                   style: const TextStyle(color: Color(0xFFFFD166), fontSize: 11),
                                 ),
                               ),
@@ -385,7 +484,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           ),
                           onTap: () {
                             Navigator.pop(sheetContext);
-                            _logWater(500);
+                            _logWater(500, familyMemberId: selectedFamilyMemberId);
                           },
                         ),
                         ListTile(
@@ -396,7 +495,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           ),
                           onTap: () {
                             Navigator.pop(sheetContext);
-                            _logWater(500);
+                            _logWater(500, familyMemberId: selectedFamilyMemberId);
                           },
                         ),
                         ListTile(
@@ -407,7 +506,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           ),
                           onTap: () {
                             Navigator.pop(sheetContext);
-                            _logWater(500);
+                            _logWater(500, familyMemberId: selectedFamilyMemberId);
                           },
                         ),
                         const Divider(color: Colors.white12),
@@ -417,7 +516,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         title: Text(glass, style: const TextStyle(color: Colors.white)),
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          _logWater(250);
+                          _logWater(250, familyMemberId: selectedFamilyMemberId);
                         },
                       ),
                       ListTile(
@@ -425,7 +524,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         title: Text(sBottle, style: const TextStyle(color: Colors.white)),
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          _logWater(500);
+                          _logWater(500, familyMemberId: selectedFamilyMemberId);
                         },
                       ),
                       ListTile(
@@ -433,7 +532,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         title: Text(lBottle, style: const TextStyle(color: Colors.white)),
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          _logWater(750);
+                          _logWater(750, familyMemberId: selectedFamilyMemberId);
                         },
                       ),
                       ListTile(
@@ -441,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         title: Text(container, style: const TextStyle(color: Colors.white)),
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          _logWater(1000);
+                          _logWater(1000, familyMemberId: selectedFamilyMemberId);
                         },
                       ),
                       const Divider(color: Colors.white10),
@@ -469,7 +568,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                               final amount = int.tryParse(customController.text);
                               if (amount != null && amount > 0) {
                                 Navigator.pop(sheetContext);
-                                _logWater(amount);
+                                _logWater(amount, familyMemberId: selectedFamilyMemberId);
                               }
                             },
                             child: Text(logBtn),
@@ -1566,10 +1665,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Widget _buildQuickWaterChip(String amount, int ml, String label) {
+    final activeMember = FamilyViewModel.instance.activeMember;
+    final targetName = activeMember != null ? activeMember.name : (_language == 'ur' ? 'آپ' : 'You');
     return GestureDetector(
       onTap: () {
-        _logWater(ml);
-        CustomToast.show(context, '+$amount ($label) logged!', isError: false);
+        _logWater(ml, familyMemberId: activeMember?.id);
+        CustomToast.show(
+          context,
+          _language == 'ur'
+              ? '+$amount ($label) $targetName کے لیے لاگ کیا گیا!'
+              : '+$amount ($label) logged for $targetName!',
+          isError: false,
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
