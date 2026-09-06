@@ -9,6 +9,7 @@ import '../../../core/swap_service.dart';
 import '../../../core/meal_sync_notifier.dart';
 import '../../../core/profile_sync_notifier.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/ramadan_controller.dart';
 import '../family_profiles/family_viewmodel.dart';
 
 class CoachingScreen extends StatefulWidget {
@@ -509,21 +510,26 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   }
 
   Widget _buildSwapCard(Map<String, dynamic> swap, ThemeData theme, bool isHighlighted) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final highlightColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
+    final cardBg = isRamadan ? const Color(0xFF0E172A) : const Color(0xFF161A22);
+    final successTextColor = isRamadan ? const Color(0xFF00D2FF) : Colors.green.shade400;
+
     return AnimatedContainer(
       key: isHighlighted ? _highlightedCardKey : null,
       duration: const Duration(milliseconds: 400),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161A22),
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isHighlighted ? const Color(0xFF00E676) : Colors.white10,
+          color: isHighlighted ? highlightColor : (isRamadan ? const Color(0x2238BDF8) : Colors.white10),
           width: isHighlighted ? 2.0 : 1.0,
         ),
         boxShadow: isHighlighted ? [
           BoxShadow(
-            color: const Color(0xFF00E676).withAlpha(60),
+            color: highlightColor.withAlpha(60),
             blurRadius: 12,
             spreadRadius: 2,
           )
@@ -548,12 +554,12 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
           ),
           Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green.shade400, size: 20),
+              Icon(Icons.check_circle, color: successTextColor, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '${_t('trySwap')} ${swap['healthy_swap']}',
-                  style: TextStyle(color: Colors.green.shade400, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: successTextColor, fontWeight: FontWeight.bold),
                 ),
               ),
             ],

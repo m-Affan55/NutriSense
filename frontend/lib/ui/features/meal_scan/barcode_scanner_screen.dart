@@ -11,6 +11,7 @@ import 'manual_log_screen.dart';
 import '../../../core/meal_sync_notifier.dart';
 import '../../../core/reminder_manager.dart';
 import '../family_profiles/family_viewmodel.dart';
+import '../../../core/ramadan_controller.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -246,7 +247,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                const Icon(Icons.check_circle, color: Color(0xFF00E676)),
+                Icon(Icons.check_circle, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -329,7 +330,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildMacroStat('Calories', '${product['calories'] ?? 0}', 'kcal', Colors.orange),
-                        _buildMacroStat('Protein', '${product['protein_g'] ?? 0}', 'g', const Color(0xFF00E676)),
+                        _buildMacroStat('Protein', '${product['protein_g'] ?? 0}', 'g', theme.colorScheme.primary),
                         _buildMacroStat('Carbs', '${product['carbs_g'] ?? 0}', 'g', Colors.blueAccent),
                         _buildMacroStat('Fat', '${product['fat_g'] ?? 0}', 'g', Colors.purpleAccent),
                       ],
@@ -537,6 +538,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final primaryColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -625,7 +628,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     width: 270,
                     height: 160,
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF00E676), width: 2.5),
+                      border: Border.all(color: primaryColor, width: 2.5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Stack(
@@ -634,7 +637,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                           child: Container(
                             height: 1.5,
                             width: 250,
-                            color: const Color(0xFF00E676).withAlpha(180),
+                            color: primaryColor.withAlpha(180),
                           ),
                         ),
                       ],
@@ -670,7 +673,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
+                  backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 6,
                 ),
@@ -692,7 +695,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(color: Color(0xFF00E676)),
+                      CircularProgressIndicator(color: primaryColor),
                       const SizedBox(height: 16),
                       const Text(
                         'Identifying Product...',

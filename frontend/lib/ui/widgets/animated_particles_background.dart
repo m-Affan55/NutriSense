@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../core/ramadan_controller.dart';
 import 'package:flutter/scheduler.dart';
 
 class Particle {
@@ -108,9 +109,12 @@ class ParticlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final particleColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
+
     for (var particle in particles) {
       final paint = Paint()
-        ..color = const Color(0xFF00E676).withAlpha((particle.opacity * 255).round()) // primary green
+        ..color = particleColor.withAlpha((particle.opacity * 255).round())
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20); // softly glowing bokeh effect
 
       canvas.drawCircle(Offset(particle.x, particle.y), particle.radius, paint);

@@ -149,7 +149,7 @@ class _GroceryViewState extends State<GroceryView> {
                   child: Text(_t('cancel'), style: const TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
                       _viewModel.addItem(selectedCategory, nameController.text, qtyController.text);
@@ -270,8 +270,8 @@ class _GroceryViewState extends State<GroceryView> {
                                       initiallyExpanded: true,
                                       title: Text(
                                         '$categoryName (${items.length})',
-                                        style: const TextStyle(
-                                          color: Color(0xFF00E676),
+                                        style: TextStyle(
+                                          color: theme.colorScheme.primary,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                         ),
@@ -284,7 +284,7 @@ class _GroceryViewState extends State<GroceryView> {
                                         return ListTile(
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                           leading: Checkbox(
-                                            activeColor: const Color(0xFF00E676),
+                                            activeColor: theme.colorScheme.primary,
                                             checkColor: Colors.black,
                                             side: const BorderSide(color: Colors.grey),
                                             value: isChecked,
@@ -346,10 +346,10 @@ class _GroceryViewState extends State<GroceryView> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withAlpha(15)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.shopping_basket_outlined,
               size: 60,
-              color: Color(0xFF00E676),
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 24),

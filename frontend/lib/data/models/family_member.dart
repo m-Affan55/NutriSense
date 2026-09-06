@@ -8,6 +8,7 @@ class FamilyMember {
   final String relationship; // 'child', 'parent', 'spouse', 'sibling', 'other'
   final int age;
   final String gender; // 'male', 'female', 'other'
+  final String goal; // 'maintenance', 'weight_loss', 'muscle_gain'
   final int dailyCalorieTarget;
   final int dailyProteinG;
   final int dailyCarbsG;
@@ -24,6 +25,7 @@ class FamilyMember {
     required this.relationship,
     required this.age,
     required this.gender,
+    this.goal = 'maintenance',
     this.dailyCalorieTarget = 1800,
     this.dailyProteinG = 100,
     this.dailyCarbsG = 200,
@@ -87,11 +89,12 @@ class FamilyMember {
     }
   }
 
-  /// Calculates tailored recommended daily macros based on age, gender & conditions
+  /// Calculates tailored recommended daily macros based on age, gender, goal & conditions
   static Map<String, int> calculateRecommendedTargets({
     required int age,
     required String gender,
     required String relationship,
+    String goal = 'maintenance',
     List<String> conditions = const [],
   }) {
     int cals = 1800;
@@ -127,7 +130,22 @@ class FamilyMember {
       fat = 60;
     }
 
-    // Adjust for medical conditions (e.g. Diabetes, Hypertension)
+    // Apply Health Goal adjustments
+    final goalLower = goal.toLowerCase();
+    if (goalLower.contains('lose') || goalLower.contains('fat') || goalLower.contains('weight_loss')) {
+      cals = (cals - 350).clamp(1200, 3500);
+      carbs = (carbs * 0.8).round();
+      protein = (protein * 1.05).round(); // preserve lean mass
+    } else if (goalLower.contains('muscle') || goalLower.contains('gain') || goalLower.contains('bulk')) {
+      cals += 250;
+      protein += 25;
+      carbs += 20;
+    } else if (goalLower.contains('diabetes') || goalLower.contains('blood sugar')) {
+      carbs = (carbs * 0.75).round();
+      protein = (protein * 1.1).round();
+    }
+
+    // Adjust for medical conditions (Diabetes, Hypertension, Heart Disease, High Cholesterol)
     final condLower = conditions.map((c) => c.toLowerCase()).toList();
     if (condLower.any((c) => c.contains('diabetes') || c.contains('sugar'))) {
       carbs = (carbs * 0.75).round(); // Lower carbs for diabetes
@@ -135,6 +153,9 @@ class FamilyMember {
     }
     if (condLower.any((c) => c.contains('hypertension') || c.contains('blood pressure') || c.contains('bp'))) {
       fat = (fat * 0.85).round(); // Lower saturated fat
+    }
+    if (condLower.any((c) => c.contains('heart') || c.contains('cholesterol') || c.contains('lipid'))) {
+      fat = (fat * 0.85).round(); // Cardiac protective fat reduction
     }
 
     return {
@@ -153,6 +174,7 @@ class FamilyMember {
       relationship: map['relationship'] ?? 'other',
       age: (map['age'] as num?)?.toInt() ?? 25,
       gender: map['gender'] ?? 'other',
+      goal: map['goal']?.toString() ?? 'maintenance',
       dailyCalorieTarget: (map['daily_calorie_target'] as num?)?.toInt() ?? 1800,
       dailyProteinG: (map['daily_protein_g'] as num?)?.toInt() ?? 100,
       dailyCarbsG: (map['daily_carbs_g'] as num?)?.toInt() ?? 200,
@@ -197,6 +219,7 @@ class FamilyMember {
     String? relationship,
     int? age,
     String? gender,
+    String? goal,
     int? dailyCalorieTarget,
     int? dailyProteinG,
     int? dailyCarbsG,
@@ -213,6 +236,7 @@ class FamilyMember {
       relationship: relationship ?? this.relationship,
       age: age ?? this.age,
       gender: gender ?? this.gender,
+      goal: goal ?? this.goal,
       dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
       dailyProteinG: dailyProteinG ?? this.dailyProteinG,
       dailyCarbsG: dailyCarbsG ?? this.dailyCarbsG,

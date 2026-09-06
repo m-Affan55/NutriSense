@@ -389,7 +389,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            prefixIcon: const Icon(Icons.people_outline, color: Color(0xFF00E676), size: 20),
+                            prefixIcon: Icon(Icons.people_outline, color: theme.colorScheme.primary, size: 20),
                           ),
                           items: [
                             DropdownMenuItem<String?>(
