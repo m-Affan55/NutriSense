@@ -18,12 +18,15 @@ import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
+import '../health_sync/health_sync_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
 import '../../../core/swap_service.dart';
+import '../../../core/workout_service.dart';
+import '../../../core/profile_sync_notifier.dart';
 import '../../widgets/terms_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -46,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String? _goal;
   String? _activityLevel;
+  String _gender = 'male';
   bool _isLoading = false;
   bool _isSaving = false;
   String _language = 'en';
@@ -150,6 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .maybeSingle();
 
       if (healthRes != null) {
+        _gender = healthRes['gender']?.toString() ?? 'male';
         _ageController.text = '${healthRes['age'] ?? ''}';
         _weightController.text = '${healthRes['weight_kg'] ?? ''}';
         _heightController.text = '${healthRes['height_cm'] ?? ''}';
@@ -203,9 +208,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         UserAttributes(data: {'full_name': _nameController.text.trim()}),
       );
 
-      // 2. Update health profile targets in database
+      // 2. Update health profile targets via backend (recalculates Mifflin-St Jeor TDEE & macros, updates user_cache)
       final payload = {
+        'user_id': user.id,
         'age': int.parse(_ageController.text),
+        'gender': _gender,
         'weight_kg': double.parse(_weightController.text),
         'height_cm': double.parse(_heightController.text),
         'daily_budget_pkr': int.parse(_budgetController.text),
@@ -215,10 +222,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'dietary_restrictions': _selectedDietary,
       };
 
-      await supabase
-          .from('health_profiles')
-          .update(payload)
-          .eq('user_id', user.id);
+      bool backendSucceeded = false;
+      try {
+        final updateUrl = Uri.parse('${ApiClient.getBaseUrl()}/profile/update');
+        final response = await http.post(
+          updateUrl,
+          headers: ApiClient.getHeaders(),
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 15));
+
+        if (response.statusCode == 200) {
+          backendSucceeded = true;
+        }
+      } catch (backendErr) {
+        debugPrint('Backend profile update error (fallback to Supabase direct): $backendErr');
+      }
+
+      // 3. Fallback: if backend call was unreachable (offline resilience), save directly to Supabase
+      if (!backendSucceeded) {
+        final dbPayload = Map<String, dynamic>.from(payload);
+        dbPayload.remove('user_id');
+        await supabase
+            .from('health_profiles')
+            .update(dbPayload)
+            .eq('user_id', user.id);
+      }
+
+      // 4. Invalidate local client-side caches so Workout, Swaps, and Health Metrics regenerate under new conditions
+      await WorkoutService.instance.clearPlanCache(userId: user.id);
+      await SwapService.invalidateSwapsCache(userId: user.id);
+      await HealthSyncViewModel.clearInsightCache(user.id);
+
+      // 5. Broadcast profile update to reactive listeners (Dashboard calorie rings, Coach, Workout, Health Metrics)
+      ProfileSyncNotifier.instance.notifyProfileChanged();
 
       if (mounted) {
         CustomToast.show(context, _t('saved'), isError: false);

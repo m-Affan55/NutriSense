@@ -45,15 +45,13 @@ async def get_health_sync_insight(
                 }
 
         if not profile:
-            # First check in-memory user_cache for 0.001ms lookup
-            cached_profile = user_cache.get_instance().get_profile(req.user_id)
-            if cached_profile:
-                profile = cached_profile
-            else:
-                profile_res = await run_in_threadpool(
-                    lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-                )
-                profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+            # Always query fresh profile from health_profiles to ensure real-time medical conditions
+            profile_res = await run_in_threadpool(
+                lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+            )
+            profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+            if profile:
+                user_cache.get_instance().set_profile(req.user_id, profile)
 
         activity_data = {
             "steps": req.steps,

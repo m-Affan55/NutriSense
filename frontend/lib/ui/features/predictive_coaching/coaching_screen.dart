@@ -7,7 +7,9 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 import '../../../core/swap_service.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/profile_sync_notifier.dart';
 import '../../../core/language_controller.dart';
+import '../family_profiles/family_viewmodel.dart';
 
 class CoachingScreen extends StatefulWidget {
   const CoachingScreen({super.key});
@@ -39,7 +41,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     
     MealSyncNotifier.instance.addListener(loadCoachingData);
+    ProfileSyncNotifier.instance.addListener(loadCoachingData);
     LanguageController.instance.addListener(loadCoachingData);
+    FamilyViewModel.instance.addListener(loadCoachingData);
     SwapService.highlightNotifier.addListener(_handleHighlightChange);
     loadCoachingData();
   }
@@ -47,7 +51,8 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   void _handleHighlightChange() {
     if (SwapService.highlightNotifier.value && mounted) {
       final user = Supabase.instance.client.auth.currentUser;
-      final todaySwaps = SwapService.getSwapsForToday(userId: user?.id);
+      final activeMember = FamilyViewModel.instance.activeMember;
+      final todaySwaps = SwapService.getSwapsForToday(userId: user?.id, memberId: activeMember?.id);
       if (todaySwaps != null && todaySwaps.isNotEmpty) {
         setState(() {
           _foodSwaps = List<dynamic>.from(todaySwaps);
@@ -80,7 +85,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   @override
   void dispose() {
     MealSyncNotifier.instance.removeListener(loadCoachingData);
+    ProfileSyncNotifier.instance.removeListener(loadCoachingData);
     LanguageController.instance.removeListener(loadCoachingData);
+    FamilyViewModel.instance.removeListener(loadCoachingData);
     SwapService.highlightNotifier.removeListener(_handleHighlightChange);
     _ringController.dispose();
     _scrollController.dispose();
@@ -100,11 +107,18 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         setState(() {});
       }
 
+      final activeMember = FamilyViewModel.instance.activeMember;
+      final memberId = activeMember?.id;
+
       // 1. Fetch Habit Score & Summary
       try {
         final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+        String scoreUrl = '${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes&language=$_language';
+        if (memberId != null && memberId.isNotEmpty) {
+          scoreUrl += '&family_member_id=$memberId';
+        }
         final scoreRes = await http.get(
-          Uri.parse('${ApiClient.getBaseUrl()}/coaching/habit-score/${user.id}?offset_minutes=$offsetMinutes&language=$_language'),
+          Uri.parse(scoreUrl),
           headers: ApiClient.getHeaders(),
         ).timeout(const Duration(seconds: 20));
         
@@ -123,9 +137,9 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
       }
 
       // 2. Fetch Today's Meals for Food Swaps
-      await SwapService.initFromStorage(userId: user.id);
+      await SwapService.initFromStorage(userId: user.id, memberId: memberId);
 
-      final todaySwaps = SwapService.getSwapsForToday(userId: user.id);
+      final todaySwaps = SwapService.getSwapsForToday(userId: user.id, memberId: memberId);
       if (todaySwaps != null && todaySwaps.isNotEmpty) {
         _foodSwaps = List<dynamic>.from(todaySwaps);
       } else {
@@ -142,14 +156,23 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         
         final mealsRes = await Supabase.instance.client
             .from('meal_logs')
-            .select('notes')
+            .select('notes, family_member_id')
             .eq('user_id', user.id)
             .gte('logged_at', startOfTodayUtc)
             .lte('logged_at', endOfTodayUtc)
             .order('logged_at', ascending: false)
-            .limit(25);
+            .limit(30);
+
+        final filteredMeals = (mealsRes as List).where((m) {
+          final fId = m['family_member_id']?.toString();
+          if (activeMember != null) {
+            return fId == activeMember.id;
+          } else {
+            return fId == null || fId.isEmpty;
+          }
+        }).toList();
             
-        final todaysMealNotes = (mealsRes as List)
+        final todaysMealNotes = filteredMeals
             .map((m) => m['notes']?.toString() ?? '')
             .where((n) => n.trim().isNotEmpty && n != 'null')
             .toSet() // Keep unique meals logged today
@@ -158,7 +181,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
         if (todaysMealNotes.isEmpty) {
           // If no meals logged today, ensure swaps are empty (fresh day!)
           _foodSwaps = [];
-          SwapService.clearIfNewDay(userId: user.id);
+          SwapService.clearIfNewDay(userId: user.id, memberId: memberId);
         } else {
           // Check if any logged meals today haven't been evaluated yet
           final existingFoods = _foodSwaps
@@ -173,22 +196,27 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
           // Only query backend if there are unanalyzed meals or if _foodSwaps is currently empty
           if (_foodSwaps.isEmpty || unanalyzedMeals.isNotEmpty) {
             final mealsToAnalyze = _foodSwaps.isEmpty ? todaysMealNotes : unanalyzedMeals;
+            final Map<String, dynamic> swapBody = {
+              'user_id': user.id,
+              'recent_meals': mealsToAnalyze,
+              'language': _language,
+            };
+            if (memberId != null && memberId.isNotEmpty) {
+              swapBody['family_member_id'] = memberId;
+            }
+
             final swapRes = await http.post(
               Uri.parse('${ApiClient.getBaseUrl()}/coaching/food-swaps'),
               headers: ApiClient.getHeaders(),
-              body: jsonEncode({
-                'user_id': user.id,
-                'recent_meals': mealsToAnalyze,
-                'language': _language,
-              }),
+              body: jsonEncode(swapBody),
             ).timeout(const Duration(seconds: 20));
             
             if (swapRes.statusCode == 200) {
               final data = jsonDecode(swapRes.body);
               final List<dynamic> serverSwaps = data['swaps'] is List ? data['swaps'] : [];
               if (serverSwaps.isNotEmpty) {
-                SwapService.addSwapsForToday(serverSwaps, userId: user.id);
-                _foodSwaps = List<dynamic>.from(SwapService.getSwapsForToday(userId: user.id) ?? serverSwaps);
+                SwapService.addSwapsForToday(serverSwaps, userId: user.id, memberId: memberId);
+                _foodSwaps = List<dynamic>.from(SwapService.getSwapsForToday(userId: user.id, memberId: memberId) ?? serverSwaps);
               }
             }
           }
@@ -285,6 +313,48 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Active Family Member Banner
+                    ListenableBuilder(
+                      listenable: FamilyViewModel.instance,
+                      builder: (context, _) {
+                        final activeMember = FamilyViewModel.instance.activeMember;
+                        if (activeMember == null) return const SizedBox.shrink();
+                        final isUrdu = _language == 'ur';
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withAlpha(20),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.family_restroom_rounded, color: theme.colorScheme.primary, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  isUrdu
+                                      ? 'کوچنگ برائے: ${activeMember.name} (${activeMember.relationship})'
+                                      : 'Coaching Profile: ${activeMember.name} (${activeMember.relationship})',
+                                  style: TextStyle(color: theme.colorScheme.primary, fontSize: 13, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => FamilyViewModel.instance.setActiveMember(null),
+                                child: Text(
+                                  isUrdu ? 'خود' : 'Reset',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 11, decoration: TextDecoration.underline),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
                     // Habit Score Ring
                     Center(
                       child: SizedBox(

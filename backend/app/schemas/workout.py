@@ -31,6 +31,7 @@ class WorkoutPlanResponse(BaseModel):
 
 class WorkoutPlanRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
+    family_member_id: Optional[str] = None
     client_profile: Optional[dict] = None
     is_ramadan: Optional[bool] = False
     language: Optional[str] = "en"

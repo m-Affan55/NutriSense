@@ -19,6 +19,7 @@ class ChatMessage(BaseModel):
 
 class CoachRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=128)
+    family_member_id: Optional[str] = Field(default=None, max_length=128)
     message: str = Field(..., min_length=1, max_length=3000, description="Chat message limited to 3000 characters")
     history: List[ChatMessage] = Field(default_factory=list)
     client_profile: Optional[dict] = None
@@ -36,32 +37,92 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
         
     try:
         today_str = datetime.date.today().isoformat()
-        
-        # 1. Fetch user health profile from cache/database (never overwrite cache with client profile)
-        profile = user_cache.get_profile(req.user_id)
-        if not profile and req.client_profile:
-            # Fallback to client profile display hint only if database entry does not exist
-            profile = req.client_profile
-        
-        # 2. Fetch user's meals logged today (Memory Cache / Client Context / Lazy Rehydration)
-        if req.client_meals is not None:
-            meals = req.client_meals
-            user_cache.set_today_meals(req.user_id, today_str, meals)
-        else:
-            meals = user_cache.get_today_meals(req.user_id, today_str)
-        
-        # 3. Formulate the system instruction
-        profile_context = ""
-        if profile:
+        family_member = None
+
+        if req.family_member_id:
+            supabase = get_supabase_admin_client()
+            fam_res = await run_in_threadpool(
+                lambda: supabase.table('family_members').select('*').eq('id', req.family_member_id).maybe_single().execute()
+            )
+            family_member = fam_res.data if hasattr(fam_res, 'data') else fam_res
+
+        if family_member:
+            fam_name = family_member.get('name', 'Family Member')
+            fam_rel = family_member.get('relationship', 'dependent')
+            fam_age = family_member.get('age', 'N/A')
+            fam_gender = family_member.get('gender', 'N/A')
+            fam_cal = family_member.get('daily_calorie_target', 1800)
+            fam_pro = family_member.get('daily_protein_g', 100)
+            fam_carbs = family_member.get('daily_carbs_g', 200)
+            fam_fat = family_member.get('daily_fat_g', 50)
+            fam_conditions = family_member.get('medical_conditions', [])
+            fam_restrictions = family_member.get('dietary_restrictions', [])
+
+            profile = {
+                'name': fam_name,
+                'age': fam_age,
+                'gender': fam_gender,
+                'goal': 'Family Wellness',
+                'daily_calorie_target': fam_cal,
+                'daily_protein_g': fam_pro,
+                'daily_carbs_g': fam_carbs,
+                'daily_fat_g': fam_fat,
+                'medical_conditions': fam_conditions,
+                'dietary_restrictions': fam_restrictions,
+            }
+
             profile_context = f"""
-            User Profile:
-            - Age: {profile.get('age', 'N/A')}
-            - Goal: {profile.get('goal', 'N/A')}
-            - Daily Calorie Target: {profile.get('daily_calorie_target', 2000)} kcal
-            - Macros target: Protein {profile.get('daily_protein_g', 130)}g, Carbs {profile.get('daily_carbs_g', 220)}g, Fat {profile.get('daily_fat_g', 65)}g
-            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
-            - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
+            Active Person Being Coached: {fam_name} (User's {fam_rel})
+            - Age: {fam_age} | Gender: {fam_gender}
+            - Daily Calorie Target: {fam_cal} kcal
+            - Macros target: Protein {fam_pro}g, Carbs {fam_carbs}g, Fat {fam_fat}g
+            - Medical Conditions: {', '.join(fam_conditions) if fam_conditions else 'None'}
+            - Dietary Restrictions: {', '.join(fam_restrictions) if fam_restrictions else 'None'}
             """
+
+            # Fetch today's meals logged specifically for this family member
+            supabase = get_supabase_admin_client()
+            fam_meals_res = await run_in_threadpool(
+                lambda: supabase.table('meal_logs')
+                    .select('*')
+                    .eq('user_id', req.user_id)
+                    .eq('family_member_id', req.family_member_id)
+                    .gte('logged_at', f"{today_str}T00:00:00")
+                    .lte('logged_at', f"{today_str}T23:59:59")
+                    .execute()
+            )
+            meals = fam_meals_res.data or []
+            family_directive = f"""
+        FAMILY ADVISORY MANDATE:
+        You are counseling the user specifically regarding their {fam_rel}, {fam_name} (Age: {fam_age}, Gender: {fam_gender}).
+        Direct your recommendations, meal plans, and nutritional advice specifically for {fam_name}'s physiological needs.
+        Respect all of {fam_name}'s medical conditions ({', '.join(fam_conditions) if fam_conditions else 'None'}).
+            """
+        else:
+            # 1. Fetch primary user health profile from cache/database
+            profile = user_cache.get_profile(req.user_id)
+            if not profile and req.client_profile:
+                profile = req.client_profile
+            
+            # 2. Fetch user's meals logged today
+            if req.client_meals is not None:
+                meals = req.client_meals
+                user_cache.set_today_meals(req.user_id, today_str, meals)
+            else:
+                meals = user_cache.get_today_meals(req.user_id, today_str)
+            
+            profile_context = ""
+            if profile:
+                profile_context = f"""
+                User Profile:
+                - Age: {profile.get('age', 'N/A')}
+                - Goal: {profile.get('goal', 'N/A')}
+                - Daily Calorie Target: {profile.get('daily_calorie_target', 2000)} kcal
+                - Macros target: Protein {profile.get('daily_protein_g', 130)}g, Carbs {profile.get('daily_carbs_g', 220)}g, Fat {profile.get('daily_fat_g', 65)}g
+                - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+                - Dietary Restrictions: {', '.join(profile.get('dietary_restrictions', [])) if profile.get('dietary_restrictions') else 'None'}
+                """
+            family_directive = ""
             
         meals_context = ""
         if meals:
@@ -78,6 +139,7 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
         
         {profile_context}
         {meals_context}
+        {family_directive}
         
         CORE GUIDELINES:
         1. GREETINGS & INTENT: If the user sends a simple greeting (e.g. "hello", "hi", "salam", "hey") or asks a general question, greet them warmly, ask how you can assist their nutrition journey today, and do NOT unpromptedly critique, lecture, or invent past food logs.

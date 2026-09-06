@@ -16,9 +16,12 @@ class SwapService {
   static List<dynamic>? cachedSwaps;
   static String? _cachedDate;
   static String? _activeUserId;
+  static String? _activeMemberId;
 
-  static String _prefKeyDate(String uid) => 'nutrisense_swaps_${uid}_date';
-  static String _prefKeyList(String uid) => 'nutrisense_swaps_${uid}_list';
+  static String _prefKeyDate(String uid, [String? memberId]) =>
+      'nutrisense_swaps_${uid}_${memberId ?? "primary"}_date';
+  static String _prefKeyList(String uid, [String? memberId]) =>
+      'nutrisense_swaps_${uid}_${memberId ?? "primary"}_list';
 
   static String get _todayDateStr {
     final now = DateTime.now();
@@ -36,39 +39,57 @@ class SwapService {
     cachedSwaps = null;
     _cachedDate = null;
     _activeUserId = null;
+    _activeMemberId = null;
     highlightNotifier.value = false;
     highlightedFoodNotifier.value = null;
   }
 
-  /// Initializes cached swaps from user-scoped SharedPreferences, wiping if new day or user changed.
-  static Future<void> initFromStorage({String? userId}) async {
+  /// Clears in-memory and persisted swap cache when user profile/conditions change.
+  static Future<void> invalidateSwapsCache({String? userId, String? memberId}) async {
+    final uid = _resolveUserId(userId);
+    cachedSwaps = [];
+    highlightNotifier.value = false;
+    highlightedFoodNotifier.value = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKeyList(uid, memberId));
+    } catch (e) {
+      debugPrint('Error invalidating swaps cache: $e');
+    }
+  }
+
+  /// Initializes cached swaps from user/member scoped SharedPreferences, wiping if new day or user changed.
+  static Future<void> initFromStorage({String? userId, String? memberId}) async {
     try {
       final uid = _resolveUserId(userId);
       final today = _todayDateStr;
       final prefs = await SharedPreferences.getInstance();
       
-      final savedDate = prefs.getString(_prefKeyDate(uid));
+      final savedDate = prefs.getString(_prefKeyDate(uid, memberId));
       if (savedDate == today) {
-        final savedJson = prefs.getString(_prefKeyList(uid));
+        final savedJson = prefs.getString(_prefKeyList(uid, memberId));
         if (savedJson != null && savedJson.isNotEmpty) {
           final decoded = jsonDecode(savedJson);
           if (decoded is List) {
             cachedSwaps = List<dynamic>.from(decoded);
             _cachedDate = today;
             _activeUserId = uid;
+            _activeMemberId = memberId;
             return;
           }
         }
         cachedSwaps = [];
         _cachedDate = today;
         _activeUserId = uid;
+        _activeMemberId = memberId;
       } else {
-        // Date changed or not set for this user -> clean rollover
+        // Date changed or not set for this user/member -> clean rollover
         _cachedDate = today;
         _activeUserId = uid;
+        _activeMemberId = memberId;
         cachedSwaps = [];
-        await prefs.setString(_prefKeyDate(uid), today);
-        await prefs.remove(_prefKeyList(uid));
+        await prefs.setString(_prefKeyDate(uid, memberId), today);
+        await prefs.remove(_prefKeyList(uid, memberId));
       }
     } catch (e) {
       debugPrint('Error initializing SwapService storage: $e');
@@ -77,24 +98,25 @@ class SwapService {
     }
   }
 
-  static Future<void> _saveToStorage(String uid) async {
+  static Future<void> _saveToStorage(String uid, [String? memberId]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKeyDate(uid), _cachedDate ?? _todayDateStr);
+      await prefs.setString(_prefKeyDate(uid, memberId), _cachedDate ?? _todayDateStr);
       if (cachedSwaps != null) {
-        await prefs.setString(_prefKeyList(uid), jsonEncode(cachedSwaps));
+        await prefs.setString(_prefKeyList(uid, memberId), jsonEncode(cachedSwaps));
       }
     } catch (e) {
       debugPrint('Error saving swaps to storage: $e');
     }
   }
 
-  /// Adds new swaps for today, scoped to the user, ensuring no duplicates and persisting to storage.
-  static void addSwapsForToday(List<dynamic> newSwaps, {String? userId}) {
+  /// Adds new swaps for today, scoped to the user and optional family member, ensuring no duplicates.
+  static void addSwapsForToday(List<dynamic> newSwaps, {String? userId, String? memberId}) {
     final uid = _resolveUserId(userId);
-    clearIfNewDay(userId: uid);
-    if (_activeUserId != uid) {
+    clearIfNewDay(userId: uid, memberId: memberId);
+    if (_activeUserId != uid || _activeMemberId != memberId) {
       _activeUserId = uid;
+      _activeMemberId = memberId;
       cachedSwaps = [];
     }
     cachedSwaps ??= [];
@@ -112,33 +134,35 @@ class SwapService {
         }
       }
     }
-    _saveToStorage(uid);
+    _saveToStorage(uid, memberId);
   }
 
-  /// Synchronously returns swaps for today (if loaded in memory for the active user).
-  static List<dynamic>? getSwapsForToday({String? userId}) {
+  /// Synchronously returns swaps for today (if loaded in memory for the active user/member).
+  static List<dynamic>? getSwapsForToday({String? userId, String? memberId}) {
     final uid = _resolveUserId(userId);
-    if (_activeUserId != uid) {
-      // Different user logged in: flush stale memory cache
+    if (_activeUserId != uid || _activeMemberId != memberId) {
+      // Different user or family member: flush stale memory cache
       cachedSwaps = null;
       _activeUserId = uid;
+      _activeMemberId = memberId;
       return [];
     }
-    clearIfNewDay(userId: uid);
+    clearIfNewDay(userId: uid, memberId: memberId);
     return cachedSwaps;
   }
 
-  /// Clears in-memory and persistent cache if the date or user has changed.
-  static void clearIfNewDay({String? userId}) {
+  /// Clears in-memory and persistent cache if the date, user, or active family member has changed.
+  static void clearIfNewDay({String? userId, String? memberId}) {
     final uid = _resolveUserId(userId);
     final today = _todayDateStr;
-    if (_cachedDate != today || _activeUserId != uid) {
+    if (_cachedDate != today || _activeUserId != uid || _activeMemberId != memberId) {
       _cachedDate = today;
       _activeUserId = uid;
+      _activeMemberId = memberId;
       cachedSwaps = [];
       SharedPreferences.getInstance().then((prefs) {
-        prefs.setString(_prefKeyDate(uid), today);
-        prefs.remove(_prefKeyList(uid));
+        prefs.setString(_prefKeyDate(uid, memberId), today);
+        prefs.remove(_prefKeyList(uid, memberId));
       }).catchError((_) {});
     }
   }
@@ -209,7 +233,7 @@ class SwapService {
 
         // Unhealthy meal with swaps: persist to user-scoped day cache and show amber swap alert toast
         if (swaps.isNotEmpty) {
-          addSwapsForToday(swaps, userId: user.id);
+          addSwapsForToday(swaps, userId: user.id, memberId: familyMemberId);
           final targetFood = (swaps.first['original_food'] ?? mealNote).toString();
 
           CustomToast.show(

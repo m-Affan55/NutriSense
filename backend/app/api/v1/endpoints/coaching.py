@@ -18,6 +18,7 @@ class SwapRequest(BaseModel):
 @router.get("/habit-score/{user_id}")
 async def get_habit_score(
     user_id: str,
+    family_member_id: Optional[str] = None,
     offset_minutes: int = 0,
     language: str = "en",
     authenticated_user_id: str = Depends(get_current_user_id)
@@ -28,27 +29,60 @@ async def get_habit_score(
     try:
         supabase = get_supabase_admin_client()
         
-        # 1. Fetch user health profile (non-blocking thread pool)
-        profile_res = await run_in_threadpool(
-            lambda: supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
-        )
-        profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+        # 1. Fetch health profile (family member profile if provided, else primary user profile)
+        profile = None
+        if family_member_id:
+            fam_res = await run_in_threadpool(
+                lambda: supabase.table('family_members').select('*').eq('id', family_member_id).maybe_single().execute()
+            )
+            fam_data = fam_res.data if hasattr(fam_res, 'data') else fam_res
+            if fam_data:
+                profile = {
+                    'daily_calorie_target': fam_data.get('daily_calorie_target') or 2000,
+                    'daily_protein_g': fam_data.get('daily_protein_g') or 50,
+                    'goal': f"{fam_data.get('name', 'Family Member')} ({fam_data.get('relationship', 'Family')}) - {fam_data.get('goal') or 'General Family Health'}",
+                    'medical_conditions': fam_data.get('medical_conditions', []),
+                    'dietary_restrictions': fam_data.get('dietary_restrictions', []),
+                }
+
         if not profile:
-            profile = {
-                'daily_calorie_target': 2000,
-                'daily_protein_g': 50,
-                'goal': 'General Health & Wellness',
-                'medical_conditions': [],
-                'dietary_restrictions': []
-            }
+            profile_res = await run_in_threadpool(
+                lambda: supabase.table('health_profiles').select('*').eq('user_id', user_id).maybe_single().execute()
+            )
+            profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+            if not profile:
+                profile = {
+                    'daily_calorie_target': 2000,
+                    'daily_protein_g': 50,
+                    'goal': 'General Health & Wellness',
+                    'medical_conditions': [],
+                    'dietary_restrictions': []
+                }
 
         # 2. Fetch last 30 days of meals (non-blocking thread pool)
         now_utc = datetime.datetime.now(datetime.timezone.utc)
         thirty_days_ago = (now_utc - datetime.timedelta(days=30)).isoformat()
-        meals_res = await run_in_threadpool(
-            lambda: supabase.table('meal_logs').select('*').eq('user_id', user_id).gte('logged_at', thirty_days_ago).execute()
-        )
-        meals = meals_res.data or []
+        
+        if family_member_id:
+            meals_res = await run_in_threadpool(
+                lambda: supabase.table('meal_logs')
+                    .select('*')
+                    .eq('user_id', user_id)
+                    .eq('family_member_id', family_member_id)
+                    .gte('logged_at', thirty_days_ago)
+                    .execute()
+            )
+            meals = meals_res.data or []
+        else:
+            meals_res = await run_in_threadpool(
+                lambda: supabase.table('meal_logs')
+                    .select('*')
+                    .eq('user_id', user_id)
+                    .gte('logged_at', thirty_days_ago)
+                    .execute()
+            )
+            all_meals = meals_res.data or []
+            meals = [m for m in all_meals if not m.get('family_member_id')]
 
         # 3. Compute habit score components
         target_cal = profile.get('daily_calorie_target', 2000)

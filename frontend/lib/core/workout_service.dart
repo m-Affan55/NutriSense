@@ -159,15 +159,20 @@ class WorkoutService {
   static const String _cacheKeyPrefix = 'cached_workout_plan_';
   static const String _completedKeyPrefix = 'workout_completed_exercises_';
 
-  /// Fetches the user's active workout plan.
+  /// Fetches the active workout plan (for primary user or family member).
   /// Offline-First: Checks local cache first, then syncs with API if online.
-  Future<WorkoutPlanModel?> getWorkoutPlan({bool forceRefresh = false, bool isRamadan = false}) async {
+  Future<WorkoutPlanModel?> getWorkoutPlan({
+    bool forceRefresh = false,
+    bool isRamadan = false,
+    String? familyMemberId,
+  }) async {
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id ?? 'guest_user';
 
     final prefs = await SharedPreferences.getInstance();
     final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-    final cacheKey = '$_cacheKeyPrefix${userId}_$language';
+    final memberScope = familyMemberId ?? 'primary';
+    final cacheKey = '$_cacheKeyPrefix${userId}_${memberScope}_$language';
 
     // 1. Return cached plan if not forced to refresh
     if (!forceRefresh && prefs.containsKey(cacheKey)) {
@@ -184,7 +189,11 @@ class WorkoutService {
 
     // 2. Fetch from backend API
     try {
-      final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/plan/$userId?is_ramadan=$isRamadan&language=$language');
+      String urlStr = '${ApiClient.getBaseUrl()}/workout/plan/$userId?is_ramadan=$isRamadan&language=$language';
+      if (familyMemberId != null && familyMemberId.isNotEmpty) {
+        urlStr += '&family_member_id=$familyMemberId';
+      }
+      final url = Uri.parse(urlStr);
       final response = await http.get(url, headers: ApiClient.getHeaders()).timeout(
         const Duration(seconds: 15),
       );
@@ -193,7 +202,7 @@ class WorkoutService {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final plan = WorkoutPlanModel.fromJson(data);
 
-        // Save to language-specific cache
+        // Save to member & language-specific cache
         await prefs.setString(cacheKey, json.encode(plan.toJson()));
         return plan;
       }
@@ -212,26 +221,36 @@ class WorkoutService {
     return null;
   }
 
-  /// Regenerates a fresh workout plan via AI
-  Future<WorkoutPlanModel?> regeneratePlan({Map<String, dynamic>? profile, bool isRamadan = false}) async {
+  /// Regenerates a fresh workout plan via AI for user or family member
+  Future<WorkoutPlanModel?> regeneratePlan({
+    Map<String, dynamic>? profile,
+    bool isRamadan = false,
+    String? familyMemberId,
+  }) async {
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id ?? 'guest_user';
 
     final prefs = await SharedPreferences.getInstance();
     final language = prefs.getString('language') ?? prefs.getString('app_language') ?? 'en';
-    final cacheKey = '$_cacheKeyPrefix${userId}_$language';
+    final memberScope = familyMemberId ?? 'primary';
+    final cacheKey = '$_cacheKeyPrefix${userId}_${memberScope}_$language';
 
     try {
       final url = Uri.parse('${ApiClient.getBaseUrl()}/workout/generate');
+      final Map<String, dynamic> body = {
+        'user_id': userId,
+        'client_profile': profile,
+        'is_ramadan': isRamadan,
+        'language': language,
+      };
+      if (familyMemberId != null && familyMemberId.isNotEmpty) {
+        body['family_member_id'] = familyMemberId;
+      }
+
       final response = await http.post(
         url,
         headers: ApiClient.getHeaders(),
-        body: json.encode({
-          'user_id': userId,
-          'client_profile': profile,
-          'is_ramadan': isRamadan,
-          'language': language,
-        }),
+        body: json.encode(body),
       ).timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
@@ -248,22 +267,37 @@ class WorkoutService {
   }
 
   /// Saves the completion state of an exercise for a specific day
-  Future<void> toggleExerciseCompletion(String dayName, String exerciseName, bool isCompleted) async {
+  Future<void> toggleExerciseCompletion(String dayName, String exerciseName, bool isCompleted, {String? familyMemberId}) async {
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id ?? 'guest_user';
+    final memberScope = familyMemberId ?? 'primary';
 
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_completedKeyPrefix${userId}_${dayName}_$exerciseName';
+    final key = '$_completedKeyPrefix${userId}_${memberScope}_${dayName}_$exerciseName';
     await prefs.setBool(key, isCompleted);
   }
 
   /// Loads completion state for an exercise
-  Future<bool> isExerciseCompleted(String dayName, String exerciseName) async {
+  Future<bool> isExerciseCompleted(String dayName, String exerciseName, {String? familyMemberId}) async {
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id ?? 'guest_user';
+    final memberScope = familyMemberId ?? 'primary';
 
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_completedKeyPrefix${userId}_${dayName}_$exerciseName';
+    final key = '$_completedKeyPrefix${userId}_${memberScope}_${dayName}_$exerciseName';
     return prefs.getBool(key) ?? false;
+  }
+
+  /// Invalidates the local cached workout plan across all languages for a user or family member.
+  Future<void> clearPlanCache({String? userId, String? familyMemberId}) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final uid = userId ?? user?.id ?? 'guest_user';
+    final memberScope = familyMemberId != null ? '_$familyMemberId' : '';
+
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('$_cacheKeyPrefix$uid$memberScope')).toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
   }
 }

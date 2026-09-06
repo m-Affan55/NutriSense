@@ -18,6 +18,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/profile_sync_notifier.dart';
 import '../../../core/language_controller.dart';
 import '../../../core/reminder_manager.dart';
 
@@ -82,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     FamilyViewModel.instance.addListener(_loadData);
     FamilyViewModel.instance.loadMembers();
     MealSyncNotifier.instance.addListener(_loadData);
+    ProfileSyncNotifier.instance.addListener(_loadData);
     LanguageController.instance.addListener(_loadData);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,6 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     WidgetsBinding.instance.removeObserver(this);
     FamilyViewModel.instance.removeListener(_loadData);
     MealSyncNotifier.instance.removeListener(_loadData);
+    ProfileSyncNotifier.instance.removeListener(_loadData);
     LanguageController.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
@@ -237,6 +240,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     // Merge offline pending meals (works even if Supabase fetch above threw)
     if (user != null && mounted) {
       try {
+        final activeMember = FamilyViewModel.instance.activeMember;
         final pendingMeals = kIsWeb ? <Map<String, dynamic>>[] : await OfflineCache.instance.getTodayPendingMeals(user.id);
         final pendingWaterMl = kIsWeb ? 0 : await OfflineCache.instance.getTodayPendingWaterMl(user.id);
         final pendingCount = kIsWeb ? 0 : await OfflineCache.instance.getTotalPendingCount(user.id);
@@ -244,6 +248,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         if (mounted) {
           setState(() {
             for (final m in pendingMeals) {
+              final fId = m['family_member_id']?.toString();
+              if (activeMember != null) {
+                if (fId != activeMember.id) continue;
+              } else {
+                if (fId != null && fId.isNotEmpty) continue;
+              }
               _consumedCalories += (m['calories'] as int? ?? 0);
               _consumedProtein  += (m['protein_g'] as int? ?? 0);
               _consumedCarbs    += (m['carbs_g'] as int? ?? 0);
