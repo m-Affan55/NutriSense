@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../language/language_selection_screen.dart';
+import '../auth/auth_view.dart';
+import '../navigation/main_navigation_screen.dart';
+import '../onboarding/onboarding_view.dart';
 
 import '../../core/theme.dart';
 import '../../../core/ramadan_controller.dart';
@@ -34,20 +39,68 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    // Simulate database checking/loading
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const LanguageSelectionScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 800),
-          ),
-        );
+    _checkSessionAndNavigate();
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    final minSplashTime = Future.delayed(const Duration(milliseconds: 1800));
+
+    Widget nextScreen;
+    try {
+      final supabase = Supabase.instance.client;
+      final session = supabase.auth.currentSession;
+      final user = supabase.auth.currentUser;
+
+      if (session != null && user != null) {
+        // User already has a valid persisted session
+        try {
+          final profile = await supabase
+              .from('health_profiles')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle()
+              .timeout(const Duration(seconds: 4));
+
+          if (profile != null) {
+            nextScreen = const MainNavigationScreen();
+          } else {
+            nextScreen = const OnboardingWizardScreen();
+          }
+        } catch (e) {
+          debugPrint('[SplashScreen] Health profile check error or timeout: $e');
+          // If offline or network times out, let authenticated user enter dashboard
+          nextScreen = const MainNavigationScreen();
+        }
+      } else {
+        // User is not logged in
+        final prefs = await SharedPreferences.getInstance();
+        final hasLanguage = prefs.getString('app_language') != null ||
+            prefs.getString('language') != null;
+
+        if (hasLanguage) {
+          nextScreen = const AuthScreen();
+        } else {
+          nextScreen = const LanguageSelectionScreen();
+        }
       }
-    });
+    } catch (e) {
+      debugPrint('[SplashScreen] Auth verification error: $e');
+      nextScreen = const AuthScreen();
+    }
+
+    await minSplashTime;
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 600),
+      ),
+    );
   }
 
   @override

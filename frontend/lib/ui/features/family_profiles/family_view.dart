@@ -42,6 +42,60 @@ class _FamilyViewState extends State<FamilyView> {
     }
   }
 
+  String _getGoalLabel(String g) {
+    if (_language == 'ur') {
+      if (g.contains('Lose') || g.contains('loss') || g == 'weight_loss') {
+        return 'وزن میں کمی / چربی گھٹائیں';
+      }
+      if (g.contains('Gain') || g.contains('Bulk') || g == 'muscle_gain') {
+        return 'مسلز بنائیں / طاقت بڑھائیں';
+      }
+      if (g.contains('diabetes') || g.contains('sugar')) {
+        return 'ذیابیطس / شوگر کنٹرول';
+      }
+      if (g.contains('wellness')) {
+        return 'عام صحت / بہتر خوراک';
+      }
+      return 'وزن اور صحت برقرار رکھیں';
+    }
+    if (g == 'weight_loss') return 'Lose weight / Fat loss';
+    if (g == 'muscle_gain') return 'Gain muscle / Bulk';
+    if (g == 'maintenance') return 'Maintain weight & stay healthy';
+    return g;
+  }
+
+  String _getConditionLabel(String c) {
+    if (_language == 'ur') {
+      if (c.contains('Diabetes') || c.contains('sugar')) {
+        return 'ذیابیطس / ہائی بلڈ شوگر';
+      }
+      if (c.contains('pressure') || c.contains('Hypertension')) {
+        return 'ہائی بلڈ پریشر';
+      }
+      if (c.contains('Heart')) {
+        return 'دل کے امراض';
+      }
+      if (c.contains('IBS') || c.contains('digestive')) {
+        return 'معدے / ہاضمے کے مسائل (IBS)';
+      }
+      if (c.contains('allerg') || c.contains('Allerg')) {
+        return 'کھانے کی اشیاء سے الرجی';
+      }
+    }
+    return c;
+  }
+
+  String _getDietaryLabel(String d) {
+    if (_language == 'ur') {
+      if (d.contains('No restriction')) return 'کوئی پابندی نہیں';
+      if (d.contains('Vegetarian')) return 'سبزی خور';
+      if (d.contains('Halal')) return 'صرف حلال';
+      if (d.contains('Vegan')) return 'ویگن';
+      if (d.contains('Other')) return 'دیگر';
+    }
+    return d;
+  }
+
   Future<void> _deleteMember(FamilyMember member) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -79,27 +133,35 @@ class _FamilyViewState extends State<FamilyView> {
     final carbsController = TextEditingController(text: '${existing?.dailyCarbsG ?? 200}');
     final fatController = TextEditingController(text: '${existing?.dailyFatG ?? 50}');
 
+    final availableGoals = [
+      'Lose weight / Fat loss',
+      'Gain muscle / Bulk',
+      'Maintain weight & stay healthy',
+      'Manage diabetes / blood sugar',
+      'General wellness / Just eat better',
+    ];
+
+    final availableConditions = [
+      'Diabetes / High blood sugar',
+      'High blood pressure',
+      'Heart-related issues',
+      'IBS or digestive problems',
+      'Food allergies',
+    ];
+
+    final availableRestrictions = [
+      'No restriction',
+      'Vegetarian',
+      'Halal only',
+      'Vegan',
+      'Other',
+    ];
+
+    String selectedGoal = existing?.goal ?? 'Maintain weight & stay healthy';
     String relationship = existing?.relationship ?? 'child';
     String gender = existing?.gender ?? 'male';
     List<String> conditions = List<String>.from(existing?.medicalConditions ?? []);
     List<String> restrictions = List<String>.from(existing?.dietaryRestrictions ?? []);
-
-    final availableConditions = [
-      'Diabetes',
-      'Hypertension',
-      'High Cholesterol',
-      'Lactose Intolerance',
-      'Gluten Intolerance',
-    ];
-
-    final availableRestrictions = [
-      'Halal',
-      'Vegetarian',
-      'No Sugar',
-      'Low Sodium',
-      'Peanut Allergy',
-      'Dairy Free',
-    ];
 
     showModalBottomSheet(
       context: context,
@@ -117,6 +179,7 @@ class _FamilyViewState extends State<FamilyView> {
                 age: age,
                 gender: gender,
                 relationship: relationship,
+                goal: selectedGoal,
                 conditions: conditions,
               );
               calController.text = '${targets['calories']}';
@@ -256,9 +319,45 @@ class _FamilyViewState extends State<FamilyView> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Health Goal Chips
+                    Text(
+                      _language == 'ur' ? '🎯 روزانہ کا غذائی ہدف' : '🎯 Health Goal',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: availableGoals.map((g) {
+                        final isSelected = selectedGoal == g;
+                        return ChoiceChip(
+                          selected: isSelected,
+                          label: Text(
+                            _getGoalLabel(g),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? Colors.black : Colors.white70,
+                            ),
+                          ),
+                          selectedColor: const Color(0xFF00E676),
+                          backgroundColor: const Color(0xFF0D0F14),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                selectedGoal = g;
+                                updateAutoCalculatedTargets();
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Medical Conditions Chips
                     Text(
-                      _language == 'ur' ? 'طبی کیفیت / بیماریاں' : 'Medical Conditions',
+                      _language == 'ur' ? '🩺 طبی کیفیات / بیماریاں' : '🩺 Medical Conditions',
                       style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
@@ -269,7 +368,10 @@ class _FamilyViewState extends State<FamilyView> {
                         final isSelected = conditions.contains(c);
                         return FilterChip(
                           selected: isSelected,
-                          label: Text(c, style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white)),
+                          label: Text(
+                            _getConditionLabel(c),
+                            style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white),
+                          ),
                           selectedColor: const Color(0xFFFFD166),
                           backgroundColor: const Color(0xFF0D0F14),
                           onSelected: (selected) {
@@ -289,7 +391,7 @@ class _FamilyViewState extends State<FamilyView> {
 
                     // Dietary Restrictions Chips
                     Text(
-                      _language == 'ur' ? 'غذائی ترجیحات اور الرجی' : 'Dietary Restrictions & Allergens',
+                      _language == 'ur' ? '🥗 غذائی ترجیحات اور الرجی' : '🥗 Dietary Preference',
                       style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
@@ -300,15 +402,28 @@ class _FamilyViewState extends State<FamilyView> {
                         final isSelected = restrictions.contains(r);
                         return FilterChip(
                           selected: isSelected,
-                          label: Text(r, style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white)),
+                          label: Text(
+                            _getDietaryLabel(r),
+                            style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white),
+                          ),
                           selectedColor: const Color(0xFF00E676),
                           backgroundColor: const Color(0xFF0D0F14),
                           onSelected: (selected) {
                             setModalState(() {
-                              if (selected) {
-                                restrictions.add(r);
+                              if (r == 'No restriction') {
+                                if (selected) {
+                                  restrictions.clear();
+                                  restrictions.add(r);
+                                } else {
+                                  restrictions.remove(r);
+                                }
                               } else {
-                                restrictions.remove(r);
+                                restrictions.remove('No restriction');
+                                if (selected) {
+                                  restrictions.add(r);
+                                } else {
+                                  restrictions.remove(r);
+                                }
                               }
                             });
                           },
@@ -434,6 +549,7 @@ class _FamilyViewState extends State<FamilyView> {
                             relationship: relationship,
                             age: int.tryParse(ageController.text) ?? 25,
                             gender: gender,
+                            goal: selectedGoal,
                             dailyCalorieTarget: int.tryParse(calController.text) ?? 1800,
                             dailyProteinG: int.tryParse(proteinController.text) ?? 100,
                             dailyCarbsG: int.tryParse(carbsController.text) ?? 200,
@@ -744,12 +860,27 @@ class _FamilyViewState extends State<FamilyView> {
                               ),
 
                               // Tags for Medical & Dietary
-                              if (member.medicalConditions.isNotEmpty || member.dietaryRestrictions.isNotEmpty) ...[
+                              if ((member.goal.isNotEmpty && !member.goal.contains('Maintain') && member.goal != 'maintenance') ||
+                                  member.medicalConditions.isNotEmpty ||
+                                  member.dietaryRestrictions.isNotEmpty) ...[
                                 const SizedBox(height: 10),
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 4,
                                   children: [
+                                    if (member.goal.isNotEmpty && !member.goal.contains('Maintain') && member.goal != 'maintenance')
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.cyanAccent.withAlpha(25),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.cyanAccent.withAlpha(80)),
+                                        ),
+                                        child: Text(
+                                          '🎯 ${_getGoalLabel(member.goal)}',
+                                          style: const TextStyle(color: Colors.cyanAccent, fontSize: 10),
+                                        ),
+                                      ),
                                     ...member.medicalConditions.map((c) => Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
@@ -757,16 +888,22 @@ class _FamilyViewState extends State<FamilyView> {
                                             borderRadius: BorderRadius.circular(6),
                                             border: Border.all(color: Colors.amber.withAlpha(80)),
                                           ),
-                                          child: Text('⚠️ $c', style: const TextStyle(color: Colors.amber, fontSize: 10)),
+                                          child: Text(
+                                            '⚠️ ${_getConditionLabel(c)}',
+                                            style: const TextStyle(color: Colors.amber, fontSize: 10),
+                                          ),
                                         )),
-                                    ...member.dietaryRestrictions.map((r) => Container(
+                                    ...member.dietaryRestrictions.where((r) => r != 'No restriction').map((r) => Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF00E676).withAlpha(25),
                                             borderRadius: BorderRadius.circular(6),
                                             border: Border.all(color: const Color(0xFF00E676).withAlpha(80)),
                                           ),
-                                          child: Text('🥗 $r', style: const TextStyle(color: Color(0xFF00E676), fontSize: 10)),
+                                          child: Text(
+                                            '🥗 ${_getDietaryLabel(r)}',
+                                            style: const TextStyle(color: Color(0xFF00E676), fontSize: 10),
+                                          ),
                                         )),
                                   ],
                                 ),
