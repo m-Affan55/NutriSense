@@ -23,16 +23,27 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class MainNavigationScreenState extends State<MainNavigationScreen> {
+  static MainNavigationScreenState? instance;
   int _currentIndex = 0;
+
+  static void switchToTab(int index) {
+    if (instance != null && instance!.mounted) {
+      instance!.currentIndex = index;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    instance = this;
     LanguageController.instance.addListener(_onLanguageChanged);
   }
 
   @override
   void dispose() {
+    if (instance == this) {
+      instance = null;
+    }
     LanguageController.instance.removeListener(_onLanguageChanged);
     super.dispose();
   }

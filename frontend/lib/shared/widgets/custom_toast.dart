@@ -5,6 +5,9 @@ class CustomToast {
     BuildContext context, 
     String message, {
     bool isError = true,
+    Color? borderColor,
+    IconData? icon,
+    Color? iconColor,
     Duration duration = const Duration(seconds: 4),
     VoidCallback? onTap,
   }) {
@@ -35,6 +38,10 @@ class CustomToast {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.hideCurrentSnackBar();
     
+    final effectiveBorderColor = borderColor ?? (isError ? Colors.redAccent.withAlpha(120) : const Color(0xFF00E676).withAlpha(120));
+    final effectiveIconColor = iconColor ?? (borderColor ?? (isError ? Colors.redAccent : const Color(0xFF00E676)));
+    final effectiveIcon = icon ?? (isError ? Icons.error_outline : Icons.check_circle_outline);
+
     scaffoldMessenger.showSnackBar(
       SnackBar(
         elevation: 0,
@@ -50,7 +57,7 @@ class CustomToast {
               color: const Color(0xFF161A22), // App dark background
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isError ? Colors.redAccent.withAlpha(120) : const Color(0xFF00E676).withAlpha(120),
+                color: effectiveBorderColor,
                 width: 1.5,
               ),
               boxShadow: [
@@ -64,8 +71,8 @@ class CustomToast {
             child: Row(
               children: [
                 Icon(
-                  isError ? Icons.error_outline : Icons.check_circle_outline,
-                  color: isError ? Colors.redAccent : const Color(0xFF00E676),
+                  effectiveIcon,
+                  color: effectiveIconColor,
                   size: 24,
                 ),
                 const SizedBox(width: 12),

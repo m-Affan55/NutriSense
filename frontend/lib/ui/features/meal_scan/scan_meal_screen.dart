@@ -682,7 +682,7 @@ class _ScanMealScreenState extends State<ScanMealScreen> {
 
       if (mounted) {
         CustomToast.show(context, 'Meal logged successfully!', isError: false);
-        SwapService.checkMealForSwaps(data['meal_name'] ?? 'Scanned Meal');
+        SwapService.checkMealForSwaps(data['meal_name'] ?? 'Scanned Meal', familyMemberId: familyMemberId);
         MealSyncNotifier.instance.notifyMealChanged();
         Navigator.of(context).pop(true);
       }

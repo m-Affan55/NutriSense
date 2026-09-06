@@ -13,6 +13,7 @@ import 'core/reminder_manager.dart';
 import 'core/sync_service.dart';
 import 'core/ramadan_controller.dart';
 import 'core/language_controller.dart';
+import 'core/swap_service.dart';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -44,9 +45,10 @@ Future<void> main(List<String> args) async {
     publishableKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  // Initialize RamadanController & LanguageController state
+  // Initialize RamadanController, LanguageController & SwapService state
   await RamadanController.instance.init();
   await LanguageController.instance.init();
+  await SwapService.initFromStorage();
 
   // Initialize and schedule local notifications
   try {

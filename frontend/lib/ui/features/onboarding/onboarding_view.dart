@@ -89,12 +89,44 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         return;
       }
       if (_weightKg < 15 || _weightKg > 400) {
-        CustomToast.show(context, 'Please enter a valid weight (15 to 400 kg)');
+        CustomToast.show(context, 'Please enter a valid current weight (15 to 400 kg)');
+        return;
+      }
+      if (_targetWeightKg < 15 || _targetWeightKg > 400) {
+        CustomToast.show(context, 'Please enter a valid target weight (15 to 400 kg)');
         return;
       }
       if (_heightCm < 50 || _heightCm > 280) {
         CustomToast.show(context, 'Please enter a valid height (50 to 280 cm)');
         return;
+      }
+
+      // Goal vs Target Weight Validation
+      final goalLower = (_goal ?? '').toLowerCase();
+      if (goalLower.contains('lose') || goalLower.contains('fat loss')) {
+        if (_targetWeightKg >= _weightKg) {
+          CustomToast.show(
+            context,
+            'For weight loss, target weight (${_targetWeightKg.toInt()} kg) must be lower than your current weight (${_weightKg.toInt()} kg).',
+          );
+          return;
+        }
+      } else if (goalLower.contains('gain') || goalLower.contains('muscle') || goalLower.contains('bulk')) {
+        if (_targetWeightKg <= _weightKg) {
+          CustomToast.show(
+            context,
+            'For muscle gain / bulk, target weight (${_targetWeightKg.toInt()} kg) must be higher than your current weight (${_weightKg.toInt()} kg).',
+          );
+          return;
+        }
+      } else if (goalLower.contains('maintain')) {
+        if ((_targetWeightKg - _weightKg).abs() > 5) {
+          CustomToast.show(
+            context,
+            'For weight maintenance, target weight must be within 5 kg of your current weight (${(_weightKg - 5).toInt()} - ${(_weightKg + 5).toInt()} kg).',
+          );
+          return;
+        }
       }
     }
 
@@ -293,7 +325,19 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         children: _goals.map((g) => _buildSelectionCard(
           text: g,
           isSelected: _goal == g,
-          onTap: () => setState(() => _goal = g),
+          onTap: () {
+            setState(() {
+              _goal = g;
+              final gLower = g.toLowerCase();
+              if (gLower.contains('lose') || gLower.contains('fat loss')) {
+                _targetWeightKg = (_weightKg - 5).clamp(15, 400);
+              } else if (gLower.contains('gain') || gLower.contains('muscle') || gLower.contains('bulk')) {
+                _targetWeightKg = (_weightKg + 5).clamp(15, 400);
+              } else if (gLower.contains('maintain')) {
+                _targetWeightKg = _weightKg;
+              }
+            });
+          },
         )).toList(),
       ),
     );
@@ -315,12 +359,86 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   Widget _buildBodyMetricsPage() {
     return _buildPageWrapper(
       title: 'Basic Body Info',
+      subtitleWidget: _buildEditInfoBanner(),
       child: Column(
         children: [
           _buildNumberInputItem('Age', _age, 'years', (v) => setState(() => _age = v)),
           _buildNumberInputItem('Height', _heightCm, 'cm', (v) => setState(() => _heightCm = v)),
           _buildNumberInputItem('Current Weight', _weightKg, 'kg', (v) => setState(() => _weightKg = v)),
           _buildNumberInputItem('Target Weight', _targetWeightKg, 'kg', (v) => setState(() => _targetWeightKg = v)),
+          _buildTargetWeightHint(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.edit_note_rounded, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Please edit and adjust the values below to match your body measurements',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTargetWeightHint() {
+    final goalLower = (_goal ?? '').toLowerCase();
+    String? hint;
+    IconData icon = Icons.info_outline;
+
+    if (goalLower.contains('lose') || goalLower.contains('fat loss')) {
+      hint = 'Goal: Weight Loss (Target should be below ${_weightKg.toInt()} kg)';
+      icon = Icons.trending_down;
+    } else if (goalLower.contains('gain') || goalLower.contains('muscle') || goalLower.contains('bulk')) {
+      hint = 'Goal: Muscle Gain (Target should be above ${_weightKg.toInt()} kg)';
+      icon = Icons.trending_up;
+    } else if (goalLower.contains('maintain')) {
+      hint = 'Goal: Maintain Weight (Target should be within ±5 kg: ${(_weightKg - 5).toInt()}-${(_weightKg + 5).toInt()} kg)';
+      icon = Icons.balance;
+    }
+
+    if (hint == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 0, bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hint,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -511,7 +629,12 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   // --- Helpers ---
 
-  Widget _buildPageWrapper({required String title, String? subtitle, required Widget child}) {
+  Widget _buildPageWrapper({
+    required String title,
+    String? subtitle,
+    Widget? subtitleWidget,
+    required Widget child,
+  }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -523,7 +646,11 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             const SizedBox(height: 8),
             Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
           ],
-          const SizedBox(height: 32),
+          if (subtitleWidget != null) ...[
+            const SizedBox(height: 14),
+            subtitleWidget,
+          ],
+          SizedBox(height: subtitleWidget != null ? 24 : 32),
           child,
         ],
       ),
@@ -568,6 +695,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: TextFormField(
+        key: ValueKey('${label}_$_goal'),
         initialValue: value.toInt().toString(),
         keyboardType: TextInputType.number,
         inputFormatters: [

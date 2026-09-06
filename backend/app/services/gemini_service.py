@@ -1,10 +1,13 @@
 import base64
 import json
+import logging
 import re
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
 from app.services.gemini_pool import gemini_pool
+
+logger = logging.getLogger("gemini_service")
 
 class GeminiService:
     @staticmethod
@@ -17,13 +20,36 @@ class GeminiService:
 
     @staticmethod
     def scan_meal(image_bytes: bytes, mime_type: str, profile: dict = None) -> dict:
-        system_instruction = """
-        You are a precise food and meal image recognition system.
+        profile_context = ""
+        if profile:
+            conditions = profile.get('medical_conditions', [])
+            restrictions = profile.get('dietary_restrictions', [])
+            allergies = profile.get('allergies', [])
+            goal = profile.get('goal', '')
+            profile_context = f"""
+            User's Health Profile & Clinical Constraints:
+            - Goal: {goal or 'General Health'}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
+            - Known Allergies: {', '.join(allergies) if allergies else 'None'}
+
+            CLINICAL & GOAL SAFETY EVALUATION RULES:
+            1. Diabetes / High Blood Sugar: If meal contains high carbs (> 45g) or refined/added sugars/sweetened desserts, add a specific warning in 'health_warnings' and suggest a lower-GI alternative in 'suggestions'.
+            2. Hypertension / High Blood Pressure: If meal appears high in sodium (pickles, papad, instant noodles, cured meats, heavily salted/MSG dishes), add a warning in 'health_warnings'.
+            3. IBS / Digestive Issues: If meal is high in fat (> 15g-20g, deep fried dishes, heavy creams/ghee), contains artificial polyol sweeteners, excessive hot chili spice, or heavy lactose, add a warning in 'health_warnings' and suggest a gut-friendly alternative in 'suggestions'.
+            4. Fat Loss / Weight Loss Goal: If meal is very calorie-dense (> 750 kcal) or loaded with saturated fats/oils, mention a portion/cooking swap in 'suggestions'.
+            5. Muscle Gain / Bulk Goal: If meal is low in protein (< 15g), suggest adding a lean protein source in 'suggestions'.
+            6. Allergies / Restrictions: Immediately flag any conflict with known allergies or dietary restrictions in 'health_warnings'.
+            """
+
+        system_instruction = f"""
+        You are a precise food, meal image recognition, and clinical nutrition system.
         Look directly at the visual elements in the photograph and identify the authentic name of the dish shown.
         Base your recognition strictly on the actual food visible in the image.
         If the image does not contain food, or you cannot identify any food item with reasonable confidence, set is_food to false and leave nutrition fields empty/0.
-        Otherwise, set is_food to true and provide an initial estimate of portion sizes in grams.
+        Otherwise, set is_food to true and provide an accurate estimate of portion sizes in grams and macronutrients.
         Set recognition_confidence to 'high' if the image is clear and identifiable, or 'low' if blurry or unclear.
+        {profile_context}
         """
 
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
@@ -358,32 +384,92 @@ Return ONLY a valid JSON object with exact keys:
                     return "Keep logging your meals! Consistency is key to improving your habit score."
 
     @staticmethod
-    def generate_food_swaps(recent_meals: list[str], profile: dict = None, language: str = "en") -> list[dict]:
+    def generate_food_swaps(recent_meals: list[str], profile: dict = None, language: str = "en") -> dict:
         profile_context = ""
         if profile:
+            conditions = profile.get('medical_conditions', [])
+            restrictions = profile.get('dietary_restrictions', [])
+            goal = profile.get('goal', 'General Health')
             profile_context = f"""
             The user's health profile:
-            - Goal: {profile.get('goal', 'N/A')}
-            - Medical Conditions: {', '.join(profile.get('medical_conditions', [])) if profile.get('medical_conditions') else 'None'}
+            - Goal: {goal}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
             """
             
         prompt = f"""
-        You are an expert nutritionist. The user recently ate these items:
+        You are an expert clinical nutritionist and culinary dietitian. 
+        The user has logged the following meal item(s) today:
         {json.dumps(recent_meals)}
         
         {profile_context}
         
-        Identify up to 3 items from their recent meals that could be swapped for a healthier alternative. 
-        The healthier alternative should align with their health goals and medical conditions. 
-        It does NOT need to be a Pakistani food; any healthier, realistic alternative is great.
-        
-        Return ONLY a JSON array of objects with exact keys:
-        - "original_food": string (what they ate)
-        - "healthy_swap": string (what they should eat instead)
-        - "reason": string (short reason why, e.g., "Saves ~110 kcal and 8g fat")
+        MANDATORY CLINICAL & CULINARY RULES:
+        1. HEALTHY MEAL GATEKEEPER & INHERENTLY HEALTHY WHOLE FOODS:
+           - First, evaluate if the logged food item(s) are inherently nutritious whole foods or balanced meals (e.g. Avocado, eggs, lentils/daal, chicken breast, fish/salmon, oats, unsweetened yogurt, vegetables, salads, quinoa, nuts, seeds, fresh fruit like berries/apples/guava).
+           - INHERENTLY HEALTHY FOODS MUST NEVER BE SWAPPED AWAY:
+             If an item is fundamentally healthy and nutrient-dense (such as avocados, boiled eggs, almonds, Greek yogurt, or grilled chicken):
+             DO NOT swap it for another food!
+           - PORTION & QUANTITY HANDLING (CRITICAL):
+             If the user logged a healthy food in a larger quantity (e.g. "2 avocados", "handful of almonds", "3 eggs", "large bowl of oats") or did not specify an exact quantity:
+             * DO NOT swap the meal! Set "is_healthy": true and "swaps": [].
+             * Instead, use the "message" field to praise their choice and provide a helpful, practical portion guidance tip (e.g. "Great choice! Avocados provide heart-healthy fats and fiber that stabilize blood sugar. Pro tip: Since they are calorie-dense, 1/2 to 1 avocado per day is the optimal serving size for your goals.").
+           - If ALL the logged meal(s) are healthy, balanced, or inherently nutritious, set "is_healthy": true and "swaps": []. DO NOT force or invent a swap!
+
+        2. UNHEALTHY MEALS & SWAP GENERATION (RESERVED FOR TRULY UNHEALTHY / HIGH-RISK FOODS):
+           - Only trigger swaps for items that are genuinely unhealthy, processed, high-glycemic, or deeply fried:
+             * Deep-fried items (e.g. samosa, pakora, french fries, crispy fried chicken, paratha).
+             * Refined sugars & syrups (e.g. gulab jamun, jalebi, soda/cola, donuts, pastries, ice cream, sweetened energy drinks).
+             * Refined high-GI carbs (e.g. white flour naan, halwa puri, white bread with sugary jam).
+             * Heavy saturated fat / oil floating dishes (e.g. oily beef nihari, deep oily restaurant karahi).
+             * High-sodium processed meats / snacks (e.g. cured sausages, salty chips, instant noodles).
+           - In these genuinely unhealthy cases:
+             - Set "is_healthy": false.
+             - Generate a practical, cuisine-matched healthier swap for EVERY unique unhealthy meal in the list.
+             - If there are multiple unhealthy meals (e.g. 4 meals logged today), provide a swap for EACH ONE in the "swaps" list. Do NOT cap at 3. Do NOT omit or combine items.
+
+        3. CUISINE-MATCHING MANDATE (CRITICAL):
+           - The recommended swap MUST strictly match the cuisine, culture, and culinary style of the original food:
+             * PAKISTANI / SOUTH ASIAN DISHES (e.g. Biryani, Nihari, Halwa Puri, Paratha, Samosa, Pakora, Karahi, Haleem, Kheer, Mithai, Jalebi):
+               Swap ONLY for a healthy, authentic Pakistani alternative.
+               Examples:
+               - Oily/Fried Paratha -> Whole-wheat phulka roti with boiled egg or daal.
+               - Deep-fried Samosa / Pakora -> Roasted spiced chana (chickpeas) or baked spiced vegetable cutlet.
+               - Oily Beef Nihari / Heavy Karahi -> Murgh Yakhni (lean spiced chicken broth) or grilled chicken tikka with mint raita.
+               - White Rice Biryani -> High-protein chicken brown basmati pulao with cucumber raita or Daal Chawal (high daal ratio) with salad.
+               - Gulab Jamun / Jalebi -> Fresh guava/papaya slices with chaat masala or low-fat spiced kheer with stevia.
+             * WESTERN DISHES (e.g. Cheeseburger, Pepperoni Pizza, French Fries, Donut, Soda, Fried Chicken):
+               Swap ONLY for a healthy Western alternative.
+               Examples:
+               - Double Cheeseburger / Fast food burger -> Whole-wheat grilled chicken wrap or turkey breast on lettuce bun with sweet potato wedges.
+               - Pepperoni Pizza -> Thin-crust whole-wheat pita pizza with roasted vegetables and lean protein.
+               - French Fries -> Air-fried zucchini or sweet potato wedges.
+               - Sugary Donut / Pastry -> Greek yogurt with mixed berries and a touch of honey.
+               - Sugary Soda -> Sparkling lemon water or iced berry infusion.
+
+        4. MEDICAL CONDITIONS GUARDRAILS:
+           - Diabetes / High Blood Sugar: Prevent glycemic spikes (replace refined carbs/sugar with low-GI, high-fiber, lean protein).
+           - Hypertension / High Blood Pressure: Slash sodium (replace processed/cured meats, salty pickles/chips with herb-seasoned, potassium-rich foods).
+           - IBS / Digestion: Avoid deep-fried, heavy cream, extremely spicy, or high-FODMAP triggers.
+           - Fat Loss: Substantially reduce caloric density and oil while preserving satiety (save 150-300 kcal).
+           - Muscle Gain: Boost lean protein and quality complex carbs.
+
+        if an item is good for the user and user hasn't explicitely tell about the quantity of that health product don't recommend swap instead we aim to show a message of the optimal quantity of the product to use.
+        Return ONLY a JSON object with this exact schema:
+        {{
+          "is_healthy": boolean,
+          "message": string,
+          "swaps": [
+            {{
+              "original_food": string,
+              "healthy_swap": string,
+              "reason": string
+            }}
+          ]
+        }}
         """
         if language == "ur":
-            prompt += "\nMANDATORY: Write the values for 'original_food', 'healthy_swap', and 'reason' in Urdu language (using Urdu Arabic script)."
+            prompt += "\nMANDATORY: Write the values for 'message', 'original_food', 'healthy_swap', and 'reason' in Urdu language (using Urdu Arabic script)."
 
         try:
             response = gemini_pool.generate_content(
@@ -393,9 +479,27 @@ Return ONLY a valid JSON object with exact keys:
                     response_mime_type="application/json",
                 ),
             )
-            return json.loads(response.text)
-        except Exception:
-            return []
+            parsed = GeminiService._parse_gemini_json(response.text)
+            if isinstance(parsed, dict):
+                swaps_list = parsed.get("swaps", [])
+                if not isinstance(swaps_list, list):
+                    swaps_list = []
+                is_healthy = parsed.get("is_healthy", len(swaps_list) == 0)
+                return {
+                    "is_healthy": bool(is_healthy),
+                    "message": str(parsed.get("message", "")),
+                    "swaps": swaps_list
+                }
+            elif isinstance(parsed, list):
+                return {
+                    "is_healthy": len(parsed) == 0,
+                    "message": "",
+                    "swaps": parsed
+                }
+            return {"is_healthy": True, "message": "Meal logged successfully.", "swaps": []}
+        except Exception as e:
+            logger.error(f"Error in generate_food_swaps: {e}")
+            return {"is_healthy": True, "message": "Meal logged successfully.", "swaps": []}
 
     @staticmethod
     def generate_grocery_list(recent_meals: list[str], profile: dict = None) -> list[dict]:
@@ -450,3 +554,186 @@ Return ONLY a valid JSON object with exact keys:
                     ]
                 }
             ]
+
+    @staticmethod
+    def generate_health_sync_insight(
+        activity_data: dict,
+        profile: dict = None,
+        language: str = "en"
+    ) -> dict:
+        steps = int(activity_data.get("steps", 0))
+        step_goal = int(activity_data.get("step_goal", 10000))
+        active_kcal = int(activity_data.get("active_kcal", 0))
+        sleep_hours = float(activity_data.get("sleep_hours", 0.0))
+        heart_rate = int(activity_data.get("heart_rate", 0))
+        source = str(activity_data.get("source", "Health Connect"))
+
+        conditions = []
+        user_goal = "General Health"
+        profile_context = ""
+        if profile:
+            conditions = profile.get("medical_conditions", []) or []
+            user_goal = profile.get("goal", "General Health") or "General Health"
+            restrictions = profile.get("dietary_restrictions", []) or []
+            profile_context = f"""
+            User Profile:
+            - Goal: {user_goal}
+            - Medical Conditions: {', '.join(conditions) if conditions else 'None'}
+            - Dietary Restrictions: {', '.join(restrictions) if restrictions else 'None'}
+            - Age: {profile.get('age', 'N/A')}, Gender: {profile.get('gender', 'N/A')}, Weight: {profile.get('weight_kg', 'N/A')} kg
+            """
+
+        prompt = f"""
+        You are an elite Clinical Metabolic & Sports Medicine Specialist for the NutriSense platform.
+        Analyze the user's daily physical movement, step goal, and health profile, then determine their optimal daily step goal and deliver a personalized clinical coaching insight.
+
+        {profile_context}
+
+        Today's Physical Activity Data:
+        - Current Steps Taken: {steps}
+        - Current Step Goal Selected by User: {step_goal}
+        - Active Calories: {active_kcal} kcal
+        - Sleep Recorded: {sleep_hours} hours
+        - Heart Rate Recorded: {heart_rate} bpm
+        - Tracking Source: {source}
+
+        ===============================================================
+        RULE 1: CLINICAL STEP GOAL & OPTIMAL TARGET RULES (BY CONDITION)
+        ===============================================================
+        Assess the user's health profile and assign the clinically optimal daily step target:
+        1. Diabetes / Pre-diabetes / High Blood Sugar:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 7,000 - 8,500 steps.
+           - Clinical science: Skeletal muscle contraction induces GLUT-4 translocation to cell surfaces independent of insulin, directly clearing postprandial glucose from the bloodstream.
+           - If user's goal is < 6,000 (e.g. 500, 1,500, 3,000): is_goal_adequate MUST BE false. In goal_feedback, clearly explain that their goal is too low to stimulate GLUT-4 glucose uptake and regulate blood sugar spikes, recommending the optimal goal (e.g. 7,000 steps).
+
+        2. Hypertension / High Blood Pressure:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 7,500 - 9,000 steps.
+           - Clinical science: Aerobic walking creates laminar blood flow shear stress, stimulating endothelial nitric oxide synthase (eNOS) to produce nitric oxide, dilating arteries and lowering peripheral resistance.
+           - If user's goal is < 6,000: is_goal_adequate MUST BE false.
+
+        3. Fat Loss / Weight Loss:
+           - Minimum clinical threshold: 7,000 steps.
+           - Optimal range: 8,500 - 10,000 steps.
+           - Clinical science: Non-Exercise Activity Thermogenesis (NEAT) accounts for up to 15-20% of daily caloric expenditure and prevents metabolic adaptation.
+           - If user's goal is < 7,000: is_goal_adequate MUST BE false.
+
+        4. IBS / Digestive Health / Gut Motility:
+           - Minimum clinical threshold: 4,500 steps.
+           - Optimal range: 5,000 - 7,000 steps.
+           - Clinical science: Gentle low-intensity walking activates the Migrating Motor Complex (MMC) and enhances colonic transit without the sympathetic stress or gut ischemia caused by high-impact exercise.
+           - If user's goal is < 4,500: is_goal_adequate MUST BE false.
+
+        5. Muscle Gain / Hypertrophy:
+           - Minimum clinical threshold: 4,000 steps.
+           - Optimal range: 5,000 - 6,500 steps.
+           - Clinical science: Provides necessary cardiovascular conditioning and insulin sensitivity to partition nutrients into muscle without burning excess calories that threaten the hypercaloric surplus required for muscle growth.
+           - If user's goal is < 4,000: is_goal_adequate MUST BE false.
+
+        6. General Health & Longevity:
+           - Minimum clinical threshold: 6,000 steps.
+           - Optimal range: 8,000 - 10,000 steps.
+           - If user's goal is < 6,000: is_goal_adequate MUST BE false.
+
+        If user's step_goal >= minimum threshold: is_goal_adequate MUST BE true, and goal_feedback should validate that their goal aligns with their profile.
+
+        ===============================================================
+        RULE 2: STRICT HARDWARE SHIELD (MANDATORY)
+        ===============================================================
+        Check sleep_hours and heart_rate:
+        - If sleep_hours == 0.0 or heart_rate == 0:
+          THE USER DOES NOT HAVE A SMARTWATCH. THEY ARE USING A SMARTPHONE IN THEIR POCKET.
+          STRICTLY FORBIDDEN: Do NOT mention sleep, do NOT mention heart rate, do NOT say "0 hours of sleep recorded", and do NOT mention missing wearables.
+          Focus 100% on their step count, walking cadence, and metabolic activation.
+        - If sleep_hours > 0 and heart_rate > 0:
+          The user has a wearable device, so you may briefly touch upon recovery if clinically relevant.
+
+        ===============================================================
+        RULE 3: METABOLIC COACHING INSIGHT
+        ===============================================================
+        Provide an encouraging, 2-3 sentence clinical insight about their current step count ({steps} steps) and how it impacts their condition today.
+        - If steps < 1,000: Provide morning/early kickoff motivation (e.g. "You've taken {steps} steps so far today. A 15-minute post-meal walk will jumpstart your GLUT-4 glucose clearance today.").
+        - If steps between 1,000 and goal: Highlight steady progress and suggest an evening or post-dinner walk.
+        - If steps >= goal: Celebrate the achievement and reinforce the metabolic benefits achieved today.
+
+        ===============================================================
+        RULE 4: RESPONSE FORMAT (JSON ONLY)
+        ===============================================================
+        Return ONLY a JSON object with this exact schema:
+        {{
+          "optimal_step_goal": integer,
+          "is_goal_adequate": boolean,
+          "goal_feedback": string,
+          "insight": string,
+          "condition_detected": string
+        }}
+        """
+        if language == "ur":
+            prompt += "\nMANDATORY: Write the values for 'insight' and 'goal_feedback' in natural Urdu language (using Urdu Arabic script)."
+
+        try:
+            response = gemini_pool.generate_content(
+                model='gemini-3.6-flash',
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            parsed = GeminiService._parse_gemini_json(response.text)
+            if isinstance(parsed, dict):
+                return {
+                    "optimal_step_goal": int(parsed.get("optimal_step_goal", 8000)),
+                    "is_goal_adequate": bool(parsed.get("is_goal_adequate", True)),
+                    "goal_feedback": str(parsed.get("goal_feedback", "")),
+                    "insight": str(parsed.get("insight", "")),
+                    "condition_detected": str(parsed.get("condition_detected", "General Health"))
+                }
+        except Exception as e:
+            logger.error(f"Error in generate_health_sync_insight: {e}")
+
+        # Deterministic clinical fallback if AI is unavailable or offline
+        cond_str = " ".join(conditions).lower()
+        goal_str = user_goal.lower()
+
+        optimal = 8000
+        min_goal = 6000
+        detected = "General Health"
+
+        if "diabet" in cond_str or "sugar" in cond_str:
+            optimal = 7000
+            min_goal = 6000
+            detected = "Diabetes"
+        elif "hyperten" in cond_str or "blood pressure" in cond_str or "bp" in cond_str:
+            optimal = 7500
+            min_goal = 6000
+            detected = "Hypertension"
+        elif "ibs" in cond_str or "gut" in cond_str or "digest" in cond_str:
+            optimal = 6000
+            min_goal = 4500
+            detected = "IBS"
+        elif "fat" in goal_str or "weight" in goal_str:
+            optimal = 8500
+            min_goal = 7000
+            detected = "Fat Loss"
+        elif "muscle" in goal_str or "bulk" in goal_str:
+            optimal = 5000
+            min_goal = 4000
+            detected = "Muscle Gain"
+
+        adequate = step_goal >= min_goal
+        if language == "ur":
+            fb = f"آپ کا ہدف ({step_goal} قدم) آپ کے لیے مناسب ہے۔" if adequate else f"آپ کے پروفائل کے لیے روزانہ کم از کم {min_goal} قدم تجویز کیے جاتے ہیں۔"
+            ins = f"آج آپ نے {steps} قدم اٹھائے ہیں۔ متحرک رہنے سے آپ کی مجموعی صحت اور توانائی بہتر رہے گی۔"
+        else:
+            fb = f"Your goal of {step_goal} steps aligns with your profile." if adequate else f"{step_goal} steps is below the recommended minimum of {min_goal} steps for your health profile."
+            ins = f"You have logged {steps} steps today. Consistent daily movement supports your metabolism and overall wellness."
+
+        return {
+            "optimal_step_goal": optimal,
+            "is_goal_adequate": adequate,
+            "goal_feedback": fb,
+            "insight": ins,
+            "condition_detected": detected
+        }
+

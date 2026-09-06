@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import datetime
 from app.db.supabase_client import get_supabase_admin_client
 from app.services.gemini_service import GeminiService
@@ -13,6 +13,7 @@ class SwapRequest(BaseModel):
     user_id: str
     recent_meals: List[str]
     language: str = "en"
+    family_member_id: Optional[str] = None
 
 @router.get("/habit-score/{user_id}")
 async def get_habit_score(
@@ -127,15 +128,43 @@ async def get_food_swaps(req: SwapRequest, authenticated_user_id: str = Depends(
     try:
         supabase = get_supabase_admin_client()
         
-        # Fetch user health profile (non-blocking thread pool)
-        profile_res = await run_in_threadpool(
-            lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
-        )
-        profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
+        profile = None
+        if req.family_member_id:
+            fam_res = await run_in_threadpool(
+                lambda: supabase.table('family_members').select('*').eq('id', req.family_member_id).maybe_single().execute()
+            )
+            fam_data = fam_res.data if hasattr(fam_res, 'data') else fam_res
+            if fam_data:
+                profile = {
+                    'goal': 'General Family Health',
+                    'medical_conditions': fam_data.get('medical_conditions', []),
+                    'dietary_restrictions': fam_data.get('dietary_restrictions', []),
+                }
+
+        if not profile:
+            # Fetch user health profile (non-blocking thread pool)
+            profile_res = await run_in_threadpool(
+                lambda: supabase.table('health_profiles').select('*').eq('user_id', req.user_id).maybe_single().execute()
+            )
+            profile = profile_res.data if hasattr(profile_res, 'data') else profile_res
         
         # Generate food swaps (non-blocking thread pool)
-        swaps = await run_in_threadpool(GeminiService.generate_food_swaps, req.recent_meals, profile, req.language)
+        result = await run_in_threadpool(GeminiService.generate_food_swaps, req.recent_meals, profile, req.language)
         
-        return {"swaps": swaps}
+        if isinstance(result, dict):
+            swaps_list = result.get("swaps", [])
+            is_healthy = result.get("is_healthy", len(swaps_list) == 0)
+            return {
+                "is_healthy": bool(is_healthy),
+                "message": str(result.get("message", "")),
+                "swaps": swaps_list
+            }
+        elif isinstance(result, list):
+            return {
+                "is_healthy": len(result) == 0,
+                "message": "",
+                "swaps": result
+            }
+        return {"is_healthy": True, "message": "", "swaps": []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

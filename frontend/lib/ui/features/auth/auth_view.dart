@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/language_controller.dart';
+import '../../widgets/terms_dialog.dart';
 import 'forgot_password_view.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -184,55 +185,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showTermsDialog() {
-    final isUrdu = LanguageController.instance.isUrdu;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF161A22),
-          title: Text(
-            isUrdu ? 'شرائط و ضوابط' : 'Terms & Policies',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Text(
-              isUrdu
-                  ? 'نیوٹریسنس (NutriSense) میں خوش آمدید!\n\n'
-                    'نیوٹریسنس آپ کی صحت، نیوٹریشن اور جسمانی سرگرمیوں کو ٹریک کرنے میں مدد کے لیے بنایا گیا ہے۔\n\n'
-                    'اہم طبی دستبرداری (Disclaimer):\n'
-                    'نیوٹریسنس کا مقصد صحت سے متعلق معلومات اور ٹریکنگ کے آلات فراہم کرنا ہے۔ ہم ڈاکٹر نہیں ہیں اور یہ ایپ طبی مشورہ، تشخیص یا علاج فراہم نہیں کرتی۔ طبی حالت کے سلسلے میں ہمیشہ اپنے معالج سے مشورہ لیں۔\n\n'
-                    'اس ایپ کو استعمال کر کے آپ تسلیم کرتے ہیں کہ فراہم کردہ معلومات صرف تعلیمی اور آگاہی کے مقاصد کے لیے ہیں۔'
-                  : 'Welcome to NutriSense!\n\n'
-                    'NutriSense is designed to help you track your fitness, meals, and general well-being.\n\n'
-                    'IMPORTANT MEDICAL DISCLAIMER:\n'
-                    'NutriSense aims to provide health education and tracking tools. '
-                    'We are NOT doctors, and this app does NOT provide medical advice, diagnosis, or treatment. '
-                    'Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.\n\n'
-                    'By using this app, you acknowledge that the information provided is for educational purposes only.',
-              textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
-              style: TextStyle(
-                color: Colors.white,
-                height: 1.5,
-                fontSize: isUrdu ? 16 : 14,
-                fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                isUrdu ? 'میں سمجھ گیا / گئی' : 'I Understand',
-                style: TextStyle(fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    showTermsAndPrivacyDialog(context);
   }
 
   @override
