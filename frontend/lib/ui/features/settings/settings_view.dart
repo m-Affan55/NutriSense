@@ -18,6 +18,7 @@ import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
+import '../health_sync/health_sync_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../family_profiles/family_viewmodel.dart';
 import '../chat/clinic_finder_screen.dart';
@@ -247,11 +248,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .eq('user_id', user.id);
       }
 
-      // 4. Invalidate local client-side caches so Workout and Swaps regenerate under new conditions
+      // 4. Invalidate local client-side caches so Workout, Swaps, and Health Metrics regenerate under new conditions
       await WorkoutService.instance.clearPlanCache(userId: user.id);
       await SwapService.invalidateSwapsCache(userId: user.id);
+      await HealthSyncViewModel.clearInsightCache(user.id);
 
-      // 5. Broadcast profile update to reactive listeners (Dashboard calorie rings, Coach, Workout)
+      // 5. Broadcast profile update to reactive listeners (Dashboard calorie rings, Coach, Workout, Health Metrics)
       ProfileSyncNotifier.instance.notifyProfileChanged();
 
       if (mounted) {

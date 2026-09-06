@@ -8,6 +8,8 @@ import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/profile_sync_notifier.dart';
+import '../family_profiles/family_viewmodel.dart';
 import 'health_sync_viewmodel.dart';
 
 class HealthSyncView extends StatefulWidget {
@@ -33,9 +35,17 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
     );
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     _vm.addListener(_onVmChanged);
+    ProfileSyncNotifier.instance.addListener(_onProfileOrFamilyChanged);
+    FamilyViewModel.instance.addListener(_onProfileOrFamilyChanged);
     LanguageController.instance.addListener(_loadLanguage);
     _loadLanguage();
     _vm.loadAll(language: _language);
+  }
+
+  void _onProfileOrFamilyChanged() {
+    if (mounted) {
+      _vm.loadAll(forceAi: true, language: _language);
+    }
   }
 
   @override
@@ -67,6 +77,8 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     LanguageController.instance.removeListener(_loadLanguage);
+    ProfileSyncNotifier.instance.removeListener(_onProfileOrFamilyChanged);
+    FamilyViewModel.instance.removeListener(_onProfileOrFamilyChanged);
     _vm.removeListener(_onVmChanged);
     _vm.dispose();
     _ringController.dispose();
@@ -242,7 +254,7 @@ class _HealthSyncViewState extends State<HealthSyncView> with TickerProviderStat
               child: _vm.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: _vm.loadAll,
+                      onRefresh: () => _vm.loadAll(forceAi: true, language: _language),
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 40),

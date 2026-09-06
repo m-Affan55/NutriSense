@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_client.dart';
 import '../../../core/health_service.dart';
+import '../family_profiles/family_viewmodel.dart';
 
 /// ViewModel for the Health Sync Dashboard across all devices (Android, iOS, Windows, Web).
 class HealthSyncViewModel extends ChangeNotifier {
@@ -101,8 +102,38 @@ class HealthSyncViewModel extends ChangeNotifier {
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
-  static String _cacheKey(String prefix, String userId) {
-    return '${prefix}_${userId}_${_todayDateKey()}';
+  static String _cacheKey(String prefix, String userId, [String? familyMemberId]) {
+    final memberScope = (familyMemberId != null && familyMemberId.isNotEmpty) ? familyMemberId : 'primary';
+    return '${prefix}_${userId}_${memberScope}_${_todayDateKey()}';
+  }
+
+  /// Clears locally cached AI insight keys for [userId] (called when medical profile or goals change in Settings).
+  static Future<void> clearInsightCache(String userId, [String? familyMemberId]) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final memberScope = (familyMemberId != null && familyMemberId.isNotEmpty) ? familyMemberId : 'primary';
+      final today = _todayDateKey();
+      final keys = [
+        'health_sync_ai_insight_${userId}_${memberScope}_$today',
+        'health_sync_ai_optimal_goal_${userId}_${memberScope}_$today',
+        'health_sync_ai_adequate_${userId}_${memberScope}_$today',
+        'health_sync_ai_feedback_${userId}_${memberScope}_$today',
+        'health_sync_ai_condition_${userId}_${memberScope}_$today',
+        'health_sync_last_steps_${userId}_${memberScope}_$today',
+        // Also clear unpartitioned legacy keys
+        'health_sync_ai_insight_${userId}_$today',
+        'health_sync_ai_optimal_goal_${userId}_$today',
+        'health_sync_ai_adequate_${userId}_$today',
+        'health_sync_ai_feedback_${userId}_$today',
+        'health_sync_ai_condition_${userId}_$today',
+        'health_sync_last_steps_${userId}_$today',
+      ];
+      for (final k in keys) {
+        await prefs.remove(k);
+      }
+    } catch (e) {
+      debugPrint('[HealthSyncVM] clearInsightCache error: $e');
+    }
   }
 
   /// Generates or returns the AI health insight based on real activity and profile.
@@ -149,7 +180,7 @@ class HealthSyncViewModel extends ChangeNotifier {
   }
 
   /// Load all health activity and fetch or load cached AI insights.
-  Future<void> loadAll({String language = 'en'}) async {
+  Future<void> loadAll({bool forceAi = false, String language = 'en'}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -166,7 +197,7 @@ class HealthSyncViewModel extends ChangeNotifier {
     notifyListeners();
 
     // Fetch or warm up AI insights in background (0ms UI blocking)
-    await fetchOrLoadAiInsight(language: language);
+    await fetchOrLoadAiInsight(force: forceAi, language: language);
   }
 
   /// Fetches AI metabolic insight and optimal goal recommendations with local daily caching.
@@ -175,14 +206,59 @@ class HealthSyncViewModel extends ChangeNotifier {
     if (user == null) return;
     final userId = user.id;
 
+    final activeMember = FamilyViewModel.instance.activeMember;
+    final familyMemberId = activeMember?.id;
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final insightKey = _cacheKey('health_sync_ai_insight', userId);
-      final optimalGoalKey = _cacheKey('health_sync_ai_optimal_goal', userId);
-      final adequateKey = _cacheKey('health_sync_ai_adequate', userId);
-      final feedbackKey = _cacheKey('health_sync_ai_feedback', userId);
-      final conditionKey = _cacheKey('health_sync_ai_condition', userId);
-      final stepsKey = _cacheKey('health_sync_last_steps', userId);
+      final insightKey = _cacheKey('health_sync_ai_insight', userId, familyMemberId);
+      final optimalGoalKey = _cacheKey('health_sync_ai_optimal_goal', userId, familyMemberId);
+      final adequateKey = _cacheKey('health_sync_ai_adequate', userId, familyMemberId);
+      final feedbackKey = _cacheKey('health_sync_ai_feedback', userId, familyMemberId);
+      final conditionKey = _cacheKey('health_sync_ai_condition', userId, familyMemberId);
+      final stepsKey = _cacheKey('health_sync_last_steps', userId, familyMemberId);
+
+      // Verify cached condition against current profile in Supabase to guarantee reactivity
+      if (!force && prefs.containsKey(conditionKey)) {
+        try {
+          List<String> currentConditions = [];
+          if (familyMemberId != null && familyMemberId.isNotEmpty) {
+            final famRes = await Supabase.instance.client
+                .from('family_members')
+                .select('medical_conditions')
+                .eq('id', familyMemberId)
+                .maybeSingle();
+            currentConditions = (famRes?['medical_conditions'] as List?)
+                    ?.map((e) => e.toString().toLowerCase())
+                    .toList() ??
+                [];
+          } else {
+            final profileRes = await Supabase.instance.client
+                .from('health_profiles')
+                .select('medical_conditions')
+                .eq('user_id', userId)
+                .maybeSingle();
+            currentConditions = (profileRes?['medical_conditions'] as List?)
+                    ?.map((e) => e.toString().toLowerCase())
+                    .toList() ??
+                [];
+          }
+
+          final cachedCondition = prefs.getString(conditionKey)?.toLowerCase() ?? '';
+          if (currentConditions.isNotEmpty) {
+            final hasMatch = currentConditions.any((c) => c.contains(cachedCondition) || cachedCondition.contains(c));
+            if (!hasMatch) {
+              debugPrint('[HealthSyncVM] Medical condition changed (cached: $cachedCondition, db: $currentConditions). Invalidating stale AI insight.');
+              force = true;
+            }
+          } else if (cachedCondition.isNotEmpty && cachedCondition != 'general health') {
+            debugPrint('[HealthSyncVM] Medical condition cleared. Invalidating stale AI insight.');
+            force = true;
+          }
+        } catch (dbErr) {
+          debugPrint('[HealthSyncVM] Condition check error: $dbErr');
+        }
+      }
 
       // 1. Read from local cache if valid and not forced
       if (!force && prefs.containsKey(insightKey)) {
@@ -222,6 +298,8 @@ class HealthSyncViewModel extends ChangeNotifier {
         'heart_rate': _todayActivity.heartRateBpm,
         'source': _todayActivity.source,
         'language': language,
+        if (familyMemberId != null && familyMemberId.isNotEmpty)
+          'family_member_id': familyMemberId,
       });
 
       final res = await http
@@ -262,7 +340,9 @@ class HealthSyncViewModel extends ChangeNotifier {
   static Future<void> prefetchDailyInsight(String userId, {String language = 'en'}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final insightKey = _cacheKey('health_sync_ai_insight', userId);
+      final activeMember = FamilyViewModel.instance.activeMember;
+      final familyMemberId = activeMember?.id;
+      final insightKey = _cacheKey('health_sync_ai_insight', userId, familyMemberId);
       if (prefs.containsKey(insightKey)) return; // Already cached for today!
 
       final activity = await HealthService.instance.getTodayActivity();
@@ -278,6 +358,8 @@ class HealthSyncViewModel extends ChangeNotifier {
         'heart_rate': activity.heartRateBpm,
         'source': activity.source,
         'language': language,
+        if (familyMemberId != null && familyMemberId.isNotEmpty)
+          'family_member_id': familyMemberId,
       });
 
       final res = await http
@@ -293,11 +375,11 @@ class HealthSyncViewModel extends ChangeNotifier {
         final condition = data['condition_detected'] as String?;
 
         if (insight != null) await prefs.setString(insightKey, insight);
-        if (optimalGoal != null) await prefs.setInt(_cacheKey('health_sync_ai_optimal_goal', userId), optimalGoal);
-        await prefs.setBool(_cacheKey('health_sync_ai_adequate', userId), adequate);
-        if (feedback != null) await prefs.setString(_cacheKey('health_sync_ai_feedback', userId), feedback);
-        if (condition != null) await prefs.setString(_cacheKey('health_sync_ai_condition', userId), condition);
-        await prefs.setInt(_cacheKey('health_sync_last_steps', userId), activity.steps);
+        if (optimalGoal != null) await prefs.setInt(_cacheKey('health_sync_ai_optimal_goal', userId, familyMemberId), optimalGoal);
+        await prefs.setBool(_cacheKey('health_sync_ai_adequate', userId, familyMemberId), adequate);
+        if (feedback != null) await prefs.setString(_cacheKey('health_sync_ai_feedback', userId, familyMemberId), feedback);
+        if (condition != null) await prefs.setString(_cacheKey('health_sync_ai_condition', userId, familyMemberId), condition);
+        await prefs.setInt(_cacheKey('health_sync_last_steps', userId, familyMemberId), activity.steps);
       }
     } catch (e) {
       debugPrint('[HealthSyncVM] prefetchDailyInsight error: $e');
