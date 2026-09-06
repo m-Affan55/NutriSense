@@ -266,4 +266,16 @@ class WorkoutService {
     final key = '$_completedKeyPrefix${userId}_${dayName}_$exerciseName';
     return prefs.getBool(key) ?? false;
   }
+
+  /// Invalidates the local cached workout plan across all languages for a user.
+  Future<void> clearPlanCache({String? userId}) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final uid = userId ?? user?.id ?? 'guest_user';
+
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('$_cacheKeyPrefix$uid')).toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
 }

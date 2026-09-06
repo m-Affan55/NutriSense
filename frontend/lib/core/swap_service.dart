@@ -40,6 +40,20 @@ class SwapService {
     highlightedFoodNotifier.value = null;
   }
 
+  /// Clears in-memory and persisted swap cache when user profile/conditions change.
+  static Future<void> invalidateSwapsCache({String? userId}) async {
+    final uid = _resolveUserId(userId);
+    cachedSwaps = [];
+    highlightNotifier.value = false;
+    highlightedFoodNotifier.value = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKeyList(uid));
+    } catch (e) {
+      debugPrint('Error invalidating swaps cache: $e');
+    }
+  }
+
   /// Initializes cached swaps from user-scoped SharedPreferences, wiping if new day or user changed.
   static Future<void> initFromStorage({String? userId}) async {
     try {

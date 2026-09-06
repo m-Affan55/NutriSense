@@ -4,6 +4,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../core/workout_service.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/profile_sync_notifier.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -27,6 +28,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
     super.initState();
     _language = LanguageController.instance.currentLanguage;
     LanguageController.instance.addListener(_onLanguageChange);
+    ProfileSyncNotifier.instance.addListener(_onProfileChange);
     _setInitialDayToToday();
     loadWorkoutData();
   }
@@ -34,12 +36,19 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   @override
   void dispose() {
     LanguageController.instance.removeListener(_onLanguageChange);
+    ProfileSyncNotifier.instance.removeListener(_onProfileChange);
     super.dispose();
   }
 
   void _onLanguageChange() {
     if (mounted) {
       _language = LanguageController.instance.currentLanguage;
+      loadWorkoutData(forceRefresh: true);
+    }
+  }
+
+  void _onProfileChange() {
+    if (mounted) {
       loadWorkoutData(forceRefresh: true);
     }
   }

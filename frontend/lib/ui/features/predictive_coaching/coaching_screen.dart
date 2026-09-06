@@ -7,6 +7,7 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../dashboard/dashboard_screen.dart' show CalorieRingPainter;
 import '../../../core/swap_service.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/profile_sync_notifier.dart';
 import '../../../core/language_controller.dart';
 
 class CoachingScreen extends StatefulWidget {
@@ -39,6 +40,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     _ringAnimation = CurvedAnimation(parent: _ringController, curve: Curves.easeOutCubic);
     
     MealSyncNotifier.instance.addListener(loadCoachingData);
+    ProfileSyncNotifier.instance.addListener(loadCoachingData);
     LanguageController.instance.addListener(loadCoachingData);
     SwapService.highlightNotifier.addListener(_handleHighlightChange);
     loadCoachingData();
@@ -80,6 +82,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
   @override
   void dispose() {
     MealSyncNotifier.instance.removeListener(loadCoachingData);
+    ProfileSyncNotifier.instance.removeListener(loadCoachingData);
     LanguageController.instance.removeListener(loadCoachingData);
     SwapService.highlightNotifier.removeListener(_handleHighlightChange);
     _ringController.dispose();

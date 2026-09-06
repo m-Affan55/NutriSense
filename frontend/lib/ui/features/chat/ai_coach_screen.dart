@@ -16,6 +16,7 @@ import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/profile_sync_notifier.dart';
 import 'clinic_finder_screen.dart';
 import 'voice_mode_overlay.dart';
 
@@ -58,6 +59,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     LanguageController.instance.addListener(_onLanguageChanged);
+    ProfileSyncNotifier.instance.addListener(_loadLanguageAndGreeting);
     _language = LanguageController.instance.currentLanguage;
     _initSpeechAndTts();
     _loadLanguageAndGreeting();
@@ -720,6 +722,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     LanguageController.instance.removeListener(_onLanguageChanged);
+    ProfileSyncNotifier.instance.removeListener(_loadLanguageAndGreeting);
     _silenceTimer?.cancel();
     _speechToText.cancel();
     // TtsService is a long-lived singleton, so detach this screen's callbacks

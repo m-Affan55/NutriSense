@@ -18,6 +18,7 @@ import '../family_profiles/family_viewmodel.dart';
 import '../family_profiles/family_view.dart';
 import '../onboarding/onboarding_view.dart';
 import '../../../core/meal_sync_notifier.dart';
+import '../../../core/profile_sync_notifier.dart';
 import '../../../core/language_controller.dart';
 import '../../../core/reminder_manager.dart';
 
@@ -82,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     FamilyViewModel.instance.addListener(_loadData);
     FamilyViewModel.instance.loadMembers();
     MealSyncNotifier.instance.addListener(_loadData);
+    ProfileSyncNotifier.instance.addListener(_loadData);
     LanguageController.instance.addListener(_loadData);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,6 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     WidgetsBinding.instance.removeObserver(this);
     FamilyViewModel.instance.removeListener(_loadData);
     MealSyncNotifier.instance.removeListener(_loadData);
+    ProfileSyncNotifier.instance.removeListener(_loadData);
     LanguageController.instance.removeListener(_loadData);
     _ringController.dispose();
     _fabController.dispose();
