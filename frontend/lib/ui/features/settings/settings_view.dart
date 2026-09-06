@@ -53,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
   String _language = 'en';
+  bool _isUpdatingLocalization = false;
 
   // Dirty-state tracking
   bool _hasUnsavedChanges = false;
@@ -65,8 +66,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final List<String> _goals = ['fat_loss', 'muscle_gain', 'maintenance'];
   final List<String> _activityLevels = ['sedentary', 'lightly_active', 'moderately_active', 'very_active'];
-  final List<String> _medicalOptions = ["Diabetes", "Hypertension", "IBS", "Heart Disease", "None"];
-  final List<String> _dietaryOptions = ["Halal Only", "Vegetarian", "Lactose-Free", "Gluten-Free", "None"];
+  final List<String> _medicalOptions = [
+    'Diabetes / High blood sugar',
+    'High blood pressure',
+    'Heart-related issues',
+    'IBS or digestive problems',
+    'Food allergies',
+    'None',
+  ];
+  final List<String> _dietaryOptions = [
+    'Halal only',
+    'Vegetarian',
+    'Vegan',
+    'Lactose-Free',
+    'Gluten-Free',
+    'No restriction',
+    'Other',
+  ];
 
   List<String> _selectedMedical = [];
   List<String> _selectedDietary = [];
@@ -104,6 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _language = LanguageController.instance.currentLanguage;
+        _updateMedicalAndDietaryText();
       });
     }
   }
@@ -111,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Called whenever any editable field changes. Compares against the
   /// original snapshot to avoid marking dirty on programmatic fills.
   void _markDirty() {
-    if (_isLoading) return; // ignore changes during initial load
+    if (_isLoading || _isUpdatingLocalization) return; // ignore changes during initial load or localization updates
     if (!_hasUnsavedChanges && mounted) {
       setState(() => _hasUnsavedChanges = true);
     }
@@ -165,8 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _selectedMedical = medList.isEmpty ? [] : medList;
         _selectedDietary = dietList.isEmpty ? [] : dietList;
         
-        _medicalConditionsController.text = _selectedMedical.join(', ');
-        _dietaryRestrictionsController.text = _selectedDietary.join(', ');
+        _updateMedicalAndDietaryText();
         
         setState(() {
           _goal = healthRes['goal'];
@@ -561,44 +577,276 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _showSelectionDialog(String title, List<String> options, List<String> selectedOptions, bool isMultiSelect, Function(List<String>) onChange) async {
+  void _updateMedicalAndDietaryText() {
+    _isUpdatingLocalization = true;
+    try {
+      final separator = _language == 'ur' ? '، ' : ', ';
+      if (_selectedMedical.isEmpty) {
+        _medicalConditionsController.text = _language == 'ur' ? 'کوئی نہیں' : 'None';
+      } else {
+        _medicalConditionsController.text =
+            _selectedMedical.map(_getConditionLabel).join(separator);
+      }
+
+      if (_selectedDietary.isEmpty) {
+        _dietaryRestrictionsController.text =
+            _language == 'ur' ? 'کوئی پابندی نہیں' : 'No restriction';
+      } else {
+        _dietaryRestrictionsController.text =
+            _selectedDietary.map(_getDietaryLabel).join(separator);
+      }
+    } finally {
+      _isUpdatingLocalization = false;
+    }
+  }
+
+  String _normalizeCondition(String c) {
+    final lower = c.toLowerCase();
+    if (lower.contains('diabet') || lower.contains('sugar')) return 'diabetes';
+    if (lower.contains('pressure') || lower.contains('hypertens')) return 'hypertension';
+    if (lower.contains('heart')) return 'heart';
+    if (lower.contains('ibs') || lower.contains('digest')) return 'ibs';
+    if (lower.contains('allerg')) return 'allergies';
+    if (lower.contains('none') || lower.contains('کوئی')) return 'none';
+    return lower;
+  }
+
+  String _normalizeDietary(String d) {
+    final lower = d.toLowerCase();
+    if (lower.contains('halal')) return 'halal';
+    if (lower.contains('vegetarian')) return 'vegetarian';
+    if (lower.contains('vegan')) return 'vegan';
+    if (lower.contains('lactose')) return 'lactose';
+    if (lower.contains('gluten')) return 'gluten';
+    if (lower.contains('no restriction') || lower == 'none' || lower.contains('کوئی')) return 'none';
+    if (lower.contains('other')) return 'other';
+    return lower;
+  }
+
+  String _getGoalLabel(String? g) {
+    if (g == null || g.isEmpty) return '';
+    final lower = g.toLowerCase();
+    if (_language == 'ur') {
+      if (lower.contains('fat') || lower.contains('loss') || lower.contains('lose')) {
+        return 'وزن میں کمی / چربی گھٹائیں';
+      }
+      if (lower.contains('muscle') || lower.contains('gain') || lower.contains('bulk')) {
+        return 'مسلز بنائیں / طاقت بڑھائیں';
+      }
+      if (lower.contains('maintain')) {
+        return 'وزن اور صحت برقرار رکھیں';
+      }
+      if (lower.contains('diabet') || lower.contains('sugar')) {
+        return 'ذیابیطس / شوگر کنٹرول';
+      }
+      if (lower.contains('wellness') || lower.contains('better')) {
+        return 'عام صحت / بہتر خوراک';
+      }
+      return 'وزن اور صحت برقرار رکھیں';
+    } else {
+      if (lower.contains('fat') || lower.contains('loss') || lower.contains('lose')) {
+        return 'Fat Loss';
+      }
+      if (lower.contains('muscle') || lower.contains('gain') || lower.contains('bulk')) {
+        return 'Muscle Gain';
+      }
+      if (lower.contains('maintain')) {
+        return 'Maintenance';
+      }
+      if (lower.contains('diabet') || lower.contains('sugar')) {
+        return 'Manage Diabetes';
+      }
+      if (lower.contains('wellness') || lower.contains('better')) {
+        return 'General Wellness';
+      }
+      return g.replaceAll('_', ' ').toUpperCase();
+    }
+  }
+
+  String _getActivityLabel(String? a) {
+    if (a == null || a.isEmpty) return '';
+    final lower = a.toLowerCase();
+    if (_language == 'ur') {
+      if (lower.contains('sedentary')) {
+        return 'سست / زیادہ تر بیٹھے رہنے والا';
+      }
+      if (lower.contains('lightly') || lower.contains('light')) {
+        return 'ہلکی سرگرمی';
+      }
+      if (lower.contains('moderately') || lower.contains('moderate')) {
+        return 'معتدل سرگرمی';
+      }
+      if (lower.contains('very') || lower.contains('active')) {
+        return 'بہت زیادہ فعال';
+      }
+      return a;
+    } else {
+      if (lower.contains('sedentary')) {
+        return 'Sedentary';
+      }
+      if (lower.contains('lightly') || lower.contains('light')) {
+        return 'Lightly Active';
+      }
+      if (lower.contains('moderately') || lower.contains('moderate')) {
+        return 'Moderately Active';
+      }
+      if (lower.contains('very') || lower.contains('active')) {
+        return 'Very Active';
+      }
+      return a.replaceAll('_', ' ').toUpperCase();
+    }
+  }
+
+  String _getConditionLabel(String c) {
+    final lower = c.toLowerCase();
+    if (_language == 'ur') {
+      if (lower.contains('diabet') || lower.contains('sugar')) {
+        return 'ذیابیطس / ہائی بلڈ شوگر';
+      }
+      if (lower.contains('pressure') || lower.contains('hypertens')) {
+        return 'ہائی بلڈ پریشر';
+      }
+      if (lower.contains('heart')) {
+        return 'دل کے امراض';
+      }
+      if (lower.contains('ibs') || lower.contains('digest')) {
+        return 'معدے / ہاضمے کے مسائل (IBS)';
+      }
+      if (lower.contains('allerg')) {
+        return 'کھانے کی اشیاء سے الرجی';
+      }
+      if (lower == 'none' || lower.contains('کوئی')) {
+        return 'کوئی نہیں';
+      }
+      return c;
+    } else {
+      if (lower.contains('diabet') || lower.contains('sugar')) {
+        return 'Diabetes / High blood sugar';
+      }
+      if (lower.contains('pressure') || lower.contains('hypertens')) {
+        return 'High blood pressure';
+      }
+      if (lower.contains('heart')) {
+        return 'Heart-related issues';
+      }
+      if (lower.contains('ibs') || lower.contains('digest')) {
+        return 'IBS or digestive problems';
+      }
+      if (lower.contains('allerg')) {
+        return 'Food allergies';
+      }
+      if (lower == 'none') {
+        return 'None';
+      }
+      return c;
+    }
+  }
+
+  String _getDietaryLabel(String d) {
+    final lower = d.toLowerCase();
+    if (_language == 'ur') {
+      if (lower.contains('halal')) return 'صرف حلال';
+      if (lower.contains('vegetarian')) return 'سبزی خور';
+      if (lower.contains('vegan')) return 'ویگن';
+      if (lower.contains('lactose')) return 'لیکٹوز فری';
+      if (lower.contains('gluten')) return 'گلوٹن فری';
+      if (lower.contains('no restriction') || lower == 'none' || lower.contains('کوئی')) {
+        return 'کوئی پابندی نہیں';
+      }
+      if (lower.contains('other')) return 'دیگر';
+      return d;
+    } else {
+      if (lower.contains('halal')) return 'Halal only';
+      if (lower.contains('vegetarian')) return 'Vegetarian';
+      if (lower.contains('vegan')) return 'Vegan';
+      if (lower.contains('lactose')) return 'Lactose-Free';
+      if (lower.contains('gluten')) return 'Gluten-Free';
+      if (lower.contains('no restriction') || lower == 'none') return 'No restriction';
+      if (lower.contains('other')) return 'Other';
+      return d;
+    }
+  }
+
+  Future<void> _showSelectionDialog({
+    required String title,
+    required List<String> options,
+    required List<String> selectedOptions,
+    required bool isMultiSelect,
+    required String Function(String) labelBuilder,
+    bool Function(String opt, List<String> selected)? isSelectedChecker,
+    required Function(List<String>) onChange,
+  }) async {
     List<String> tempSelected = List.from(selectedOptions);
+    final isUrdu = _language == 'ur';
     await showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDlgState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF161A22),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              title: Text(
+                title,
+                textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                ),
+              ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
               content: Directionality(
-                textDirection: TextDirection.ltr,
+                textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: options.map((opt) {
-                      final isSelected = tempSelected.contains(opt);
+                      final isSelected = isSelectedChecker != null
+                          ? isSelectedChecker(opt, tempSelected)
+                          : tempSelected.contains(opt);
                       return ListTile(
                         title: Text(
-                          opt, 
-                          style: GoogleFonts.inter(
+                          labelBuilder(opt),
+                          style: TextStyle(
                             color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white70,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 15,
+                            fontSize: isUrdu ? 16 : 15,
+                            fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
                           ),
                         ),
+                        trailing: isMultiSelect
+                            ? Icon(
+                                isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white38,
+                              )
+                            : (isSelected ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary) : null),
                         onTap: () {
-                          setState(() {
+                          setDlgState(() {
                             if (isMultiSelect) {
+                              final isNone = opt.toLowerCase() == 'none' ||
+                                  opt.toLowerCase() == 'no restriction' ||
+                                  opt.contains('کوئی');
                               if (isSelected) {
-                                tempSelected.remove(opt);
-                              } else {
-                                if (opt == 'None') {
-                                  tempSelected = ['None'];
+                                if (isSelectedChecker != null) {
+                                  tempSelected.removeWhere((s) => isSelectedChecker(opt, [s]));
                                 } else {
-                                  tempSelected.remove('None');
+                                  tempSelected.remove(opt);
+                                }
+                              } else {
+                                if (isNone) {
+                                  tempSelected = [opt];
+                                } else {
+                                  if (isSelectedChecker != null) {
+                                    tempSelected.removeWhere((s) =>
+                                        s.toLowerCase() == 'none' ||
+                                        s.toLowerCase() == 'no restriction' ||
+                                        s.contains('کوئی'));
+                                  } else {
+                                    tempSelected.remove('None');
+                                    tempSelected.remove('No restriction');
+                                  }
                                   tempSelected.add(opt);
                                 }
                               }
@@ -615,6 +863,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+              actions: isMultiSelect
+                  ? [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          isUrdu ? 'مکمل' : 'Done',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: isUrdu ? 'JameelNooriNastaleeq' : null,
+                          ),
+                        ),
+                      ),
+                    ]
+                  : null,
             );
           },
         );
@@ -844,6 +1107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (val != null) {
                           setState(() {
                             _language = val;
+                            _updateMedicalAndDietaryText();
                           });
                           await LanguageController.instance.setLanguage(val);
                           final prefs = await SharedPreferences.getInstance();
@@ -955,14 +1219,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () => _showSelectionDialog(
-                        _t('goal'),
-                        _goals.map((g) => g.replaceAll('_', ' ').toUpperCase()).toList(),
-                        [_goal?.replaceAll('_', ' ').toUpperCase() ?? ''],
-                        false,
-                        (selected) {
+                        title: _t('goal'),
+                        options: _goals,
+                        selectedOptions: [_goal ?? ''],
+                        isMultiSelect: false,
+                        labelBuilder: _getGoalLabel,
+                        onChange: (selected) {
                           if (selected.isNotEmpty) {
                             setState(() {
-                              _goal = _goals.firstWhere((g) => g.replaceAll('_', ' ').toUpperCase() == selected.first);
+                              _goal = selected.first;
                             });
                             _markDirty();
                           }
@@ -970,10 +1235,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: IgnorePointer(
                         child: TextFormField(
-                          key: ValueKey(_goal),
-                          initialValue: _goal?.replaceAll('_', ' ').toUpperCase(),
-                          textDirection: TextDirection.ltr,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+                          key: ValueKey('${_goal}_$_language'),
+                          initialValue: _getGoalLabel(_goal),
+                          textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+                          style: _language == 'ur'
+                              ? const TextStyle(fontFamily: 'JameelNooriNastaleeq', color: Colors.white, fontSize: 16)
+                              : GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('goal'),
                             border: const OutlineInputBorder(),
@@ -985,14 +1252,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () => _showSelectionDialog(
-                        _t('activity'),
-                        _activityLevels.map((a) => a.replaceAll('_', ' ').toUpperCase()).toList(),
-                        [_activityLevel?.replaceAll('_', ' ').toUpperCase() ?? ''],
-                        false,
-                        (selected) {
+                        title: _t('activity'),
+                        options: _activityLevels,
+                        selectedOptions: [_activityLevel ?? ''],
+                        isMultiSelect: false,
+                        labelBuilder: _getActivityLabel,
+                        onChange: (selected) {
                           if (selected.isNotEmpty) {
                             setState(() {
-                              _activityLevel = _activityLevels.firstWhere((a) => a.replaceAll('_', ' ').toUpperCase() == selected.first);
+                              _activityLevel = selected.first;
                             });
                             _markDirty();
                           }
@@ -1000,10 +1268,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: IgnorePointer(
                         child: TextFormField(
-                          key: ValueKey(_activityLevel),
-                          initialValue: _activityLevel?.replaceAll('_', ' ').toUpperCase(),
-                          textDirection: TextDirection.ltr,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+                          key: ValueKey('${_activityLevel}_$_language'),
+                          initialValue: _getActivityLabel(_activityLevel),
+                          textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+                          style: _language == 'ur'
+                              ? const TextStyle(fontFamily: 'JameelNooriNastaleeq', color: Colors.white, fontSize: 16)
+                              : GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('activity'),
                             border: const OutlineInputBorder(),
@@ -1015,14 +1285,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 20),
                     InkWell(
                       onTap: () => _showSelectionDialog(
-                        _t('medicalConditions'),
-                        _medicalOptions,
-                        _selectedMedical,
-                        true,
-                        (selected) {
+                        title: _t('medicalConditions'),
+                        options: _medicalOptions,
+                        selectedOptions: _selectedMedical,
+                        isMultiSelect: true,
+                        labelBuilder: _getConditionLabel,
+                        isSelectedChecker: (opt, sel) => sel.any((s) => _normalizeCondition(s) == _normalizeCondition(opt)),
+                        onChange: (selected) {
                           setState(() {
                             _selectedMedical = selected;
-                            _medicalConditionsController.text = selected.join(', ');
+                            _updateMedicalAndDietaryText();
                           });
                           _markDirty();
                         },
@@ -1030,8 +1302,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: IgnorePointer(
                         child: TextFormField(
                           controller: _medicalConditionsController,
-                          textDirection: TextDirection.ltr,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+                          textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+                          style: _language == 'ur'
+                              ? const TextStyle(fontFamily: 'JameelNooriNastaleeq', color: Colors.white, fontSize: 16)
+                              : GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('medicalConditions'),
                             border: const OutlineInputBorder(),
@@ -1043,14 +1317,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () => _showSelectionDialog(
-                        _t('dietaryRestrictions'),
-                        _dietaryOptions,
-                        _selectedDietary,
-                        true,
-                        (selected) {
+                        title: _t('dietaryRestrictions'),
+                        options: _dietaryOptions,
+                        selectedOptions: _selectedDietary,
+                        isMultiSelect: true,
+                        labelBuilder: _getDietaryLabel,
+                        isSelectedChecker: (opt, sel) => sel.any((s) => _normalizeDietary(s) == _normalizeDietary(opt)),
+                        onChange: (selected) {
                           setState(() {
                             _selectedDietary = selected;
-                            _dietaryRestrictionsController.text = selected.join(', ');
+                            _updateMedicalAndDietaryText();
                           });
                           _markDirty();
                         },
@@ -1058,8 +1334,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: IgnorePointer(
                         child: TextFormField(
                           controller: _dietaryRestrictionsController,
-                          textDirection: TextDirection.ltr,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 16),
+                          textDirection: _language == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+                          style: _language == 'ur'
+                              ? const TextStyle(fontFamily: 'JameelNooriNastaleeq', color: Colors.white, fontSize: 16)
+                              : GoogleFonts.inter(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             labelText: _t('dietaryRestrictions'),
                             border: const OutlineInputBorder(),
@@ -1207,7 +1485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const Divider(color: Colors.white12, height: 1),
                             // Ramadan Alarms Toggle
                             SwitchListTile(
-                              secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF00E676)),
+                              secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF00D2FF)),
                               title: Text(
                                 _t('ramadanReminders'),
                                 style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -1217,8 +1495,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: const TextStyle(color: Colors.white60, fontSize: 11),
                               ),
                               value: RamadanController.instance.remindersEnabled,
-                              activeThumbColor: const Color(0xFF00E676),
-                              activeTrackColor: const Color(0xFF00E676).withAlpha(60),
+                              activeThumbColor: const Color(0xFF00D2FF),
+                              activeTrackColor: const Color(0xFF00D2FF).withAlpha(60),
                               onChanged: (val) async {
                                 await RamadanController.instance.setRemindersEnabled(val);
                                 await ReminderManager.syncRemindersWithMode();

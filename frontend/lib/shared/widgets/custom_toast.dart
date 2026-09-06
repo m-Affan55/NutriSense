@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/ramadan_controller.dart';
 
 class CustomToast {
   static void show(
@@ -38,8 +39,10 @@ class CustomToast {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.hideCurrentSnackBar();
     
-    final effectiveBorderColor = borderColor ?? (isError ? Colors.redAccent.withAlpha(120) : const Color(0xFF00E676).withAlpha(120));
-    final effectiveIconColor = iconColor ?? (borderColor ?? (isError ? Colors.redAccent : const Color(0xFF00E676)));
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final defaultSuccessColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
+    final effectiveBorderColor = borderColor ?? (isError ? Colors.redAccent.withAlpha(120) : defaultSuccessColor.withAlpha(120));
+    final effectiveIconColor = iconColor ?? (borderColor ?? (isError ? Colors.redAccent : defaultSuccessColor));
     final effectiveIcon = icon ?? (isError ? Icons.error_outline : Icons.check_circle_outline);
 
     scaffoldMessenger.showSnackBar(

@@ -249,6 +249,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final carbController = TextEditingController();
     final fatController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final isRamadan = RamadanController.instance.isRamadanMode;
 
     showModalBottomSheet(
       context: context,
@@ -317,7 +318,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.restaurant, color: Color(0xFF00E676), size: 18),
+                            Icon(Icons.restaurant, color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676), size: 18),
                             const SizedBox(width: 8),
                             Expanded(
                               child: TextFormField(
@@ -409,7 +410,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         height: 48,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00E676),
+                            backgroundColor: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676),
                             foregroundColor: Colors.black,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -539,6 +540,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final carbCtrl = TextEditingController(text: carbsG.round().toString());
     final fatCtrl = TextEditingController(text: fatG.round().toString());
     final formKey = GlobalKey<FormState>();
+    final isRamadan = RamadanController.instance.isRamadanMode;
 
     showModalBottomSheet(
       context: context,
@@ -576,10 +578,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00E676).withAlpha(30),
+                              color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(30),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 20),
+                            child: Icon(Icons.auto_awesome, color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676), size: 20),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -588,7 +590,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                               children: [
                                 Text(
                                   _language == 'ur' ? 'AI نے میکروز کا اندازہ لگایا ✓' : 'AI Estimated Macros ✓',
-                                  style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -726,7 +728,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00E676),
+                            backgroundColor: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676),
                             foregroundColor: Colors.black,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -1192,7 +1194,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                       hintStyle: TextStyle(color: Colors.white.withAlpha(60)),
                                       filled: true,
                                       fillColor: const Color(0xFF161A22),
-                                      prefixIcon: const Icon(Icons.fitness_center, color: Color(0xFF00E676), size: 18),
+                                      prefixIcon: Icon(Icons.fitness_center, color: accentColor, size: 18),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(14),

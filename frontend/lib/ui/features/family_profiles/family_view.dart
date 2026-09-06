@@ -3,6 +3,7 @@ import '../../../data/models/family_member.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/ramadan_controller.dart';
 import 'family_viewmodel.dart';
 
 class FamilyView extends StatefulWidget {
@@ -158,6 +159,9 @@ class _FamilyViewState extends State<FamilyView> {
     ];
 
     String selectedGoal = existing?.goal ?? 'Maintain weight & stay healthy';
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final dialogAccent = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
+
     String relationship = existing?.relationship ?? 'child';
     String gender = existing?.gender ?? 'male';
     List<String> conditions = List<String>.from(existing?.medicalConditions ?? []);
@@ -340,7 +344,7 @@ class _FamilyViewState extends State<FamilyView> {
                               color: isSelected ? Colors.black : Colors.white70,
                             ),
                           ),
-                          selectedColor: const Color(0xFF00E676),
+                          selectedColor: dialogAccent,
                           backgroundColor: const Color(0xFF0D0F14),
                           onSelected: (selected) {
                             if (selected) {
@@ -406,7 +410,7 @@ class _FamilyViewState extends State<FamilyView> {
                             _getDietaryLabel(r),
                             style: TextStyle(fontSize: 12, color: isSelected ? Colors.black : Colors.white),
                           ),
-                          selectedColor: const Color(0xFF00E676),
+                          selectedColor: dialogAccent,
                           backgroundColor: const Color(0xFF0D0F14),
                           onSelected: (selected) {
                             setModalState(() {
@@ -452,7 +456,7 @@ class _FamilyViewState extends State<FamilyView> {
                               ),
                               Text(
                                 _language == 'ur' ? 'خودکار تجویز کردہ' : 'Auto-Calculated',
-                                style: const TextStyle(color: Color(0xFF00E676), fontSize: 11),
+                                style: TextStyle(color: dialogAccent, fontSize: 11),
                               ),
                             ],
                           ),
@@ -463,7 +467,7 @@ class _FamilyViewState extends State<FamilyView> {
                                 child: TextField(
                                   controller: calController,
                                   keyboardType: TextInputType.number,
-                                  style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     labelText: 'Calories (kcal)',
                                     labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
@@ -477,7 +481,7 @@ class _FamilyViewState extends State<FamilyView> {
                                 child: TextField(
                                   controller: proteinController,
                                   keyboardType: TextInputType.number,
-                                  style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     labelText: 'Protein (g)',
                                     labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
@@ -495,7 +499,7 @@ class _FamilyViewState extends State<FamilyView> {
                                 child: TextField(
                                   controller: carbsController,
                                   keyboardType: TextInputType.number,
-                                  style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : Colors.lightBlueAccent, fontSize: 14, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     labelText: 'Carbs (g)',
                                     labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
@@ -509,7 +513,7 @@ class _FamilyViewState extends State<FamilyView> {
                                 child: TextField(
                                   controller: fatController,
                                   keyboardType: TextInputType.number,
-                                  style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : Colors.redAccent, fontSize: 14, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     labelText: 'Fat (g)',
                                     labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
@@ -530,8 +534,8 @@ class _FamilyViewState extends State<FamilyView> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00E676),
-                          foregroundColor: const Color(0xFF0B101B),
+                          backgroundColor: dialogAccent,
+                          foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -590,6 +594,8 @@ class _FamilyViewState extends State<FamilyView> {
 
   @override
   Widget build(BuildContext context) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final primaryColor = isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676);
     final theme = Theme.of(context);
 
     return ListenableBuilder(
@@ -622,21 +628,25 @@ class _FamilyViewState extends State<FamilyView> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: activeMember != null
-                            ? [activeMember.color.withAlpha(50), const Color(0xFF161A22)]
-                            : [const Color(0xFF00E676).withAlpha(40), const Color(0xFF161A22)],
+                            ? [activeMember.color.withAlpha(50), isRamadan ? const Color(0xFF0E172A) : const Color(0xFF161A22)]
+                            : (isRamadan ? [const Color(0xFF00D2FF).withAlpha(40), const Color(0xFF0E172A)] : [const Color(0xFF00E676).withAlpha(40), const Color(0xFF161A22)]),
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: activeMember != null ? activeMember.color.withAlpha(90) : const Color(0xFF00E676).withAlpha(80),
+                        color: activeMember != null
+                            ? activeMember.color.withAlpha(90)
+                            : (isRamadan ? const Color(0xFF00D2FF).withAlpha(80) : const Color(0xFF00E676).withAlpha(80)),
                       ),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: activeMember != null ? activeMember.color : const Color(0xFF00E676),
+                          backgroundColor: activeMember != null
+                              ? activeMember.color
+                              : (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)),
                           child: Text(
                             activeMember != null ? activeMember.relationshipEmoji : '🧑',
                             style: const TextStyle(fontSize: 20),
@@ -670,7 +680,7 @@ class _FamilyViewState extends State<FamilyView> {
                         if (activeMember != null)
                           TextButton(
                             style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF00E676),
+                              foregroundColor: primaryColor,
                               backgroundColor: Colors.black26,
                             ),
                             onPressed: () => _viewModel.setActiveMember(null),
@@ -690,6 +700,7 @@ class _FamilyViewState extends State<FamilyView> {
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       TextButton.icon(
+                        style: TextButton.styleFrom(foregroundColor: primaryColor),
                         icon: const Icon(Icons.add, size: 16),
                         label: Text(_language == 'ur' ? 'نیا ممبر' : 'Add Dependent'),
                         onPressed: () => _showAddEditMemberDialog(),
@@ -721,7 +732,7 @@ class _FamilyViewState extends State<FamilyView> {
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00E676),
+                              backgroundColor: primaryColor,
                               foregroundColor: const Color(0xFF0B101B),
                             ),
                             icon: const Icon(Icons.add),
@@ -872,7 +883,7 @@ class _FamilyViewState extends State<FamilyView> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: Colors.cyanAccent.withAlpha(25),
+                                          color: primaryColor.withAlpha(25),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(color: Colors.cyanAccent.withAlpha(80)),
                                         ),

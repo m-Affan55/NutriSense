@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_client.dart';
 import 'language_controller.dart';
+import 'ramadan_controller.dart';
 import '../shared/widgets/custom_toast.dart';
 import '../ui/features/navigation/main_navigation_screen.dart';
 import '../main.dart'; // To access globalNavigatorKey
@@ -225,7 +226,7 @@ class SwapService {
             encouragement,
             isError: false,
             icon: Icons.check_circle_rounded,
-            borderColor: const Color(0xFF00E676),
+            borderColor: RamadanController.instance.isRamadanMode ? const Color(0xFF00D2FF) : const Color(0xFF00E676),
             duration: const Duration(seconds: 5),
           );
           return;

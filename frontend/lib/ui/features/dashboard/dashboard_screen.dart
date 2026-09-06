@@ -400,7 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           },
                         ),
                         ListTile(
-                          leading: const Icon(Icons.wb_twilight, color: Color(0xFF00E676)),
+                          leading: const Icon(Icons.wb_twilight, color: Color(0xFF00D2FF)),
                           title: Text(
                             _language == 'ur' ? 'سحری کے وقت (500 ملی لیٹر)' : 'Sehri Hydration (500 ml)',
                             style: const TextStyle(color: Colors.white),
