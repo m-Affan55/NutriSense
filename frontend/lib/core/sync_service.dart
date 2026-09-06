@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'offline_cache.dart';
+import 'meal_sync_notifier.dart';
 
 /// Responsible for syncing locally cached (offline) meal and water logs
 /// to Supabase when a network connection is available.
@@ -30,6 +31,8 @@ class SyncService {
     if (_isSyncing) return;
     _isSyncing = true;
 
+    int syncedRowsCount = 0;
+
     try {
       // Check network before attempting
       final result = await Connectivity().checkConnectivity();
@@ -46,6 +49,9 @@ class SyncService {
       for (final meal in pendingMeals) {
         if (meal['user_id'] != userId) continue;
         try {
+          final rawFId = meal['family_member_id']?.toString().trim();
+          final fId = (rawFId != null && rawFId.isNotEmpty) ? rawFId : null;
+
           await supabase.from('meal_logs').insert({
             'user_id': meal['user_id'],
             'meal_type': meal['meal_type'],
@@ -56,13 +62,15 @@ class SyncService {
             'total_fat_g': meal['fat_g'],
             'logged_at': meal['logged_at'],
             'sync_id': meal['sync_id'],
-            'family_member_id': meal['family_member_id'],
+            'family_member_id': fId,
           });
           await _cache.markMealSynced(meal['local_id'] as int);
+          syncedRowsCount++;
           debugPrint('[SyncService] Meal synced: local_id=${meal['local_id']}');
         } on PostgrestException catch (e) {
           if (e.code == '23505') {
             await _cache.markMealSynced(meal['local_id'] as int);
+            syncedRowsCount++;
             debugPrint('[SyncService] Meal already synced in past (unique violation): local_id=${meal['local_id']}');
           } else {
             debugPrint('[SyncService] Meal sync failed (local_id=${meal['local_id']}): $e');
@@ -85,10 +93,12 @@ class SyncService {
             'sync_id': water['sync_id'],
           });
           await _cache.markWaterSynced(water['local_id'] as int);
+          syncedRowsCount++;
           debugPrint('[SyncService] Water synced: local_id=${water['local_id']}');
         } on PostgrestException catch (e) {
           if (e.code == '23505') {
             await _cache.markWaterSynced(water['local_id'] as int);
+            syncedRowsCount++;
             debugPrint('[SyncService] Water already synced in past (unique violation): local_id=${water['local_id']}');
           } else {
             debugPrint('[SyncService] Water sync failed (local_id=${water['local_id']}): $e');
@@ -98,7 +108,10 @@ class SyncService {
         }
       }
 
-      debugPrint('[SyncService] Sync complete');
+      debugPrint('[SyncService] Sync complete (synced $syncedRowsCount rows)');
+      if (syncedRowsCount > 0) {
+        MealSyncNotifier.instance.notifyMealChanged();
+      }
     } catch (e) {
       debugPrint('[SyncService] Sync error: $e');
     } finally {

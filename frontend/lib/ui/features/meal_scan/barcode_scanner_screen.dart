@@ -10,6 +10,7 @@ import '../../../shared/widgets/custom_toast.dart';
 import 'manual_log_screen.dart';
 import '../../../core/meal_sync_notifier.dart';
 import '../../../core/reminder_manager.dart';
+import '../family_profiles/family_viewmodel.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -348,6 +349,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 onPressed: () async {
                   try {
                     final user = Supabase.instance.client.auth.currentUser;
+                    final activeMemberId = FamilyViewModel.instance.activeMember?.id;
+                    final fId = (activeMemberId != null && activeMemberId.trim().isNotEmpty) ? activeMemberId.trim() : null;
+
                     if (user != null) {
                       await Supabase.instance.client.from('meal_logs').insert({
                         'user_id': user.id,
@@ -358,6 +362,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         'total_carbs_g': (product['carbs_g'] as num?)?.toDouble() ?? 0.0,
                         'total_fat_g': (product['fat_g'] as num?)?.toDouble() ?? 0.0,
                         'logged_at': DateTime.now().toUtc().toIso8601String(),
+                        'family_member_id': fId,
                       });
 
                       // Track adaptive meal logging streaks
@@ -369,7 +374,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       Navigator.pop(context);
                       Navigator.pop(context, true);
                       CustomToast.show(context, 'Food logged successfully!', isError: false);
-                      SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food');
+                      SwapService.checkMealForSwaps(product['product_name'] ?? 'Packaged Food', familyMemberId: fId);
                       MealSyncNotifier.instance.notifyMealChanged();
                     }
                   } catch (e) {

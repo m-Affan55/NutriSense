@@ -240,6 +240,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     // Merge offline pending meals (works even if Supabase fetch above threw)
     if (user != null && mounted) {
       try {
+        final activeMember = FamilyViewModel.instance.activeMember;
         final pendingMeals = kIsWeb ? <Map<String, dynamic>>[] : await OfflineCache.instance.getTodayPendingMeals(user.id);
         final pendingWaterMl = kIsWeb ? 0 : await OfflineCache.instance.getTodayPendingWaterMl(user.id);
         final pendingCount = kIsWeb ? 0 : await OfflineCache.instance.getTotalPendingCount(user.id);
@@ -247,6 +248,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         if (mounted) {
           setState(() {
             for (final m in pendingMeals) {
+              final fId = m['family_member_id']?.toString();
+              if (activeMember != null) {
+                if (fId != activeMember.id) continue;
+              } else {
+                if (fId != null && fId.isNotEmpty) continue;
+              }
               _consumedCalories += (m['calories'] as int? ?? 0);
               _consumedProtein  += (m['protein_g'] as int? ?? 0);
               _consumedCarbs    += (m['carbs_g'] as int? ?? 0);

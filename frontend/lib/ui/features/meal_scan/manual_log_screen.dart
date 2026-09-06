@@ -113,6 +113,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     }
   }
 
+  String _normalizeMealType(String type) {
+    final lower = type.trim().toLowerCase();
+    if (lower == 'sehri' || lower == 'suhoor') return 'breakfast';
+    if (lower == 'iftar') return 'dinner';
+    if (['breakfast', 'lunch', 'dinner', 'snack'].contains(lower)) return lower;
+    return 'snack';
+  }
+
   Future<void> _saveMealToStorage({
     required String mealName,
     required int calories,
@@ -126,36 +134,57 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('No session found');
 
-      if (kIsWeb) {
-        await supabase.from('meal_logs').insert({
-          'user_id': user.id,
-          'meal_type': _selectedMealType,
-          'notes': mealName,
-          'total_calories': calories,
-          'total_protein_g': proteinG.round(),
-          'total_carbs_g': carbsG.round(),
-          'total_fat_g': fatG.round(),
-          'logged_at': DateTime.now().toUtc().toIso8601String(),
-          'family_member_id': _selectedFamilyMemberId,
-        });
-      } else {
-        // Write to local SQLite cache
-        await OfflineCache.instance.insertPendingMeal(
-          userId: user.id,
-          mealType: _selectedMealType,
-          notes: mealName,
-          calories: calories,
-          proteinG: proteinG.round(),
-          carbsG: carbsG.round(),
-          fatG: fatG.round(),
-          familyMemberId: _selectedFamilyMemberId,
-        );
-        // Sync in background
-        SyncService.instance.syncPending(user.id);
+      final fId = (_selectedFamilyMemberId != null && _selectedFamilyMemberId!.trim().isNotEmpty)
+          ? _selectedFamilyMemberId!.trim()
+          : null;
+      final normalizedMealType = _normalizeMealType(_selectedMealType);
 
-        // Train adaptive reminder streaks
-        await ReminderManager.recordMealLogged(_selectedMealType, DateTime.now());
+      final payload = {
+        'user_id': user.id,
+        'meal_type': normalizedMealType,
+        'notes': mealName,
+        'total_calories': calories,
+        'total_protein_g': proteinG.round(),
+        'total_carbs_g': carbsG.round(),
+        'total_fat_g': fatG.round(),
+        'logged_at': DateTime.now().toUtc().toIso8601String(),
+        'family_member_id': fId,
+      };
+
+      bool remoteSaved = false;
+      try {
+        await supabase.from('meal_logs').insert(payload);
+        remoteSaved = true;
+      } catch (remoteErr) {
+        debugPrint('[ManualLog] Direct Supabase insert failed ($remoteErr), falling back to offline cache');
+      }
+
+      if (!remoteSaved) {
+        if (!kIsWeb) {
+          // Write to local SQLite cache
+          await OfflineCache.instance.insertPendingMeal(
+            userId: user.id,
+            mealType: normalizedMealType,
+            notes: mealName,
+            calories: calories,
+            proteinG: proteinG.round(),
+            carbsG: carbsG.round(),
+            fatG: fatG.round(),
+            familyMemberId: fId,
+          );
+          // Sync in background
+          SyncService.instance.syncPending(user.id);
+        } else {
+          throw Exception('Failed to connect to server and offline storage is not supported on web.');
+        }
+      }
+
+      // Train adaptive reminder streaks
+      try {
+        await ReminderManager.recordMealLogged(normalizedMealType, DateTime.now());
         await ReminderManager.updateAndCheckStreak();
+      } catch (streakErr) {
+        debugPrint('[ManualLog] Streak update non-fatal error: $streakErr');
       }
 
       if (mounted) {
@@ -163,7 +192,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             ? 'غذا محفوظ ہو گئی! ($calories کیلوریز | ${proteinG.round()}g پروٹین)'
             : 'Meal Logged! ($calories kcal • ${proteinG.round()}g P • ${carbsG.round()}g C • ${fatG.round()}g F)';
         CustomToast.show(context, successMsg, isError: false);
-        SwapService.checkMealForSwaps(mealName, familyMemberId: _selectedFamilyMemberId);
+        SwapService.checkMealForSwaps(mealName, familyMemberId: fId);
         MealSyncNotifier.instance.notifyMealChanged();
 
         if (Navigator.canPop(context)) {

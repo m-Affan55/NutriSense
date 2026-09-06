@@ -69,6 +69,10 @@ class WorkoutService:
         6. RAMADAN FASTING CONSIDERATIONS:
            - If Ramadan mode is active: Schedule sessions either 30-45 minutes before Iftar (light-to-moderate cardio/mobility) or 1.5 to 2 hours post-Iftar (resistance training), ensuring hydration during the non-fasting window.
 
+        7. AGE & DEPENDENT PERSONALIZATION:
+           - SENIOR / ELDERLY (Age >= 60): Focus on low-impact joint mobility, core stability, balance, fall prevention, and gentle resistance bands / chair stretches. STRICTLY FORBID maximal loads or complex plyometrics.
+           - YOUTH / CHILDREN (Age < 18): Focus on athletic fundamental movement, dynamic agility, bodyweight mechanics, posture, and fun mobility. STRICTLY FORBID heavy axial spinal loading.
+
         Return ONLY a JSON response strictly conforming to the WorkoutPlanResponse schema.
         """
         if language == "ur":

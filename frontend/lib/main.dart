@@ -50,25 +50,28 @@ Future<void> main(List<String> args) async {
   await LanguageController.instance.init();
   await SwapService.initFromStorage();
 
-  // Initialize and schedule local notifications
-  try {
-    await ReminderManager.init();
-    await ReminderManager.requestPermissions();
-    await ReminderManager.scheduleAllReminders();
-  } catch (e) {
-    debugPrint('[ReminderManager] Notification init failed: $e');
-  }
-
-  // Attempt to sync any offline-cached logs on startup
-  _triggerSyncIfLoggedIn();
-
-  // Re-sync whenever connectivity is restored
-  Connectivity().onConnectivityChanged.listen((results) {
-    final isOnline = results.any((r) => r != ConnectivityResult.none);
-    if (isOnline) _triggerSyncIfLoggedIn();
-  });
-
   runApp(const NutriSenseApp());
+
+  // Non-blocking deferred startup tasks: initialize notifications and background sync
+  // after the first frame renders. This prevents startup ANR on older devices.
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      await ReminderManager.init();
+      await ReminderManager.requestPermissions();
+      await ReminderManager.scheduleAllReminders();
+    } catch (e) {
+      debugPrint('[ReminderManager] Deferred notification init failed: $e');
+    }
+
+    // Attempt to sync any offline-cached logs on startup
+    _triggerSyncIfLoggedIn();
+
+    // Re-sync whenever connectivity is restored
+    Connectivity().onConnectivityChanged.listen((results) {
+      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      if (isOnline) _triggerSyncIfLoggedIn();
+    });
+  });
 }
 
 /// Triggers sync only when a user is authenticated.

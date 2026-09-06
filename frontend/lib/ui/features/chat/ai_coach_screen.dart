@@ -17,6 +17,7 @@ import '../../../core/ramadan_controller.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
 import '../../../core/profile_sync_notifier.dart';
+import '../family_profiles/family_viewmodel.dart';
 import 'clinic_finder_screen.dart';
 import 'voice_mode_overlay.dart';
 
@@ -60,16 +61,27 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.addObserver(this);
     LanguageController.instance.addListener(_onLanguageChanged);
     ProfileSyncNotifier.instance.addListener(_loadLanguageAndGreeting);
+    FamilyViewModel.instance.addListener(_onFamilyMemberChanged);
     _language = LanguageController.instance.currentLanguage;
     _initSpeechAndTts();
+    _loadLanguageAndGreeting();
+  }
+
+  void _onFamilyMemberChanged() {
+    if (!mounted) return;
     _loadLanguageAndGreeting();
   }
 
   void _updateGreetingMessage() {
     final isRamadan = RamadanController.instance.isRamadanMode;
     final lang = LanguageController.instance.currentLanguage;
+    final activeMember = FamilyViewModel.instance.activeMember;
     String greeting;
-    if (isRamadan) {
+    if (activeMember != null) {
+      greeting = lang == 'ur'
+          ? 'خوش آمدید! میں ${activeMember.name} (${activeMember.relationship}) کے لیے آپ کا فیملی غذائی ایڈوائزر ہوں۔ ان کی عمر (${activeMember.age})، خوراک، میکروز یا صحت سے متعلق کوئی بھی سوال پوچھیں۔'
+          : 'Welcome! I am your AI Nutrition Coach consulting for ${activeMember.name} (${activeMember.relationship}, Age: ${activeMember.age}). Ask me anything about their meals, dietary needs, or health goals!';
+    } else if (isRamadan) {
       greeting = lang == 'ur'
           ? '🌙 رمضان مبارک! میں آپ کا رمضان نیوٹریشن کوچ ہوں۔ سحری کے غذائی انتخاب، صحت مند افطار، اور روزے میں توانائی برقرار رکھنے سے متعلق کوئی بھی سوال پوچھیں!'
           : '🌙 Ramadan Mubarak! I am your Ramadan Nutrition Coach. Ask me anything about high-energy Sehri meals, balanced Iftar choices, hydration targets, and fasting recovery!';
@@ -420,19 +432,29 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
 
   Future<void> _loadLanguageAndGreeting() async {
     try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-      if (user != null) {
-        final healthRes = await supabase
-            .from('health_profiles')
-            .select('goal, medical_conditions')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        if (healthRes != null && mounted) {
+      final activeMember = FamilyViewModel.instance.activeMember;
+      if (activeMember != null) {
+        if (mounted) {
           setState(() {
-            _goal = healthRes['goal'];
-            _medicalConditions = (healthRes['medical_conditions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+            _goal = 'Family Care: ${activeMember.name} (${activeMember.relationship})';
+            _medicalConditions = List<String>.from(activeMember.medicalConditions);
           });
+        }
+      } else {
+        final supabase = Supabase.instance.client;
+        final user = supabase.auth.currentUser;
+        if (user != null) {
+          final healthRes = await supabase
+              .from('health_profiles')
+              .select('goal, medical_conditions')
+              .eq('user_id', user.id)
+              .maybeSingle();
+          if (healthRes != null && mounted) {
+            setState(() {
+              _goal = healthRes['goal'];
+              _medicalConditions = (healthRes['medical_conditions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+            });
+          }
         }
       }
     } catch (_) {}
@@ -557,20 +579,27 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
       }
 
       // 2. Query Uvicorn chat endpoint with a 90-second timeout
+      final activeMember = FamilyViewModel.instance.activeMember;
       final url = Uri.parse('${ApiClient.getBaseUrl()}/coach/chat');
+      final Map<String, dynamic> chatBody = {
+        'user_id': user.id,
+        'message': messagePayload,
+        'history': historyPayload,
+      };
+      if (activeMember != null) {
+        chatBody['family_member_id'] = activeMember.id;
+      }
+      if (_goal != null || _medicalConditions.isNotEmpty) {
+        chatBody['client_profile'] = {
+          'goal': _goal,
+          'medical_conditions': _medicalConditions,
+        };
+      }
+
       final response = await http.post(
         url,
         headers: ApiClient.getHeaders(),
-        body: jsonEncode({
-          'user_id': user.id,
-          'message': messagePayload,
-          'history': historyPayload,
-          if (_goal != null || _medicalConditions.isNotEmpty)
-            'client_profile': {
-              'goal': _goal,
-              'medical_conditions': _medicalConditions,
-            },
-        }),
+        body: jsonEncode(chatBody),
       ).timeout(const Duration(seconds: 90));
 
       if (response.statusCode != 200) {
@@ -723,6 +752,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     LanguageController.instance.removeListener(_onLanguageChanged);
     ProfileSyncNotifier.instance.removeListener(_loadLanguageAndGreeting);
+    FamilyViewModel.instance.removeListener(_onFamilyMemberChanged);
     _silenceTimer?.cancel();
     _speechToText.cancel();
     // TtsService is a long-lived singleton, so detach this screen's callbacks
@@ -829,6 +859,70 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                   ),
                   const SizedBox(height: 12),
                   Divider(color: Colors.white.withAlpha(15), height: 1),
+
+                  // Active Family Member Banner
+                  ListenableBuilder(
+                    listenable: FamilyViewModel.instance,
+                    builder: (context, _) {
+                      final activeMember = FamilyViewModel.instance.activeMember;
+                      if (activeMember == null) return const SizedBox.shrink();
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withAlpha(20),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF00E676).withAlpha(70)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E676).withAlpha(40),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.family_restroom_rounded, color: Color(0xFF00E676), size: 16),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    isUrdu
+                                        ? 'فعال فیملی ممبر: ${activeMember.name} (${activeMember.relationship})'
+                                        : 'Active Profile: ${activeMember.name} (${activeMember.relationship})',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  Text(
+                                    isUrdu
+                                        ? 'مشورے ${activeMember.name} کی صحت کے مطابق دیے جا رہے ہیں'
+                                        : 'AI advice is tailored for ${activeMember.name}\'s profile',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => FamilyViewModel.instance.setActiveMember(null),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                isUrdu ? 'ری سیٹ' : 'Switch Self',
+                                style: const TextStyle(color: Color(0xFF00E676), fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
                   // Voice Status Indicator (if active)
                   if (_voiceState != VoiceAssistantState.idle)

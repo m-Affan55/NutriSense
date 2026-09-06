@@ -5,6 +5,7 @@ import '../../../core/workout_service.dart';
 import '../../../core/reminder_manager.dart';
 import '../../../core/language_controller.dart';
 import '../../../core/profile_sync_notifier.dart';
+import '../family_profiles/family_viewmodel.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -29,6 +30,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
     _language = LanguageController.instance.currentLanguage;
     LanguageController.instance.addListener(_onLanguageChange);
     ProfileSyncNotifier.instance.addListener(_onProfileChange);
+    FamilyViewModel.instance.addListener(_onFamilyChange);
     _setInitialDayToToday();
     loadWorkoutData();
   }
@@ -37,6 +39,7 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   void dispose() {
     LanguageController.instance.removeListener(_onLanguageChange);
     ProfileSyncNotifier.instance.removeListener(_onProfileChange);
+    FamilyViewModel.instance.removeListener(_onFamilyChange);
     super.dispose();
   }
 
@@ -50,6 +53,12 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   void _onProfileChange() {
     if (mounted) {
       loadWorkoutData(forceRefresh: true);
+    }
+  }
+
+  void _onFamilyChange() {
+    if (mounted) {
+      loadWorkoutData();
     }
   }
 
@@ -145,9 +154,11 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
         setState(() {});
       }
       final isRamadan = RamadanController.instance.isRamadanMode;
+      final activeMember = FamilyViewModel.instance.activeMember;
       final plan = await WorkoutService.instance.getWorkoutPlan(
         forceRefresh: forceRefresh,
         isRamadan: isRamadan,
+        familyMemberId: activeMember?.id,
       );
 
       if (mounted) {
@@ -171,9 +182,13 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   Future<void> _regeneratePlanWithAI() async {
     setState(() => _isRegenerating = true);
     final isRamadan = RamadanController.instance.isRamadanMode;
+    final activeMember = FamilyViewModel.instance.activeMember;
 
     try {
-      final plan = await WorkoutService.instance.regeneratePlan(isRamadan: isRamadan);
+      final plan = await WorkoutService.instance.regeneratePlan(
+        isRamadan: isRamadan,
+        familyMemberId: activeMember?.id,
+      );
       if (mounted) {
         setState(() {
           _workoutPlan = plan;
@@ -267,56 +282,97 @@ class WorkoutScreenState extends State<WorkoutScreen> with TickerProviderStateMi
   }
 
   Widget _buildHeader(Color primaryColor, bool isRamadan) {
+    final activeMember = FamilyViewModel.instance.activeMember;
+    final isUrdu = _language == 'ur';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.fitness_center_rounded, color: primaryColor, size: 22),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _t('title'),
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    Row(
+                      children: [
+                        Icon(Icons.fitness_center_rounded, color: primaryColor, size: 22),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _t('title'),
+                            style: GoogleFonts.outfit(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _workoutPlan?.planName ?? (isUrdu ? 'ذاتی طبی منصوبہ' : 'Personalized Clinical Protocol'),
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF8A94A6),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _workoutPlan?.planName ?? (_language == 'ur' ? 'ذاتی طبی منصوبہ' : 'Personalized Clinical Protocol'),
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF8A94A6),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _isRegenerating ? null : _regeneratePlanWithAI,
+                icon: Icon(Icons.auto_awesome, color: primaryColor),
+                tooltip: isUrdu ? 'اے آئی کے ساتھ نیا منصوبہ بنائیں' : 'Regenerate Plan with AI',
+                style: IconButton.styleFrom(
+                  backgroundColor: primaryColor.withAlpha(25),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: _isRegenerating ? null : _regeneratePlanWithAI,
-            icon: Icon(Icons.auto_awesome, color: primaryColor),
-            tooltip: _language == 'ur' ? 'اے آئی کے ساتھ نیا منصوبہ بنائیں' : 'Regenerate Plan with AI',
-            style: IconButton.styleFrom(
-              backgroundColor: primaryColor.withAlpha(25),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          if (activeMember != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: primaryColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: primaryColor.withAlpha(80)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.family_restroom_rounded, color: primaryColor, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isUrdu
+                          ? 'ورزش برائے: ${activeMember.name} (${activeMember.relationship}) · عمر: ${activeMember.age}'
+                          : 'Routine for: ${activeMember.name} (${activeMember.relationship}) · Age: ${activeMember.age}',
+                      style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => FamilyViewModel.instance.setActiveMember(null),
+                    child: Text(
+                      isUrdu ? 'خود' : 'Reset to Self',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11, decoration: TextDecoration.underline),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
