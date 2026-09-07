@@ -775,18 +775,26 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         final isRamadan = RamadanController.instance.isRamadanMode;
         final theme = Theme.of(context);
         final mediaQuery = MediaQuery.of(context);
-        final bottomInset = mediaQuery.viewPadding.bottom > 0
-            ? mediaQuery.viewPadding.bottom
-            : mediaQuery.padding.bottom;
         final keyboardHeight = mediaQuery.viewInsets.bottom;
-        // Dynamically match the floating nav bar height from MainNavigationScreen
-        // pill = 80dp (Urdu) / 68dp (English), margin = bottomInset+8 or 12
+
+        // Get true raw system bottom inset from View to prevent double-counting
+        // the parent Scaffold's extendBody bottomNavigationBar height.
+        final windowView = View.of(context);
+        final rawSystemBottom = windowView.viewPadding.bottom / windowView.devicePixelRatio;
+        final systemBottomInset = rawSystemBottom > 0
+            ? rawSystemBottom
+            : (mediaQuery.viewPadding.bottom > 0 ? mediaQuery.viewPadding.bottom : 0.0);
+
+        // Dynamically match floating nav bar dimensions from MainNavigationScreen
         final navBarPillHeight = isUrdu ? 80.0 : 68.0;
-        final navBarBottomMargin = bottomInset > 0 ? (bottomInset + 8.0) : 12.0;
-        final navBarTotalHeight = navBarPillHeight + navBarBottomMargin;
+        final navBarBottomMargin = systemBottomInset > 0 ? (systemBottomInset + 8.0) : 12.0;
+        final navBarTop = navBarPillHeight + navBarBottomMargin;
+
+        // Place message box with a clean, compact 10dp gap above the floating nav bar
+        const messageBoxGap = 10.0;
         final inputBottomPadding = keyboardHeight > 0
             ? 10.0
-            : navBarTotalHeight;
+            : (navBarTop + messageBoxGap);
 
         final title = isUrdu ? 'اے آئی غذائی کوچ' : 'AI Nutrition Coach';
         final subtitle = isUrdu ? 'آن لائن · مدد کے لیے تیار' : 'Online · Ready to help';
