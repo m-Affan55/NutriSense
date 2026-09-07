@@ -11,7 +11,7 @@ Standard international nutrition and fitness applications fail within this demog
 
 ## Who It Affects
 
-1. Chronic Disease Patients: Individuals diagnosed with or at high risk for Type 2 Diabetes, Hypertension, Cardiovascular Disease, Dyslipidemia, and Obesity who need culturally congruent dietary guidance without clinical contradictions.
+1. Chronic Disease Patients: Individuals diagnosed with or at high risk for Type 2 Diabetes, Hypertension, Cardiovascular Disease, and Obesity who need culturally congruent dietary guidance without clinical contradictions.
 2. Household Caregivers and Families: Homemakers and family heads in multi-generational households who prepare unified family meals while managing distinct health profiles (e.g., diabetic elders, hypertensive adults, and growing children).
 3. Fasting Demographics: Millions of individuals observing Ramadan or voluntary intermittent fasts who require inverted meal schedules, nocturnal hydration pacing, and specialized pre-dawn glycemic stability.
 4. General Population Seeking Preventative Care: Health-conscious individuals seeking accurate tracking of South Asian cuisine, condition-aware physical exercise routines, and structured grocery budgeting.
@@ -20,7 +20,7 @@ Standard international nutrition and fitness applications fail within this demog
 
 NutriSense is an enterprise-grade, clinical-first digital health platform that bridges the gap between South Asian culinary culture and evidence-based metabolic medicine. 
 
-By combining localized multimodal computer vision, a three-tier agentic clinical safety architecture, condition-specific exercise programming, multi-profile family health management, an automated Ramadan circadian engine, and an offline-first resilient edge architecture, NutriSense delivers personalized, medically safe, and culturally authentic health optimization across mobile, desktop, and web platforms.
+By combining localized multimodal computer vision, goal based food swapping, a three-tier agentic clinical safety architecture, condition-specific exercise programming, multi-profile family health management, an automated Ramadan circadian engine, and an offline-first resilient edge architecture, NutriSense delivers personalized, medically safe, and culturally authentic health optimization across mobile, desktop, and web platforms.
 
 ---
 
