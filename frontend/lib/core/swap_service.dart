@@ -13,16 +13,29 @@ import '../main.dart'; // To access globalNavigatorKey
 class SwapService {
   static final ValueNotifier<bool> highlightNotifier = ValueNotifier<bool>(false);
   static final ValueNotifier<String?> highlightedFoodNotifier = ValueNotifier<String?>(null);
-  
+  static final ValueNotifier<int> swapsUpdatedNotifier = ValueNotifier<int>(0);
+
   static List<dynamic>? cachedSwaps;
   static String? _cachedDate;
   static String? _activeUserId;
   static String? _activeMemberId;
 
+  /// True when checkMealForSwaps() has completed at least one API call today,
+  /// regardless of whether any swaps were found (healthy meals produce 0 swaps).
+  /// This is the source-of-truth flag that prevents coaching_screen from
+  /// re-calling Gemini for meals that were already evaluated.
+  static bool _analyzedToday = false;
+
+  /// In-flight meal note tracker to deduplicate background checks and prevent race conditions.
+  static final Set<String> _inProgressMeals = <String>{};
+  static bool get isAnalyzing => _inProgressMeals.isNotEmpty;
+
   static String _prefKeyDate(String uid, [String? memberId]) =>
       'nutrisense_swaps_${uid}_${memberId ?? "primary"}_date';
   static String _prefKeyList(String uid, [String? memberId]) =>
       'nutrisense_swaps_${uid}_${memberId ?? "primary"}_list';
+  static String _prefKeyAnalyzed(String uid, [String? memberId]) =>
+      'nutrisense_swaps_${uid}_${memberId ?? "primary"}_analyzed';
 
   static String get _todayDateStr {
     final now = DateTime.now();
@@ -35,12 +48,38 @@ class SwapService {
     return user?.id ?? 'guest';
   }
 
+  /// Returns whether meals have already been evaluated for swaps today.
+  static bool wasAnalyzedToday({String? userId, String? memberId}) {
+    final uid = _resolveUserId(userId);
+    if (_activeUserId != uid || _activeMemberId != memberId) {
+      return false;
+    }
+    clearIfNewDay(userId: uid, memberId: memberId);
+    return _analyzedToday;
+  }
+
+  /// Marks today as analyzed and persists the flag in SharedPreferences.
+  static Future<void> markAnalyzedToday({String? userId, String? memberId}) async {
+    final uid = _resolveUserId(userId);
+    _analyzedToday = true;
+    _activeUserId = uid;
+    _activeMemberId = memberId;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefKeyDate(uid, memberId), _cachedDate ?? _todayDateStr);
+      await prefs.setBool(_prefKeyAnalyzed(uid, memberId), true);
+    } catch (e) {
+      debugPrint('Error saving analyzed flag: $e');
+    }
+  }
+
   /// Clears in-memory swap session state when user signs out
   static void clearSession() {
     cachedSwaps = null;
     _cachedDate = null;
     _activeUserId = null;
     _activeMemberId = null;
+    _analyzedToday = false;
     highlightNotifier.value = false;
     highlightedFoodNotifier.value = null;
   }
@@ -49,11 +88,13 @@ class SwapService {
   static Future<void> invalidateSwapsCache({String? userId, String? memberId}) async {
     final uid = _resolveUserId(userId);
     cachedSwaps = [];
+    _analyzedToday = false;
     highlightNotifier.value = false;
     highlightedFoodNotifier.value = null;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefKeyList(uid, memberId));
+      await prefs.remove(_prefKeyAnalyzed(uid, memberId));
     } catch (e) {
       debugPrint('Error invalidating swaps cache: $e');
     }
@@ -65,9 +106,11 @@ class SwapService {
       final uid = _resolveUserId(userId);
       final today = _todayDateStr;
       final prefs = await SharedPreferences.getInstance();
-      
+
       final savedDate = prefs.getString(_prefKeyDate(uid, memberId));
       if (savedDate == today) {
+        // Restore the "was analyzed today" flag — independent of swap count
+        _analyzedToday = prefs.getBool(_prefKeyAnalyzed(uid, memberId)) ?? false;
         final savedJson = prefs.getString(_prefKeyList(uid, memberId));
         if (savedJson != null && savedJson.isNotEmpty) {
           final decoded = jsonDecode(savedJson);
@@ -88,14 +131,17 @@ class SwapService {
         _cachedDate = today;
         _activeUserId = uid;
         _activeMemberId = memberId;
+        _analyzedToday = false;
         cachedSwaps = [];
         await prefs.setString(_prefKeyDate(uid, memberId), today);
         await prefs.remove(_prefKeyList(uid, memberId));
+        await prefs.remove(_prefKeyAnalyzed(uid, memberId));
       }
     } catch (e) {
       debugPrint('Error initializing SwapService storage: $e');
       cachedSwaps = [];
       _cachedDate = _todayDateStr;
+      _analyzedToday = false;
     }
   }
 
@@ -103,6 +149,7 @@ class SwapService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefKeyDate(uid, memberId), _cachedDate ?? _todayDateStr);
+      await prefs.setBool(_prefKeyAnalyzed(uid, memberId), _analyzedToday);
       if (cachedSwaps != null) {
         await prefs.setString(_prefKeyList(uid, memberId), jsonEncode(cachedSwaps));
       }
@@ -121,6 +168,7 @@ class SwapService {
       cachedSwaps = [];
     }
     cachedSwaps ??= [];
+    _analyzedToday = true;
 
     for (final newSwap in newSwaps) {
       if (newSwap is Map) {
@@ -136,6 +184,7 @@ class SwapService {
       }
     }
     _saveToStorage(uid, memberId);
+    swapsUpdatedNotifier.value++;
   }
 
   /// Synchronously returns swaps for today (if loaded in memory for the active user/member).
@@ -160,10 +209,12 @@ class SwapService {
       _cachedDate = today;
       _activeUserId = uid;
       _activeMemberId = memberId;
+      _analyzedToday = false;
       cachedSwaps = [];
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString(_prefKeyDate(uid, memberId), today);
         prefs.remove(_prefKeyList(uid, memberId));
+        prefs.remove(_prefKeyAnalyzed(uid, memberId));
       }).catchError((_) {});
     }
   }
@@ -185,6 +236,14 @@ class SwapService {
   static Future<void> checkMealForSwaps(String mealNote, {String? familyMemberId}) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null || mealNote.trim().isEmpty) return;
+
+    final normalizedNote = mealNote.toLowerCase().trim();
+    if (_inProgressMeals.contains(normalizedNote)) {
+      debugPrint('[SwapService] Swap check already in progress for "$mealNote", skipping duplicate.');
+      return;
+    }
+
+    _inProgressMeals.add(normalizedNote);
 
     try {
       final lang = LanguageController.instance.currentLanguage;
@@ -208,6 +267,10 @@ class SwapService {
         final data = jsonDecode(swapRes.body);
         final List<dynamic> swaps = data['swaps'] is List ? data['swaps'] : [];
         final bool isHealthy = data['is_healthy'] == true || swaps.isEmpty;
+
+        // Mark as evaluated today regardless of whether healthy (0 swaps) or unhealthy
+        await markAnalyzedToday(userId: user.id, memberId: familyMemberId);
+        swapsUpdatedNotifier.value++;
         
         final context = globalNavigatorKey.currentContext;
         if (context == null || !context.mounted) return;
@@ -271,6 +334,9 @@ class SwapService {
       }
     } catch (e) {
       debugPrint('Error in SwapService background check: $e');
+    } finally {
+      _inProgressMeals.remove(normalizedNote);
     }
   }
 }
+

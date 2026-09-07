@@ -46,7 +46,19 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     LanguageController.instance.addListener(loadCoachingData);
     FamilyViewModel.instance.addListener(loadCoachingData);
     SwapService.highlightNotifier.addListener(_handleHighlightChange);
+    SwapService.swapsUpdatedNotifier.addListener(_handleSwapsUpdated);
     loadCoachingData();
+  }
+
+  void _handleSwapsUpdated() {
+    if (mounted) {
+      final user = Supabase.instance.client.auth.currentUser;
+      final activeMember = FamilyViewModel.instance.activeMember;
+      final todaySwaps = SwapService.getSwapsForToday(userId: user?.id, memberId: activeMember?.id);
+      setState(() {
+        _foodSwaps = List<dynamic>.from(todaySwaps ?? []);
+      });
+    }
   }
 
   void _handleHighlightChange() {
@@ -90,6 +102,7 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
     LanguageController.instance.removeListener(loadCoachingData);
     FamilyViewModel.instance.removeListener(loadCoachingData);
     SwapService.highlightNotifier.removeListener(_handleHighlightChange);
+    SwapService.swapsUpdatedNotifier.removeListener(_handleSwapsUpdated);
     _ringController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -184,22 +197,17 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
           _foodSwaps = [];
           SwapService.clearIfNewDay(userId: user.id, memberId: memberId);
         } else {
-          // Check if any logged meals today haven't been evaluated yet
-          final existingFoods = _foodSwaps
-              .map((s) => (s is Map ? s['original_food'] : '').toString().toLowerCase().trim())
-              .toSet();
-          
-          final unanalyzedMeals = todaysMealNotes.where((meal) {
-            final mealLower = meal.toLowerCase().trim();
-            return !existingFoods.any((f) => f == mealLower || mealLower.contains(f) || f.contains(mealLower));
-          }).toList();
+          // Check if already analyzed today or actively being evaluated in background
+          final alreadyAnalyzed = SwapService.wasAnalyzedToday(userId: user.id, memberId: memberId);
+          final isAnalyzing = SwapService.isAnalyzing;
 
-          // Only query backend if there are unanalyzed meals or if _foodSwaps is currently empty
-          if (_foodSwaps.isEmpty || unanalyzedMeals.isNotEmpty) {
-            final mealsToAnalyze = _foodSwaps.isEmpty ? todaysMealNotes : unanalyzedMeals;
+          // ONLY query the backend if today's meals have NEVER been analyzed yet
+          // (e.g. fresh install or meals logged on another device),
+          // AND no background check is currently in flight.
+          if (!alreadyAnalyzed && !isAnalyzing) {
             final Map<String, dynamic> swapBody = {
               'user_id': user.id,
-              'recent_meals': mealsToAnalyze,
+              'recent_meals': todaysMealNotes,
               'language': _language,
             };
             if (memberId != null && memberId.isNotEmpty) {
@@ -215,10 +223,11 @@ class CoachingScreenState extends State<CoachingScreen> with TickerProviderState
             if (swapRes.statusCode == 200) {
               final data = jsonDecode(swapRes.body);
               final List<dynamic> serverSwaps = data['swaps'] is List ? data['swaps'] : [];
+              await SwapService.markAnalyzedToday(userId: user.id, memberId: memberId);
               if (serverSwaps.isNotEmpty) {
                 SwapService.addSwapsForToday(serverSwaps, userId: user.id, memberId: memberId);
-                _foodSwaps = List<dynamic>.from(SwapService.getSwapsForToday(userId: user.id, memberId: memberId) ?? serverSwaps);
               }
+              _foodSwaps = List<dynamic>.from(SwapService.getSwapsForToday(userId: user.id, memberId: memberId) ?? serverSwaps);
             }
           }
         }
