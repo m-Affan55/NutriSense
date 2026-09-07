@@ -194,7 +194,7 @@ class OfflineCache {
       return (result.first['total'] as int?) ?? 0;
     } else {
       final result = await db.rawQuery(
-        'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND (family_member_id IS NULL OR family_member_id = "") AND synced = 0 AND logged_at LIKE ?',
+        'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND (family_member_id IS NULL OR family_member_id = \'\' OR family_member_id = \'null\') AND synced = 0 AND logged_at LIKE ?',
         [userId, '$today%'],
       );
       return (result.first['total'] as int?) ?? 0;
