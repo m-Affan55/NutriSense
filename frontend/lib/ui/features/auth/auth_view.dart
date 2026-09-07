@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -10,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/email_verifier_service.dart';
 import '../../widgets/terms_dialog.dart';
 import 'forgot_password_view.dart';
 import 'email_verification_view.dart';
@@ -68,6 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       
       setState(() => _isLoading = true);
+      final email = _emailController.text.trim();
       
       try {
         final supabase = Supabase.instance.client;
@@ -75,7 +78,7 @@ class _AuthScreenState extends State<AuthScreen> {
         if (isLogin) {
           try {
             await supabase.auth.signInWithPassword(
-              email: _emailController.text.trim(),
+              email: email,
               password: _passwordController.text,
             );
           } on AuthException catch (ae) {
@@ -92,7 +95,7 @@ class _AuthScreenState extends State<AuthScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => EmailVerificationScreen(
-                    email: _emailController.text.trim(),
+                    email: email,
                   ),
                 ),
               );
@@ -138,33 +141,164 @@ class _AuthScreenState extends State<AuthScreen> {
           );
           
         } else {
+          // -------------------------------------------------------------
+          // STEP 1: Verify whether the email actually exists
+          // -------------------------------------------------------------
+          final existenceStatus = await EmailVerifierService.verifyEmailExistence(email);
+          if (existenceStatus == EmailVerificationStatus.noInternet) {
+            if (!mounted) return;
+            CustomToast.show(
+              context,
+              'Unable to verify your email address',
+              subtitle: 'Network error. Please check your internet connection and try again.',
+              isError: true,
+            );
+            return;
+          }
+          if (existenceStatus == EmailVerificationStatus.domainDoesNotExist) {
+            if (!mounted) return;
+            CustomToast.show(
+              context,
+              'Unable to verify your email address',
+              subtitle: 'This email address does not exist.',
+              isError: true,
+            );
+            return;
+          }
+
+          // -------------------------------------------------------------
+          // STEP 2: Send Email via Supabase Auth
+          // -------------------------------------------------------------
           final res = await supabase.auth.signUp(
-            email: _emailController.text.trim(),
+            email: email,
             password: _passwordController.text,
             data: {'full_name': _nameController.text.trim()},
-            emailRedirectTo: 'io.supabase.nutrisense://login-callback/',
           );
           
           if (!mounted) return;
 
-          // If session is unconfirmed, route directly to EmailVerificationScreen
-          if (res.session == null || res.user?.emailConfirmedAt == null) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => EmailVerificationScreen(
-                  email: _emailController.text.trim(),
+          // Check if email already registered (Supabase email enumeration protection returns empty identities)
+          final identities = res.user?.identities;
+          if (res.user != null && (identities == null || identities.isEmpty)) {
+            // The email already exists in Supabase auth.users.
+            // If it was never verified, attempt to resend the signup OTP so the user can complete verification!
+            try {
+              await supabase.auth.resend(
+                type: OtpType.signup,
+                email: email,
+              );
+
+              if (!mounted) return;
+              CustomToast.show(
+                context,
+                'Verification code sent!',
+                subtitle: 'This account was pending verification. A new 6-digit code was sent to your email.',
+                isError: false,
+              );
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EmailVerificationScreen(email: email),
                 ),
-              ),
+              );
+              return;
+            } on AuthException catch (resendErr) {
+              if (!mounted) return;
+              final rMsg = resendErr.message.toLowerCase();
+              String reason;
+              if (rMsg.contains('already confirmed') || rMsg.contains('verified')) {
+                reason = 'An account with this email is already verified. Please log in.';
+              } else if (resendErr.statusCode == '429' || rMsg.contains('rate limit')) {
+                reason = 'Email send limit reached. Please wait a few minutes before trying again.';
+              } else {
+                reason = resendErr.message;
+              }
+              CustomToast.show(
+                context,
+                'Unable to create account',
+                subtitle: reason,
+                isError: true,
+              );
+              return;
+            } catch (e) {
+              if (!mounted) return;
+              CustomToast.show(
+                context,
+                'Unable to create account',
+                subtitle: 'An account with this email already exists. Please log in.',
+                isError: true,
+              );
+              return;
+            }
+          }
+
+          // If session is already created (Confirm Email is disabled in Supabase)
+          if (res.session != null) {
+            CustomToast.show(
+              context,
+              'Account created successfully!',
+              isError: false,
             );
-          } else {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
             );
+            return;
           }
+
+          // -------------------------------------------------------------
+          // STEP 3: Only on actual new signup show alert & open OTP page
+          // -------------------------------------------------------------
+          CustomToast.show(
+            context,
+            'Verification code sent successfully!',
+            subtitle: 'Please check your email inbox for the 6-digit code.',
+            isError: false,
+          );
+
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => EmailVerificationScreen(email: email),
+            ),
+          );
         }
+      } on AuthException catch (ae) {
+        if (!mounted) return;
+        final msg = ae.message.toLowerCase();
+        String reason;
+        if (ae.statusCode == '429' || msg.contains('rate limit') || msg.contains('over_email_send_rate_limit')) {
+          reason = 'Email send limit exceeded. Please wait a few minutes before trying again.';
+        } else if (msg.contains('already registered') || msg.contains('already exists')) {
+          reason = 'An account with this email already exists.';
+        } else if (msg.contains('invalid') || msg.contains('does not exist') || msg.contains('recipient')) {
+          reason = 'This email address does not exist.';
+        } else if (msg.contains('disabled') || msg.contains('smtp') || msg.contains('provider')) {
+          reason = 'Email delivery service is currently unavailable. Please contact support.';
+        } else {
+          reason = ae.message;
+        }
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: reason,
+          isError: true,
+        );
+      } on SocketException {
+        if (!mounted) return;
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: 'Network error. Please check your internet connection.',
+          isError: true,
+        );
       } catch (e) {
         if (!mounted) return;
-        CustomToast.show(context, e.toString());
+        final errStr = e.toString().replaceAll(RegExp(r'.*Exception:?\s*'), '');
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: errStr.isNotEmpty ? errStr : 'An unexpected error occurred. Please try again.',
+          isError: true,
+        );
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }

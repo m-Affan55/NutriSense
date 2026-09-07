@@ -52,7 +52,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       final user = supabase.auth.currentUser;
 
       if (session != null && user != null) {
-        // User already has a valid persisted session
+        // User already has a persisted session in cache.
+        // If expired or invalid, handle cleanly
         final prefs = await SharedPreferences.getInstance();
         final localOnboardingDone = prefs.getBool('onboarding_completed_${user.id}') ?? false;
 
@@ -73,9 +74,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             } else {
               nextScreen = const OnboardingWizardScreen();
             }
+          } on AuthException catch (ae) {
+            debugPrint('[SplashScreen] Auth error checking profile (session expired/invalid): $ae');
+            await supabase.auth.signOut().catchError((_) {});
+            final hasLanguage = prefs.getString('app_language') != null ||
+                prefs.getString('language') != null;
+            nextScreen = hasLanguage ? const AuthScreen() : const LanguageSelectionScreen();
           } catch (e) {
             debugPrint('[SplashScreen] Health profile check error or timeout: $e');
-            // Gated: If onboarding was not marked complete, always route back to Onboarding
+            // Gated: If network timed out, route back to Onboarding
             nextScreen = const OnboardingWizardScreen();
           }
         }

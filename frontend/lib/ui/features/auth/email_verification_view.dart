@@ -23,20 +23,17 @@ class EmailVerificationScreen extends StatefulWidget {
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   int _cooldownSeconds = 60;
   Timer? _cooldownTimer;
   bool _isResending = false;
-  bool _isCheckingStatus = false;
-  bool _showManualOtp = false;
+  bool _isVerifyingOtp = false;
+  bool _hasNavigated = false;
 
-  // Manual OTP input support
   static const int _codeLength = 6;
   final List<TextEditingController> _otpControllers =
       List.generate(_codeLength, (_) => TextEditingController());
-  final List<FocusNode> _otpFocusNodes =
-      List.generate(_codeLength, (_) => FocusNode());
-  bool _isVerifyingOtp = false;
+  late final List<FocusNode> _otpFocusNodes;
 
   late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
@@ -45,7 +42,22 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+
+    _otpFocusNodes = List.generate(_codeLength, (i) {
+      return FocusNode(
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.backspace &&
+              _otpControllers[i].text.isEmpty &&
+              i > 0) {
+            _otpFocusNodes[i - 1].requestFocus();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+      );
+    });
+
     _startCooldownTimer();
 
     _pulseController = AnimationController(
@@ -62,7 +74,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _cooldownTimer?.cancel();
     _authSubscription?.cancel();
     _pulseController.dispose();
@@ -84,13 +95,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     });
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkVerificationStatus(silent: true);
-    }
-  }
-
   void _startCooldownTimer() {
     _cooldownTimer?.cancel();
     setState(() => _cooldownSeconds = 60);
@@ -107,50 +111,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     });
   }
 
-  Future<void> _checkVerificationStatus({bool silent = false}) async {
-    if (_isCheckingStatus) return;
-    if (!silent) setState(() => _isCheckingStatus = true);
-
-    try {
-      final supabase = Supabase.instance.client;
-      // Refresh the session to check if confirmed
-      final res = await supabase.auth.refreshSession();
-      final user = res.user ?? supabase.auth.currentUser;
-
-      if (user != null && user.emailConfirmedAt != null) {
-        _onVerified();
-        return;
-      }
-
-      if (!silent && mounted) {
-        CustomToast.show(
-          context,
-          LanguageController.instance.isUrdu
-              ? 'تصدیق ابھی تک مکمل نہیں ہوئی۔ براہ کرم اپنے ای میل میں موجود لنک پر کلک کریں۔'
-              : 'Email not verified yet. Please tap the link in your email.',
-        );
-      }
-    } catch (_) {
-      if (!silent && mounted) {
-        CustomToast.show(
-          context,
-          LanguageController.instance.isUrdu
-              ? 'تصدیق کا انتظار ہے... براہ کرم اپنے ای میل میں لنک چیک کریں۔'
-              : 'Waiting for verification... Please check the link in your email.',
-        );
-      }
-    } finally {
-      if (!silent && mounted) setState(() => _isCheckingStatus = false);
-    }
-  }
-
   void _onVerified() {
-    if (!mounted) return;
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
+
     CustomToast.show(
       context,
       LanguageController.instance.isUrdu
           ? 'ای میل کی تصدیق کامیاب رہی!'
           : 'Email verified successfully!',
+      subtitle: LanguageController.instance.isUrdu
+          ? 'نیوٹری سینس میں خوش آمدید'
+          : 'Welcome to NutriSense!',
       isError: false,
     );
 
@@ -169,7 +141,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
       await supabase.auth.resend(
         type: OtpType.signup,
         email: widget.email,
-        emailRedirectTo: 'io.supabase.nutrisense://login-callback/',
       );
 
       if (!mounted) return;
@@ -178,13 +149,39 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
       CustomToast.show(
         context,
         LanguageController.instance.isUrdu
-            ? 'تصدیقی ای میل دوبارہ بھیج دی گئی ہے!'
-            : 'Verification email resent successfully!',
+            ? 'تصدیقی کوڈ دوبارہ بھیج دیا گیا ہے!'
+            : 'Verification code resent successfully!',
+        subtitle: LanguageController.instance.isUrdu
+            ? 'براہ کرم اپنا ای میل ان باکس چیک کریں۔'
+            : 'Please check your email inbox for the 6-digit code.',
         isError: false,
+      );
+    } on AuthException catch (ae) {
+      if (!mounted) return;
+      final msg = ae.message.toLowerCase();
+      String reason;
+      if (ae.statusCode == '429' ||
+          msg.contains('rate limit') ||
+          msg.contains('over_email_send_rate_limit')) {
+        reason =
+            'Email send limit exceeded. Please wait a few minutes before trying again.';
+      } else {
+        reason = ae.message;
+      }
+      CustomToast.show(
+        context,
+        'Unable to resend code',
+        subtitle: reason,
+        isError: true,
       );
     } catch (e) {
       if (!mounted) return;
-      CustomToast.show(context, e.toString());
+      CustomToast.show(
+        context,
+        'Unable to resend code',
+        subtitle: 'Network error. Please check your internet connection.',
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
@@ -215,28 +212,118 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
       if (res.session != null || res.user != null) {
         _onVerified();
       } else {
-        throw const AuthException('Invalid verification code');
+        throw const AuthException('Invalid or expired verification code');
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      CustomToast.show(context, e.message);
+      CustomToast.show(
+        context,
+        'Unable to verify OTP',
+        subtitle: e.message,
+        isError: true,
+      );
     } catch (e) {
       if (!mounted) return;
-      CustomToast.show(context, e.toString());
+      CustomToast.show(
+        context,
+        'Unable to verify OTP',
+        subtitle: 'Network error or invalid code entered.',
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _isVerifyingOtp = false);
     }
+  }
+
+  void _onDigitChanged(int index, String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+
+    // Handle pasting a multi-digit string
+    if (digits.length > 1) {
+      for (int i = 0; i < _codeLength && i < digits.length; i++) {
+        _otpControllers[i].text = digits[i];
+      }
+      if (digits.length >= _codeLength) {
+        _otpFocusNodes.last.unfocus();
+        _verifyManualOtp();
+      } else {
+        _otpFocusNodes[digits.length].requestFocus();
+      }
+      return;
+    }
+
+    if (digits.isNotEmpty) {
+      _otpControllers[index].text = digits;
+      if (index < _codeLength - 1) {
+        _otpFocusNodes[index + 1].requestFocus();
+      } else {
+        _otpFocusNodes[index].unfocus();
+        final fullCode = _otpControllers.map((c) => c.text.trim()).join();
+        if (fullCode.length == _codeLength) {
+          _verifyManualOtp();
+        }
+      }
+    }
+  }
+
+  Widget _buildOtpBox(int index, Color primaryColor) {
+    return Container(
+      width: 46,
+      height: 58,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: TextField(
+        controller: _otpControllers[index],
+        focusNode: _otpFocusNodes[index],
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.outfit(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+        decoration: InputDecoration(
+          counterText: '',
+          contentPadding: EdgeInsets.zero,
+          filled: true,
+          fillColor: const Color(0xFF161A22),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.white.withAlpha(25)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: _otpControllers[index].text.isNotEmpty
+                  ? primaryColor.withAlpha(160)
+                  : Colors.white.withAlpha(25),
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: primaryColor, width: 2),
+          ),
+        ),
+        onChanged: (val) => _onDigitChanged(index, val),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isRamadan = RamadanController.instance.isRamadanMode;
     final isUrdu = LanguageController.instance.isUrdu;
-    final primaryColor = isRamadan ? RamadanColors.primaryCyan : const Color(0xFF00E676);
-    final accentGold = isRamadan ? RamadanColors.accentGold : const Color(0xFFFFD166);
+    final primaryColor =
+        isRamadan ? RamadanColors.primaryCyan : const Color(0xFF00E676);
+    final accentGold =
+        isRamadan ? RamadanColors.accentGold : const Color(0xFFFFD166);
 
     return Scaffold(
-      backgroundColor: isRamadan ? RamadanColors.bgMidnight : const Color(0xFF0D0F14),
+      backgroundColor:
+          isRamadan ? RamadanColors.bgMidnight : const Color(0xFF0D0F14),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -254,7 +341,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
             children: [
               const SizedBox(height: 16),
 
-              // Animated Pulsing Envelope Icon
+              // Animated Pulsing Icon
               ScaleTransition(
                 scale: _scaleAnimation,
                 child: Container(
@@ -283,10 +370,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
               // Title
               Text(
-                isUrdu ? 'اپنا ای میل چیک کریں' : 'Check Your Inbox',
+                isUrdu ? 'اپنا تصدیقی کوڈ درج کریں' : 'Enter Verification Code',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -296,8 +383,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
               // Subtitle
               Text(
                 isUrdu
-                    ? 'ہم نے تصدیقی ای میل اس پتے پر بھیجی ہے:'
-                    : 'We\'ve sent an account activation email to:',
+                    ? 'ہم نے 6 ہندسوں کا تصدیقی کوڈ اس پتے پر بھیجا ہے:'
+                    : "We've sent a 6-digit verification code to:",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 14,
@@ -344,231 +431,57 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                   ],
                 ),
               ),
+              const SizedBox(height: 36),
+
+              // 6-Digit OTP Boxes
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_codeLength, (i) => _buildOtpBox(i, primaryColor)),
+              ),
               const SizedBox(height: 32),
 
-              // Step-by-step instructions card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isRamadan
-                      ? RamadanColors.surfaceDark.withAlpha(220)
-                      : const Color(0xFF161A22),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isRamadan
-                        ? RamadanColors.primaryCyan.withAlpha(50)
-                        : Colors.white.withAlpha(20),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.touch_app_outlined,
-                          color: accentGold,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          isUrdu ? 'اکاؤنٹ کیسے فعال کریں؟' : 'How to activate:',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildStepRow(
-                      step: '1',
-                      title: isUrdu
-                          ? 'اپنے فون پر جی میل (Gmail) کھولیں'
-                          : 'Open your Gmail app on your phone',
-                      icon: Icons.mail_outline,
-                      color: primaryColor,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildStepRow(
-                      step: '2',
-                      title: isUrdu
-                          ? 'ای میل میں موجود "Confirm email address" پر کلک کریں'
-                          : 'Tap "Confirm email address" in the email',
-                      icon: Icons.link,
-                      color: primaryColor,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildStepRow(
-                      step: '3',
-                      title: isUrdu
-                          ? 'ایپ خود بخود لاگ ان ہو جائے گی!'
-                          : 'NutriSense will automatically activate!',
-                      icon: Icons.check_circle_outline,
-                      color: primaryColor,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // "I've Verified My Email" Check Button
+              // Verify Code Button
               SizedBox(
                 width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _isCheckingStatus ? null : () => _checkVerificationStatus(),
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _isVerifyingOtp ? null : _verifyManualOtp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.black,
                     elevation: 4,
                     shadowColor: primaryColor.withAlpha(100),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  icon: _isCheckingStatus
+                  child: _isVerifyingOtp
                       ? const SizedBox(
-                          height: 18,
-                          width: 18,
+                          height: 20,
+                          width: 20,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                            strokeWidth: 2.5,
                             color: Colors.black,
                           ),
                         )
-                      : const Icon(Icons.refresh, size: 20, color: Colors.black),
-                  label: Text(
-                    isUrdu ? 'میں نے تصدیق کر لی ہے' : 'I\'ve Confirmed in Email',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
+                      : Text(
+                          isUrdu ? 'کوڈ کی تصدیق کریں' : 'Verify Code',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Optional: Manual OTP section toggle
-              if (!_showManualOtp)
-                TextButton(
-                  onPressed: () => setState(() => _showManualOtp = true),
-                  child: Text(
-                    isUrdu ? 'یا 6 ہندسوں کا کوڈ درج کریں' : 'Or enter 6-digit code manually',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: Colors.white54,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                )
-              else ...[
-                // Manual 6-Digit OTP Box
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(10),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withAlpha(20)),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        isUrdu ? '6 ہندسوں کا کوڈ درج کریں' : 'Enter 6-digit code',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_codeLength, (i) {
-                          return Container(
-                            width: 42,
-                            height: 50,
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            child: TextField(
-                              controller: _otpControllers[i],
-                              focusNode: _otpFocusNodes[i],
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              maxLength: 1,
-                              style: GoogleFonts.outfit(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              decoration: InputDecoration(
-                                counterText: '',
-                                contentPadding: EdgeInsets.zero,
-                                filled: true,
-                                fillColor: const Color(0xFF161A22),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.white.withAlpha(30)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: primaryColor, width: 2),
-                                ),
-                              ),
-                              onChanged: (val) {
-                                if (val.isNotEmpty && i < _codeLength - 1) {
-                                  _otpFocusNodes[i + 1].requestFocus();
-                                }
-                              },
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: _isVerifyingOtp ? null : _verifyManualOtp,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: _isVerifyingOtp
-                              ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black,
-                                  ),
-                                )
-                              : Text(
-                                  isUrdu ? 'کوڈ تصدیق کریں' : 'Verify Code',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+              const SizedBox(height: 24),
 
               // Resend Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    isUrdu ? 'ای میل موصول نہیں ہوئی؟ ' : "Didn't get the email? ",
+                    isUrdu ? 'کوڈ موصول نہیں ہوا؟ ' : "Didn't get the code? ",
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: Colors.white60,
@@ -601,7 +514,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                               ),
                             )
                           : Text(
-                              isUrdu ? 'دوبارہ بھیجیں' : 'Resend Email',
+                              isUrdu ? 'دوبارہ بھیجیں' : 'Resend Code',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -612,52 +525,45 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                     ),
                 ],
               ),
+              const SizedBox(height: 32),
+
+              // Helpful Info Note
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161A22),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withAlpha(15)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: accentGold,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isUrdu
+                            ? 'کوڈ 10 منٹ میں ختم ہو جائے گا۔ اگر ای میل نہ ملے تو سپیم فولڈر چیک کریں۔'
+                            : 'This code expires in 10 minutes. If you don\'t see the email, check your spam folder.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 20),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStepRow({
-    required String step,
-    required String title,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withAlpha(30),
-            border: Border.all(color: color.withAlpha(100)),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            step,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white.withAlpha(220),
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
