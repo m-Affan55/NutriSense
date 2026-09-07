@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any, List
 from google.genai import types
 from app.schemas.workout import WorkoutPlanResponse, WorkoutDay, Exercise
-from app.services.gemini_pool import gemini_pool
+from app.services.gemini_pool import gemini_pool, MODEL_COMPLEX_JSON
 
 logger = logging.getLogger("workout_service")
 
@@ -88,7 +88,7 @@ class WorkoutService:
 
         try:
             response = gemini_pool.generate_content(
-                model="gemini-3.6-flash",
+                model=MODEL_COMPLEX_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
