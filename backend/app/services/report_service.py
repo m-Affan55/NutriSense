@@ -3,6 +3,7 @@ import json
 import math
 from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin_client
+from app.services.gemini_pool import gemini_pool, MODEL_COMPLEX_JSON
 
 
 class ReportService:
@@ -212,7 +213,7 @@ class ReportService:
             """
 
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model=MODEL_COMPLEX_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,

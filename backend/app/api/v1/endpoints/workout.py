@@ -36,10 +36,10 @@ async def get_workout_plan(
                     "name": fam.get("name", "Family Member"),
                     "age": fam.get("age", 30),
                     "gender": fam.get("gender", "male"),
-                    "weight_kg": 65.0,
-                    "height_cm": 165.0,
-                    "goal": "General Health & Mobility",
-                    "activity_level": "moderately_active",
+                    "weight_kg": float(fam.get("weight_kg") or 65.0),
+                    "height_cm": float(fam.get("height_cm") or 165.0),
+                    "goal": fam.get("goal") or "General Health & Mobility",
+                    "activity_level": fam.get("activity_level") or "moderately_active",
                     "medical_conditions": fam.get("medical_conditions", [])
                 }
         except Exception as e:
@@ -107,10 +107,10 @@ async def regenerate_workout_plan(
                     "name": fam.get("name", "Family Member"),
                     "age": fam.get("age", 30),
                     "gender": fam.get("gender", "male"),
-                    "weight_kg": 65.0,
-                    "height_cm": 165.0,
-                    "goal": "General Health & Mobility",
-                    "activity_level": "moderately_active",
+                    "weight_kg": float(fam.get("weight_kg") or 65.0),
+                    "height_cm": float(fam.get("height_cm") or 165.0),
+                    "goal": fam.get("goal") or "General Health & Mobility",
+                    "activity_level": fam.get("activity_level") or "moderately_active",
                     "medical_conditions": fam.get("medical_conditions", [])
                 }
         except Exception as e:

@@ -8,8 +8,8 @@ from app.db.supabase_client import get_supabase_admin_client
 from app.services import tts_service
 from app.services.user_cache import user_cache
 from app.core.security import get_current_user_id
-from google import genai
 from google.genai import types
+from app.services.gemini_pool import gemini_pool, MODEL_COMPLEX_JSON
 
 router = APIRouter()
 
@@ -170,7 +170,7 @@ async def chat_with_coach(req: CoachRequest, authenticated_user_id: str = Depend
         response = await run_in_threadpool(
             gemini_pool.generate_content,
             contents=contents,
-            model="gemini-3.6-flash",
+            model=MODEL_COMPLEX_JSON,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
             ),

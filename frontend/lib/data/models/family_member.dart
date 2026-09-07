@@ -207,6 +207,7 @@ class FamilyMember {
       'relationship': relationship,
       'age': age,
       'gender': gender,
+      'goal': goal,
       'daily_calorie_target': dailyCalorieTarget,
       'daily_protein_g': dailyProteinG,
       'daily_carbs_g': dailyCarbsG,

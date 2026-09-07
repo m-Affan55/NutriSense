@@ -195,7 +195,7 @@ class WorkoutService {
       }
       final url = Uri.parse(urlStr);
       final response = await http.get(url, headers: ApiClient.getHeaders()).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 35),
       );
 
       if (response.statusCode == 200) {
@@ -251,7 +251,7 @@ class WorkoutService {
         url,
         headers: ApiClient.getHeaders(),
         body: json.encode(body),
-      ).timeout(const Duration(seconds: 25));
+      ).timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));

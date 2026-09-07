@@ -19,22 +19,29 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: Optional[str] = None
     
     def get_gemini_keys(self) -> List[str]:
+        """
+        Returns deduplicated list of Gemini API keys.
+        GEMINI_API_KEY (primary) is listed first for highest pool priority.
+        """
         keys = []
-        candidates = [
-            self.GEMINI_API_KEY_01,
-            self.GEMINI_API_KEY_02,
-            self.GEMINI_API_KEY_03,
-            self.GEMINI_CHAT_API_KEY,
-        ]
-        for candidate in candidates:
-            if candidate and candidate.strip() and candidate.strip() not in keys:
-                keys.append(candidate.strip())
+
+        def _add(k: Optional[str]) -> None:
+            if k and k.strip() and k.strip() not in keys:
+                keys.append(k.strip())
+
+        # Primary key first — highest pool priority
+        _add(self.GEMINI_API_KEY)
+        # Numbered rotation keys
+        _add(self.GEMINI_API_KEY_01)
+        _add(self.GEMINI_API_KEY_02)
+        _add(self.GEMINI_API_KEY_03)
+        # Chat-specific key
+        _add(self.GEMINI_CHAT_API_KEY)
+        # Comma-separated bulk key list (lowest priority)
         if self.GEMINI_API_KEYS:
             for k in self.GEMINI_API_KEYS.split(','):
-                if k.strip() and k.strip() not in keys:
-                    keys.append(k.strip())
-        if self.GEMINI_API_KEY and self.GEMINI_API_KEY.strip() and self.GEMINI_API_KEY.strip() not in keys:
-            keys.append(self.GEMINI_API_KEY.strip())
+                _add(k)
+
         return keys if keys else [""]
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

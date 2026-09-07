@@ -5,7 +5,13 @@ import re
 from google.genai import types
 from app.core.config import settings
 from app.schemas.meal import MealScanResponse
-from app.services.gemini_pool import gemini_pool
+from app.services.gemini_pool import (
+    gemini_pool,
+    MODEL_SIMPLE_TEXT,
+    MODEL_CLINICAL_JSON,
+    MODEL_COMPLEX_JSON,
+    MODEL_VISION,
+)
 
 logger = logging.getLogger("gemini_service")
 
@@ -55,7 +61,7 @@ class GeminiService:
         prompt = "Analyze the food shown in this image and return the complete nutritional breakdown according to the schema."
         
         response = gemini_pool.generate_content(
-            model='gemini-3.6-flash',
+            model=MODEL_VISION,
             contents=[
                 types.Part.from_bytes(
                     data=image_bytes,
@@ -149,7 +155,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model=MODEL_CLINICAL_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -157,7 +163,8 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
                 ),
             )
             return json.loads(response.text)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"evaluate_ingredients failed (returning no warnings): {e}")
             return []
 
     @staticmethod
@@ -185,7 +192,7 @@ Return ONLY a JSON array of warning strings. Be specific and mention actual valu
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model=MODEL_CLINICAL_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -263,7 +270,7 @@ Return ONLY a valid JSON object with exact keys:
 """
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model=MODEL_CLINICAL_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -316,7 +323,7 @@ Return ONLY a valid JSON object with exact keys:
         
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.6-flash',
+                model=MODEL_CLINICAL_JSON,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -363,7 +370,7 @@ Return ONLY a valid JSON object with exact keys:
 
         try:
             response = gemini_pool.generate_content(
-                model='gemini-3.5-flash-lite',
+                model=MODEL_SIMPLE_TEXT,
                 contents=[prompt],
             )
             return response.text.strip()
