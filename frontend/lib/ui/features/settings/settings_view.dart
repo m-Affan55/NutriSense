@@ -1325,14 +1325,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: Colors.white,
+                          backgroundColor: _hasUnsavedChanges ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.4),
+                          foregroundColor: _hasUnsavedChanges ? Colors.white : Colors.white54,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: _isSaving ? null : _saveSettings,
+                        onPressed: (_isSaving || !_hasUnsavedChanges) ? null : _saveSettings,
                         child: _isSaving
                             ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Text(_t('save'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                            : Text(_t('save'), style: TextStyle(fontWeight: FontWeight.bold, color: _hasUnsavedChanges ? Colors.white : Colors.white54)),
                       ),
                     ),
                     const SizedBox(height: 24),
