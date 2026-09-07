@@ -228,4 +228,18 @@ class OfflineCache {
     final water = await getPendingWaterCount(userId);
     return meals + water;
   }
+
+  /// Purges old synced rows to keep local SQLite storage lean and leak-free.
+  Future<void> purgeSyncedLogs() async {
+    final db = await _database;
+    await db.delete(_mealTable, where: 'synced = 1');
+    await db.delete(_waterTable, where: 'synced = 1');
+  }
+
+  /// Clears pending logs for a specific user upon session teardown.
+  Future<void> clearPendingForUser(String userId) async {
+    final db = await _database;
+    await db.delete(_mealTable, where: 'user_id = ? AND synced = 0', whereArgs: [userId]);
+    await db.delete(_waterTable, where: 'user_id = ? AND synced = 0', whereArgs: [userId]);
+  }
 }

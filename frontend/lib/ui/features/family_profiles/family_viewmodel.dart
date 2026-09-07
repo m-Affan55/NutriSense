@@ -24,8 +24,8 @@ class FamilyViewModel extends ChangeNotifier {
     _loadFromLocalCache();
   }
 
-  static const String _cacheKey = 'nutrisense_cached_family_members';
-  static const String _activeMemberKey = 'nutrisense_active_family_member_id';
+  static String _cacheKey(String userId) => 'nutrisense_cached_family_members_$userId';
+  static String _activeMemberKey(String userId) => 'nutrisense_active_family_member_id_$userId';
 
   List<FamilyMember> _members = [];
   List<FamilyMember> get members => List.unmodifiable(_members);
@@ -40,19 +40,31 @@ class FamilyViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  /// Clears in-memory members and active dependent during sign-out
+  void clearSession() {
+    _members = [];
+    _activeMember = null;
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   /// Switch active profile (null represents the primary account user)
   void setActiveMember(FamilyMember? member) async {
     _activeMember = member;
     notifyListeners();
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (member == null) {
-        await prefs.remove(_activeMemberKey);
-      } else {
-        await prefs.setString(_activeMemberKey, member.id);
-      }
-    } catch (_) {}
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (member == null) {
+          await prefs.remove(_activeMemberKey(user.id));
+        } else {
+          await prefs.setString(_activeMemberKey(user.id), member.id);
+        }
+      } catch (_) {}
+    }
   }
 
   /// Load family members from Supabase (with fallback to local storage)
@@ -86,7 +98,7 @@ class FamilyViewModel extends ChangeNotifier {
 
       // Restore active member if ID exists in list
       final prefs = await SharedPreferences.getInstance();
-      final activeId = prefs.getString(_activeMemberKey);
+      final activeId = prefs.getString(_activeMemberKey(user.id));
       if (activeId != null) {
         _activeMember = _members.cast<FamilyMember?>().firstWhere(
               (m) => m?.id == activeId,
@@ -193,7 +205,7 @@ class FamilyViewModel extends ChangeNotifier {
       if (_activeMember?.id == memberId) {
         _activeMember = null;
         final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_activeMemberKey);
+        await prefs.remove(_activeMemberKey(user.id));
       }
 
       await _saveToLocalCache();
@@ -206,27 +218,39 @@ class FamilyViewModel extends ChangeNotifier {
   }
 
   Future<void> _saveToLocalCache() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = _members.map((m) => m.toJson()).toList();
-      await prefs.setStringList(_cacheKey, jsonList);
+      await prefs.setStringList(_cacheKey(user.id), jsonList);
     } catch (_) {}
   }
 
   Future<void> _loadFromLocalCache() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      _members = [];
+      _activeMember = null;
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(_cacheKey);
+      final jsonList = prefs.getStringList(_cacheKey(user.id));
       if (jsonList != null && jsonList.isNotEmpty) {
         _members = jsonList.map((s) => FamilyMember.fromJson(s)).toList();
+      } else {
+        _members = [];
       }
 
-      final activeId = prefs.getString(_activeMemberKey);
+      final activeId = prefs.getString(_activeMemberKey(user.id));
       if (activeId != null && _members.isNotEmpty) {
         _activeMember = _members.cast<FamilyMember?>().firstWhere(
               (m) => m?.id == activeId,
               orElse: () => null,
             );
+      } else {
+        _activeMember = null;
       }
     } catch (_) {}
   }

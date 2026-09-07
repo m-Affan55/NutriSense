@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../navigation/main_navigation_screen.dart';
-import '../auth/auth_view.dart';
 import '../../../core/api_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +10,7 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/health_service.dart';
+import '../../../core/session_manager.dart';
 
 import '../../core/theme.dart';
 import '../../../core/ramadan_controller.dart';
@@ -133,7 +133,12 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     }
 
     if (_currentPage < _totalPages - 1) {
-      _pageController.nextPage(
+      final nextIndex = _currentPage + 1;
+      setState(() {
+        _currentPage = nextIndex;
+      });
+      _pageController.animateToPage(
+        nextIndex,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );
@@ -195,6 +200,28 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     }
   }
 
+  void _prevPage() {
+    if (_isLoading) return;
+    final activePage = _pageController.hasClients && _pageController.page != null
+        ? _pageController.page!.round()
+        : _currentPage;
+    final effectivePage = activePage > 0 ? activePage : _currentPage;
+
+    if (effectivePage > 0) {
+      final prevIndex = effectivePage - 1;
+      setState(() {
+        _currentPage = prevIndex;
+      });
+      _pageController.animateToPage(
+        prevIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _showExitDialog();
+    }
+  }
+
   String _mapGoal(String? goal) {
     if (goal == null) return 'maintenance';
     if (goal.contains('Fat loss')) return 'fat_loss';
@@ -223,37 +250,46 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     final isRamadan = RamadanController.instance.isRamadanMode;
     final englishTheme = isRamadan ? buildRamadanTheme(false) : buildDarkTheme(false);
 
-    return Scaffold(
-      body: Theme(
-        data: englishTheme,
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: SafeArea(
-            child: Column(
-              children: [
-                _buildProgressBar(),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(), // Disable manual swipe
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentPage = index;
-                      });
-                    },
-                    children: [
-                      _buildGoalPage(),
-                      _buildGenderPage(),
-                      _buildBodyMetricsPage(),
-                      _buildActivityPage(),
-                      _buildHealthAndDietPage(),
-                      _buildBudgetPage(),
-                      _buildHealthSyncPage(),
-                    ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _prevPage();
+      },
+      child: Scaffold(
+        body: Theme(
+          data: englishTheme,
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildProgressBar(),
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(), // Disable manual swipe
+                      onPageChanged: (index) {
+                        if (_currentPage != index) {
+                          setState(() {
+                            _currentPage = index;
+                          });
+                        }
+                      },
+                      children: [
+                        _buildGoalPage(),
+                        _buildGenderPage(),
+                        _buildBodyMetricsPage(),
+                        _buildActivityPage(),
+                        _buildHealthAndDietPage(),
+                        _buildBudgetPage(),
+                        _buildHealthSyncPage(),
+                      ],
+                    ),
                   ),
-                ),
-                _buildBottomNav(),
-              ],
+                  _buildBottomNav(),
+                ],
+              ),
             ),
           ),
         ),
@@ -262,6 +298,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   void _showExitDialog() {
+    final canPop = Navigator.of(context).canPop();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -271,32 +308,43 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           side: BorderSide(color: Colors.white.withAlpha(20)),
         ),
         title: const Text('Exit Setup?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Do you want to exit and return to the login screen?',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          canPop
+              ? 'Do you want to exit onboarding? Your setup progress will not be saved.'
+              : 'You have not completed your profile setup yet. Do you want to sign out and return to the login screen?',
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          if (canPop)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Exit Setup'),
+            )
+          else
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await SessionManager.logout(context);
+              },
+              child: const Text('Sign Out'),
             ),
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await Supabase.instance.client.auth.signOut().catchError((_) {});
-              if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AuthScreen()),
-                (route) => false,
-              );
-            },
-            child: const Text('Sign Out'),
-          ),
         ],
       ),
     );
@@ -309,16 +357,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              if (_currentPage > 0) {
-                _pageController.previousPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                );
-              } else {
-                _showExitDialog();
-              }
-            },
+            onPressed: _prevPage,
           ),
           Expanded(
             child: LinearProgressIndicator(
@@ -343,25 +382,64 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     if (_currentPage == 5 && _budget != null) canProceed = true;
     if (_currentPage == 6) canProceed = true; // Final health sync page, always optional
 
+    final nextButton = ElevatedButton(
+      onPressed: canProceed && !_isLoading ? _nextPage : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        disabledBackgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      child: _isLoading 
+        ? const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          )
+        : Text(
+            _currentPage == _totalPages - 1 ? 'Finish' : 'Next',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+    );
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: SizedBox(
         width: double.infinity,
         height: 56,
-        child: ElevatedButton(
-          onPressed: canProceed && !_isLoading ? _nextPage : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            disabledBackgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          child: _isLoading 
-            ? const CircularProgressIndicator(color: Colors.white)
-            : Text(
-                _currentPage == _totalPages - 1 ? 'Finish' : 'Next',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        child: _currentPage == 0
+            ? nextButton
+            : Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: OutlinedButton(
+                      onPressed: !_isLoading ? _prevPage : null,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.white.withAlpha(40)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.arrow_back_ios_new, size: 16, color: Colors.white70),
+                          SizedBox(width: 6),
+                          Text(
+                            'Back',
+                            style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: nextButton,
+                  ),
+                ],
               ),
-        ),
       ),
     );
   }

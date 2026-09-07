@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Activity data fetched from the device's health platform or local tracker.
 class ActivityData {
@@ -87,11 +88,17 @@ class HealthService {
   HealthService._();
   static final HealthService instance = HealthService._();
 
-  static const _stepGoalKey = 'health_step_goal';
   static const _defaultStepGoal = 10000;
-  static const _manualActivityKey = 'health_manual_activity_today';
-  static const _weeklyHistoryKey = 'health_weekly_history_cache';
   static const _syncModeKey = 'health_sync_mode_enabled';
+
+  String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
+
+  static String _manualActivityKey(String? userId) =>
+      userId != null ? 'health_manual_activity_today_$userId' : 'health_manual_activity_today';
+  static String _weeklyHistoryKey(String? userId) =>
+      userId != null ? 'health_weekly_history_cache_$userId' : 'health_weekly_history_cache';
+  static String _stepGoalKey(String? userId) =>
+      userId != null ? 'health_step_goal_$userId' : 'health_step_goal';
 
   static const _types = [
     HealthDataType.STEPS,
@@ -112,12 +119,14 @@ class HealthService {
   /// Get/set the daily step goal (persisted to SharedPreferences).
   Future<int> getStepGoal() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_stepGoalKey) ?? _defaultStepGoal;
+    final uid = _currentUserId;
+    return prefs.getInt(_stepGoalKey(uid)) ?? prefs.getInt('health_step_goal') ?? _defaultStepGoal;
   }
 
   Future<void> setStepGoal(int goal) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_stepGoalKey, goal);
+    final uid = _currentUserId;
+    await prefs.setInt(_stepGoalKey(uid), goal);
   }
 
   /// Returns true if native OS health APIs (Health Connect / HealthKit) are available.
@@ -198,7 +207,8 @@ class HealthService {
   /// Save manual/quick-logged activity for today.
   Future<void> saveTodayActivity(ActivityData data) async {
     final prefs = await SharedPreferences.getInstance();
-    final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+    final uid = _currentUserId;
+    final todayKey = '${_manualActivityKey(uid)}_${_todayDateString()}';
     await prefs.setString(todayKey, jsonEncode(data.toJson()));
     await _updateWeeklyCacheForToday(data);
   }
@@ -206,7 +216,8 @@ class HealthService {
   /// Fetch today's activity stats across all devices.
   Future<ActivityData> getTodayActivity() async {
     final prefs = await SharedPreferences.getInstance();
-    final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+    final uid = _currentUserId;
+    final todayKey = '${_manualActivityKey(uid)}_${_todayDateString()}';
 
     // 1. Try native reading if on Android/iOS
     if (isNativeHealthSupported) {
@@ -382,8 +393,9 @@ class HealthService {
           }
 
           if (hasAnyNativeData) {
+            final uid = _currentUserId;
             await prefs.setString(
-              _weeklyHistoryKey,
+              _weeklyHistoryKey(uid),
               jsonEncode(nativeWeekly.map((h) => h.toJson()).toList()),
             );
             return nativeWeekly;
@@ -395,9 +407,10 @@ class HealthService {
     }
 
     // 2. Load from local saved history cache only if the user has manually logged activity
-    final todayKey = '${_manualActivityKey}_${_todayDateString()}';
+    final uid = _currentUserId;
+    final todayKey = '${_manualActivityKey(uid)}_${_todayDateString()}';
     final hasManualLogs = prefs.getString(todayKey) != null;
-    final cachedJson = prefs.getString(_weeklyHistoryKey);
+    final cachedJson = prefs.getString(_weeklyHistoryKey(uid));
     List<DailyActivity> history = [];
 
     if (hasManualLogs && cachedJson != null) {
@@ -407,7 +420,7 @@ class HealthService {
       } catch (_) {}
     } else if (!hasManualLogs && cachedJson != null) {
       // Clear old legacy demo cache so stale mock bars never show
-      await prefs.remove(_weeklyHistoryKey);
+      await prefs.remove(_weeklyHistoryKey(uid));
     }
 
     // 3. Fallback: No real data yet — return honest flat-zero history (no fake bars)
@@ -429,7 +442,8 @@ class HealthService {
 
   Future<void> _updateWeeklyCacheForToday(ActivityData today) async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedJson = prefs.getString(_weeklyHistoryKey);
+    final uid = _currentUserId;
+    final cachedJson = prefs.getString(_weeklyHistoryKey(uid));
     final now = DateTime.now();
     final todayDate = DateTime(now.year, now.month, now.day);
 
@@ -461,9 +475,24 @@ class HealthService {
     }
 
     await prefs.setString(
-      _weeklyHistoryKey,
+      _weeklyHistoryKey(uid),
       jsonEncode(history.map((h) => h.toJson()).toList()),
     );
+  }
+
+  /// Clears user-scoped health activity cache on sign out
+  Future<void> clearSessionCache([String? userId]) async {
+    try {
+      final uid = userId ?? _currentUserId;
+      final prefs = await SharedPreferences.getInstance();
+      if (uid != null) {
+        await prefs.remove(_manualActivityKey(uid));
+        await prefs.remove(_weeklyHistoryKey(uid));
+        await prefs.remove('${_manualActivityKey(uid)}_${_todayDateString()}');
+      }
+      await prefs.remove('health_weekly_history_cache');
+      await prefs.remove('health_manual_activity_today_${_todayDateString()}');
+    } catch (_) {}
   }
 
   String _todayDateString() {
