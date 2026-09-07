@@ -14,7 +14,14 @@ class GroceryViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  static const _cacheKey = 'cached_grocery_list';
+  static String _cacheKey(String userId) => 'cached_grocery_list_$userId';
+
+  void clearSession() {
+    _categories = [];
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 
   GroceryViewModel() {
     loadCachedList();
@@ -22,8 +29,13 @@ class GroceryViewModel extends ChangeNotifier {
 
   Future<void> loadCachedList() async {
     try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        _categories = [];
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString(_cacheKey);
+      final cached = prefs.getString(_cacheKey(user.id));
       if (cached != null) {
         final decoded = jsonDecode(cached) as List;
         _categories = decoded.map((c) => {
@@ -31,6 +43,8 @@ class GroceryViewModel extends ChangeNotifier {
           'items': (c['items'] as List).map((i) => Map<String, dynamic>.from(i)).toList(),
         }).toList();
         notifyListeners();
+      } else {
+        _categories = [];
       }
     } catch (e) {
       debugPrint('Error loading cached grocery list: $e');
@@ -39,8 +53,10 @@ class GroceryViewModel extends ChangeNotifier {
 
   Future<void> _saveToCache() async {
     try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_cacheKey, jsonEncode(_categories));
+      await prefs.setString(_cacheKey(user.id), jsonEncode(_categories));
     } catch (e) {
       debugPrint('Error caching grocery list: $e');
     }

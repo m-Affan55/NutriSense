@@ -14,7 +14,6 @@ import '../../../core/api_client.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../shared/widgets/custom_toast.dart';
 import '../../../shared/widgets/islamic_decorations.dart';
-import '../auth/auth_view.dart';
 import '../auth/update_password_screen.dart';
 import '../grocery_list/grocery_view.dart';
 import '../health_sync/health_sync_view.dart';
@@ -27,6 +26,7 @@ import '../../../core/language_controller.dart';
 import '../../../core/swap_service.dart';
 import '../../../core/workout_service.dart';
 import '../../../core/profile_sync_notifier.dart';
+import '../../../core/session_manager.dart';
 import '../../widgets/terms_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -295,14 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _logout() async {
     try {
-      SwapService.clearSession();
-      await Supabase.instance.client.auth.signOut();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
-          (route) => false,
-        );
-      }
+      await SessionManager.logout(context);
     } catch (e) {
       if (mounted) {
         CustomToast.show(context, 'Logout failed: ${e.toString()}');
@@ -556,15 +549,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         throw Exception('Server error during account removal.');
       }
 
-      SwapService.clearSession();
-      await supabase.auth.signOut();
-
       if (mounted) {
         CustomToast.show(context, _t('delSuccess'), isError: false);
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
-          (route) => false,
-        );
+        await SessionManager.logout(context);
       }
     } catch (e) {
       if (mounted) {
