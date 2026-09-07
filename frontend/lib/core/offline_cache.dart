@@ -14,7 +14,7 @@ class OfflineCache {
   static final OfflineCache instance = OfflineCache._();
 
   static const _dbName = 'nutrisense_offline.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   // Table names
   static const _mealTable = 'pending_meal_logs';
@@ -56,7 +56,8 @@ class OfflineCache {
             amount_ml   INTEGER NOT NULL,
             logged_at   TEXT NOT NULL,
             synced      INTEGER NOT NULL DEFAULT 0,
-            sync_id     TEXT UNIQUE
+            sync_id     TEXT UNIQUE,
+            family_member_id TEXT
           )
         ''');
       },
@@ -72,6 +73,11 @@ class OfflineCache {
         if (oldVersion < 3) {
           try {
             await db.execute('ALTER TABLE $_mealTable ADD COLUMN family_member_id TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute('ALTER TABLE $_waterTable ADD COLUMN family_member_id TEXT');
           } catch (_) {}
         }
       },
@@ -156,6 +162,7 @@ class OfflineCache {
   Future<int> insertPendingWater({
     required String userId,
     required int amountMl,
+    String? familyMemberId,
   }) async {
     final db = await _database;
     final syncId = const Uuid().v4();
@@ -165,6 +172,7 @@ class OfflineCache {
       'logged_at': DateTime.now().toUtc().toIso8601String(),
       'synced': 0,
       'sync_id': syncId,
+      'family_member_id': familyMemberId,
     });
   }
 
@@ -175,14 +183,22 @@ class OfflineCache {
   }
 
   /// Get unsynced water totals for today (to merge with Supabase data).
-  Future<int> getTodayPendingWaterMl(String userId) async {
+  Future<int> getTodayPendingWaterMl(String userId, {String? familyMemberId}) async {
     final db = await _database;
     final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
-    final result = await db.rawQuery(
-      'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND synced = 0 AND logged_at LIKE ?',
-      [userId, '$today%'],
-    );
-    return (result.first['total'] as int?) ?? 0;
+    if (familyMemberId != null && familyMemberId.isNotEmpty) {
+      final result = await db.rawQuery(
+        'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND family_member_id = ? AND synced = 0 AND logged_at LIKE ?',
+        [userId, familyMemberId, '$today%'],
+      );
+      return (result.first['total'] as int?) ?? 0;
+    } else {
+      final result = await db.rawQuery(
+        'SELECT SUM(amount_ml) as total FROM $_waterTable WHERE user_id = ? AND (family_member_id IS NULL OR family_member_id = "") AND synced = 0 AND logged_at LIKE ?',
+        [userId, '$today%'],
+      );
+      return (result.first['total'] as int?) ?? 0;
+    }
   }
 
   /// Mark a water log as synced.

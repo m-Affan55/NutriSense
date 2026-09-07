@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -10,8 +11,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../../core/ramadan_controller.dart';
 import '../../../core/language_controller.dart';
+import '../../../core/email_verifier_service.dart';
 import '../../widgets/terms_dialog.dart';
 import 'forgot_password_view.dart';
+import 'email_verification_view.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -30,12 +33,23 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadTagline();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTagline() async {
@@ -56,28 +70,63 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       
       setState(() => _isLoading = true);
+      final email = _emailController.text.trim();
       
       try {
         final supabase = Supabase.instance.client;
         
         if (isLogin) {
-          await supabase.auth.signInWithPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+          try {
+            await supabase.auth.signInWithPassword(
+              email: email,
+              password: _passwordController.text,
+            );
+          } on AuthException catch (ae) {
+            final msg = ae.message.toLowerCase();
+            if (msg.contains('email not confirmed') || msg.contains('unconfirmed')) {
+              if (!mounted) return;
+              final isUrdu = LanguageController.instance.isUrdu;
+              CustomToast.show(
+                context,
+                isUrdu
+                    ? 'برائے مہربانی لاگ ان کرنے سے پہلے اپنے ای میل کی تصدیق کریں'
+                    : 'Please verify your email before logging in.',
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EmailVerificationScreen(
+                    email: email,
+                  ),
+                ),
+              );
+              return;
+            }
+            rethrow;
+          }
           
           if (!mounted) return;
           
-          // Check if they have a profile
+          // Check if they have a completed profile or completed onboarding
           final user = supabase.auth.currentUser;
           if (user != null) {
+            final prefs = await SharedPreferences.getInstance();
+            final localDone = prefs.getBool('onboarding_completed_${user.id}') ?? false;
+            if (localDone) {
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+              );
+              return;
+            }
+
             final profileResponse = await supabase
                 .from('health_profiles')
-                .select()
+                .select('id')
                 .eq('user_id', user.id)
                 .maybeSingle();
                 
             if (profileResponse != null) {
+              await prefs.setBool('onboarding_completed_${user.id}', true);
               if (!mounted) return;
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
@@ -92,20 +141,164 @@ class _AuthScreenState extends State<AuthScreen> {
           );
           
         } else {
-          await supabase.auth.signUp(
-            email: _emailController.text.trim(),
+          // -------------------------------------------------------------
+          // STEP 1: Verify whether the email actually exists
+          // -------------------------------------------------------------
+          final existenceStatus = await EmailVerifierService.verifyEmailExistence(email);
+          if (existenceStatus == EmailVerificationStatus.noInternet) {
+            if (!mounted) return;
+            CustomToast.show(
+              context,
+              'Unable to verify your email address',
+              subtitle: 'Network error. Please check your internet connection and try again.',
+              isError: true,
+            );
+            return;
+          }
+          if (existenceStatus == EmailVerificationStatus.domainDoesNotExist) {
+            if (!mounted) return;
+            CustomToast.show(
+              context,
+              'Unable to verify your email address',
+              subtitle: 'This email address does not exist.',
+              isError: true,
+            );
+            return;
+          }
+
+          // -------------------------------------------------------------
+          // STEP 2: Send Email via Supabase Auth
+          // -------------------------------------------------------------
+          final res = await supabase.auth.signUp(
+            email: email,
             password: _passwordController.text,
             data: {'full_name': _nameController.text.trim()},
           );
           
           if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+
+          // Check if email already registered (Supabase email enumeration protection returns empty identities)
+          final identities = res.user?.identities;
+          if (res.user != null && (identities == null || identities.isEmpty)) {
+            // The email already exists in Supabase auth.users.
+            // If it was never verified, attempt to resend the signup OTP so the user can complete verification!
+            try {
+              await supabase.auth.resend(
+                type: OtpType.signup,
+                email: email,
+              );
+
+              if (!mounted) return;
+              CustomToast.show(
+                context,
+                'Verification code sent!',
+                subtitle: 'This account was pending verification. A new 6-digit code was sent to your email.',
+                isError: false,
+              );
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EmailVerificationScreen(email: email),
+                ),
+              );
+              return;
+            } on AuthException catch (resendErr) {
+              if (!mounted) return;
+              final rMsg = resendErr.message.toLowerCase();
+              String reason;
+              if (rMsg.contains('already confirmed') || rMsg.contains('verified')) {
+                reason = 'An account with this email is already verified. Please log in.';
+              } else if (resendErr.statusCode == '429' || rMsg.contains('rate limit')) {
+                reason = 'Email send limit reached. Please wait a few minutes before trying again.';
+              } else {
+                reason = resendErr.message;
+              }
+              CustomToast.show(
+                context,
+                'Unable to create account',
+                subtitle: reason,
+                isError: true,
+              );
+              return;
+            } catch (e) {
+              if (!mounted) return;
+              CustomToast.show(
+                context,
+                'Unable to create account',
+                subtitle: 'An account with this email already exists. Please log in.',
+                isError: true,
+              );
+              return;
+            }
+          }
+
+          // If session is already created (Confirm Email is disabled in Supabase)
+          if (res.session != null) {
+            CustomToast.show(
+              context,
+              'Account created successfully!',
+              isError: false,
+            );
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const OnboardingWizardScreen()),
+            );
+            return;
+          }
+
+          // -------------------------------------------------------------
+          // STEP 3: Only on actual new signup show alert & open OTP page
+          // -------------------------------------------------------------
+          CustomToast.show(
+            context,
+            'Verification code sent successfully!',
+            subtitle: 'Please check your email inbox for the 6-digit code.',
+            isError: false,
+          );
+
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => EmailVerificationScreen(email: email),
+            ),
           );
         }
+      } on AuthException catch (ae) {
+        if (!mounted) return;
+        final msg = ae.message.toLowerCase();
+        String reason;
+        if (ae.statusCode == '429' || msg.contains('rate limit') || msg.contains('over_email_send_rate_limit')) {
+          reason = 'Email send limit exceeded. Please wait a few minutes before trying again.';
+        } else if (msg.contains('already registered') || msg.contains('already exists')) {
+          reason = 'An account with this email already exists.';
+        } else if (msg.contains('invalid') || msg.contains('does not exist') || msg.contains('recipient')) {
+          reason = 'This email address does not exist.';
+        } else if (msg.contains('disabled') || msg.contains('smtp') || msg.contains('provider')) {
+          reason = 'Email delivery service is currently unavailable. Please contact support.';
+        } else {
+          reason = ae.message;
+        }
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: reason,
+          isError: true,
+        );
+      } on SocketException {
+        if (!mounted) return;
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: 'Network error. Please check your internet connection.',
+          isError: true,
+        );
       } catch (e) {
         if (!mounted) return;
-        CustomToast.show(context, e.toString());
+        final errStr = e.toString().replaceAll(RegExp(r'.*Exception:?\s*'), '');
+        CustomToast.show(
+          context,
+          'Unable to verify your email address',
+          subtitle: errStr.isNotEmpty ? errStr : 'An unexpected error occurred. Please try again.',
+          isError: true,
+        );
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -331,7 +524,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     label: 'Email',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) => !v!.contains('@') ? 'Please enter a valid email' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                      if (!emailRegex.hasMatch(v.trim())) return 'Please enter a valid email address';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   
@@ -344,12 +542,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    validator: (v) => v!.length < 8 ? 'Password must be at least 8 characters' : null,
+                    validator: (v) => (v == null || v.length < 8) ? 'Password must be at least 8 characters' : null,
                   ),
                   
                   if (!isLogin) ...[
                     const SizedBox(height: 16),
                     _buildTextField(
+                      controller: _confirmPasswordController,
                       label: 'Confirm Password',
                       icon: Icons.lock_outline,
                       obscureText: _obscureConfirmPassword,
@@ -357,7 +556,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
                         onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),
-                      validator: (v) => v!.length < 8 ? 'Please confirm your password' : null, // Simplified validation for demo
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Please confirm your password';
+                        if (v != _passwordController.text) return 'Passwords do not match';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -499,6 +702,9 @@ class _AuthScreenState extends State<AuthScreen> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final isRamadan = RamadanController.instance.isRamadanMode;
+    final activeColor = isRamadan ? RamadanColors.primaryCyan : const Color(0xFF00E676);
+
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -523,7 +729,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00E676)),
+          borderSide: BorderSide(color: activeColor, width: 1.5),
         ),
       ),
     );

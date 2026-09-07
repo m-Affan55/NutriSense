@@ -768,10 +768,11 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: LanguageController.instance,
+      listenable: Listenable.merge([LanguageController.instance, RamadanController.instance]),
       builder: (context, _) {
         final currentLang = LanguageController.instance.currentLanguage;
         final isUrdu = currentLang == 'ur';
+        final isRamadan = RamadanController.instance.isRamadanMode;
         final theme = Theme.of(context);
         final mediaQuery = MediaQuery.of(context);
         final bottomInset = mediaQuery.viewPadding.bottom > 0
@@ -871,19 +872,19 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00E676).withAlpha(20),
+                          color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(20),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF00E676).withAlpha(70)),
+                          border: Border.all(color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(70)),
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF00E676).withAlpha(40),
+                                color: (isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676)).withAlpha(40),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.family_restroom_rounded, color: Color(0xFF00E676), size: 16),
+                              child: Icon(Icons.family_restroom_rounded, color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676), size: 16),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -915,7 +916,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                               ),
                               child: Text(
                                 isUrdu ? 'ری سیٹ' : 'Switch Self',
-                                style: const TextStyle(color: Color(0xFF00E676), fontSize: 11, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: isRamadan ? const Color(0xFF00D2FF) : const Color(0xFF00E676), fontSize: 11, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -1117,11 +1118,17 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
                                       ? LinearGradient(
                                           colors: [Colors.grey.shade800, Colors.grey.shade700],
                                         )
-                                      : const LinearGradient(
-                                          colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
+                                      : isRamadan
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF00D2FF), Color(0xFF0288D1)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
+                                          : const LinearGradient(
+                                              colors: [Color(0xFF00E676), Color(0xFF00BCD4)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: IconButton(
@@ -1608,7 +1615,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> with WidgetsBindingObserv
         _PromptChipData('🌙 سحری کے بہترین کھانے', '🌙 Best Sehri foods for energy', const Color(0xFFFFD166)),
         _PromptChipData('💧 روزے میں پیاس سے بچاؤ', '💧 How to avoid thirst while fasting?', const Color(0xFF00D2FF)),
         _PromptChipData('🍲 صحت مند افطار کے طریقے', '🍲 Healthy Iftar meal ideas', const Color(0xFFFFD166)),
-        _PromptChipData('⚡ روزے میں ورزش کا وقت', '⚡ Workout timing in Ramadan', const Color(0xFF00E676)),
+        _PromptChipData('⚡ روزے میں ورزش کا وقت', '⚡ Workout timing in Ramadan', const Color(0xFF00D2FF)),
       ];
     }
 
