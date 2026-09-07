@@ -1045,28 +1045,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(_t('title')),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          if (_hasUnsavedChanges)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: TextButton.icon(
-                onPressed: _isSaving ? null : _saveSettings,
-                icon: _isSaving
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check, size: 18),
-                label: Text(
-                  _language == 'ur' ? 'محفوظ' : 'Save',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: accentColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                ),
-              ),
-            ),
-        ],
       ),
       body: RamadanBackgroundWrapper(
         child: Stack(
@@ -1074,11 +1052,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: 20, right: 20, top: 20,
-                  // Extra bottom padding so content isn't hidden behind the sticky banner
-                  bottom: _hasUnsavedChanges ? 104 : 20,
-                ),
+                padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -1770,74 +1744,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 40),
                   ],
-                ),
-              ),
-            ),
-            // ── Sticky unsaved-changes banner ──────────────────────────
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              bottom: _hasUnsavedChanges ? 0 : -90,
-              left: 0,
-              right: 0,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: _hasUnsavedChanges ? 1.0 : 0.0,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isRamadan
-                        ? const Color(0xFF0A1628).withAlpha(240)
-                        : const Color(0xFF0D1A0D).withAlpha(240),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: accentColor.withAlpha(120),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withAlpha(40),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_note_rounded, color: accentColor, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _language == 'ur'
-                              ? 'تبدیلیاں محفوظ نہیں ہوئیں'
-                              : 'You have unsaved changes',
-                          style: TextStyle(
-                            color: accentColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _isSaving ? null : _saveSettings,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: accentColor,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          elevation: 0,
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                            : Text(
-                                _language == 'ur' ? 'محفوظ کریں' : 'Save now',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
